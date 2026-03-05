@@ -1,0 +1,14 @@
+node_modules
+.env
+.env.*
+data
+docs
+dist
+build
+coverage
+*.log
+*.tmp
+.git
+.gitignore
+playwright-report
+test-results
