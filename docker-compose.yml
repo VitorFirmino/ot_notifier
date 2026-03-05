@@ -1,0 +1,17 @@
+services:
+  ot_notifier:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ot_notifier
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - storage_data:/app/src/infrastructure/storage/data
+      - states_data:/app/data
+      - ./src/infrastructure/storage/servers.json:/app/src/infrastructure/storage/servers.json
+
+volumes:
+  storage_data:
+  states_data:
