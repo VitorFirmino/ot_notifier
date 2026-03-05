@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import boxen from "boxen";
+import logUpdate from "log-update";
 import type { ServerStates } from "../types/serverState";
 import { getAllServerConfigsSync } from "@infrastructure/storage/serverConfigManager";
 
@@ -22,10 +23,16 @@ const getServerColorFn = (serverId: string): ((text: string) => string) => {
   return colorMap[SERVER_COLORS[index]] || chalk.white;
 };
 
-const UI_WIDTH = 74;
+const UI_MAX_WIDTH = 74;
+const getUiWidth = () => {
+  if (process.stdout.columns) {
+    return Math.min(UI_MAX_WIDTH, process.stdout.columns - 2);
+  }
+  return UI_MAX_WIDTH;
+};
+
 let topContent = "";
 let lastRenderedContent = "";
-let hasEnteredAlternateScreen = false;
 let lastScrollPrintAt = 0;
 let hasPrintedScrollableHeader = false;
 let hasPrintedLiveBanner = false;
@@ -33,56 +40,25 @@ let hasPrintedLiveBanner = false;
 const isInteractiveTerminal = Boolean(process.stdout.isTTY);
 const uiMode = (process.env.UI_MODE ?? (isInteractiveTerminal ? "live" : "scroll")).toLowerCase();
 const useLiveUi = isInteractiveTerminal && uiMode === "live";
-const useAlternateScreen =
-  useLiveUi && process.env.UI_ALTERNATE_SCREEN === "true";
+
 const scrollPrintIntervalMs = Math.max(
   1000,
   Number.parseInt(process.env.UI_SCROLL_INTERVAL_MS ?? "10000", 10) || 10000
 );
 
-const enterAlternateScreen = (): void => {
-  if (!useAlternateScreen || hasEnteredAlternateScreen) return;
-  process.stdout.write("\u001b[?1049h\u001b[H");
-  hasEnteredAlternateScreen = true;
-};
-
-const exitAlternateScreen = (): void => {
-  if (!hasEnteredAlternateScreen) return;
-  process.stdout.write("\u001b[?1049l");
-  hasEnteredAlternateScreen = false;
-};
-
 const renderContent = (content: string): void => {
   if (!content) return;
   if (useLiveUi) {
     if (content === lastRenderedContent) return;
-    process.stdout.write("\x1b[H\x1b[J");
-    process.stdout.write(content);
+    logUpdate(content);
     lastRenderedContent = content;
     return;
   }
 
   const now = Date.now();
-  if (lastRenderedContent && now - lastScrollPrintAt < scrollPrintIntervalMs) {
-    return;
-  }
-
-  if (content === lastRenderedContent) {
-    return;
-  }
-
-  const separator = chalk.gray("─".repeat(UI_WIDTH));
-  const timestamp = chalk.gray(
-    `[${new Date(now).toLocaleTimeString("pt-BR", { hour12: false })}] Atualização`
-  );
-  console.log(`\n${timestamp}\n${content}\n${separator}`);
-  lastRenderedContent = content;
   lastScrollPrintAt = now;
 };
 
-process.once("exit", () => {
-  exitAlternateScreen();
-});
 
 const truncateWithEllipsis = (value: string, max: number): string => {
   if (value.length <= max) return value;
@@ -199,7 +175,7 @@ export const renderProcessingBlock = (states: ServerStates): string => {
     borderColor: "blue",
     padding: { left: 1, right: 1, top: 0, bottom: 0 },
     borderStyle: "round",
-    width: UI_WIDTH,
+    width: getUiWidth(),
   });
 };
 
@@ -231,7 +207,7 @@ export const renderFinishedBlock = (states: ServerStates): string => {
     borderColor: "green",
     padding: { left: 1, right: 1, top: 0, bottom: 0 },
     borderStyle: "round",
-    width: UI_WIDTH,
+    width: getUiWidth(),
   });
 };
 
@@ -242,7 +218,7 @@ export const renderWarningsBlock = (states: ServerStates): string => {
   if (warnedServers.length === 0) return "";
 
   const nameMaxLength = Math.min(20, Math.max(8, ...warnedServers.map((s) => s.serverName.length)));
-  const msgMaxLength = UI_WIDTH - 4 - nameMaxLength - 3;
+  const msgMaxLength = getUiWidth() - 4 - nameMaxLength - 3;
   const lines = warnedServers.map((server) => {
     const name = truncateWithEllipsis(server.serverName, nameMaxLength).padEnd(nameMaxLength);
     const message = states[server.serverId]?.warn?.message || "";
@@ -256,7 +232,7 @@ export const renderWarningsBlock = (states: ServerStates): string => {
     borderColor: "yellow",
     padding: { left: 1, right: 1, top: 0, bottom: 0 },
     borderStyle: "round",
-    width: UI_WIDTH,
+    width: getUiWidth(),
   });
 };
 
@@ -300,10 +276,10 @@ export const renderAllBlocks = (states: ServerStates): void => {
 
 export const clearRender = (): void => {
   if (useLiveUi) {
-    process.stdout.write("\x1b[H\x1b[J");
+    logUpdate.clear();
+    logUpdate.done();
   }
   lastRenderedContent = "";
-  exitAlternateScreen();
   hasPrintedScrollableHeader = false;
   hasPrintedLiveBanner = false;
 };
