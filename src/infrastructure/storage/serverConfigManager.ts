@@ -1,0 +1,355 @@
+import { writeFileSync, existsSync, readFileSync, mkdirSync, readdirSync, statSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import * as lockfile from "proper-lockfile";
+import type { CharacterInfo, GuildConfig, ServerConfig } from "@shared/types/index";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const CONFIG_DIR = path.resolve(__dirname, "data");
+const SERVERS_JSON_PATH = path.resolve(__dirname, "servers.json");
+
+type ConfigCache = {
+  data: ServerConfig;
+  timestamp: number;
+  fileModifiedTime: number;
+};
+
+interface ServerEntry {
+  id?: string;
+  url: string;
+  name: string;
+  enabled: boolean;
+  webhookUrl?: string;
+}
+
+const cache = new Map<string, ConfigCache>();
+
+const ensureConfigDir = (): void => {
+  if (!existsSync(CONFIG_DIR)) {
+    mkdirSync(CONFIG_DIR, { recursive: true });
+  }
+};
+
+const getServerConfigPath = (serverId: string): string => {
+  ensureConfigDir();
+  return path.resolve(CONFIG_DIR, `${serverId}.json`);
+};
+
+const getFileModifiedTime = (filePath: string): number => {
+  try {
+    return statSync(filePath).mtimeMs;
+  } catch {
+    return 0;
+  }
+};
+
+const toSafeSlug = (value: string): string =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const normalizeServerId = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+export const extractServerIdFromUrl = (url: string): string => {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+
+    if (hostname.includes("otdbo.com.br")) {
+      const guildName = urlObj.searchParams.get("GuildName") || urlObj.searchParams.get("guildname");
+      if (guildName) {
+        const guildSlug = toSafeSlug(guildName.replace(/\+/g, " "));
+        if (guildSlug) {
+          return `otdbo_${guildSlug}`;
+        }
+      }
+    }
+
+    const cleanHostname = hostname.replace(/^www\./, "");
+    const domainParts = cleanHostname.split(".");
+
+    if (domainParts[0].match(/^server\d+$/i)) {
+      return domainParts[0].toLowerCase();
+    }
+
+    if (domainParts.length >= 2) {
+      return domainParts[0].toLowerCase();
+    }
+
+    return cleanHostname.replace(/\./g, "_");
+  } catch {
+    return "unknown";
+  }
+};
+
+export const loadServerConfig = (serverId: string): ServerConfig | null => {
+  const configPath = getServerConfigPath(serverId);
+
+  const cached = cache.get(serverId);
+  if (cached) {
+    const currentModTime = getFileModifiedTime(configPath);
+    if (currentModTime === cached.fileModifiedTime) {
+      return cached.data;
+    }
+    cache.delete(serverId);
+  }
+
+  if (!existsSync(configPath)) {
+    return null;
+  }
+
+  try {
+    const raw = readFileSync(configPath, "utf-8");
+    const data: ServerConfig = JSON.parse(raw);
+
+    cache.set(serverId, {
+      data,
+      timestamp: Date.now(),
+      fileModifiedTime: getFileModifiedTime(configPath),
+    });
+
+    return data;
+  } catch (err) {
+    console.error(`❌ Erro ao carregar ${serverId}.json:`, err);
+    return null;
+  }
+};
+
+export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
+  const configPath = getServerConfigPath(config.serverId);
+
+  const dataToSave = {
+    ...config,
+    lastUpdate: new Date().toISOString(),
+  };
+
+  let release: (() => Promise<void>) | null = null;
+
+  try {
+    if (!existsSync(configPath)) {
+      writeFileSync(configPath, JSON.stringify(dataToSave, null, 2), "utf-8");
+    }
+
+    release = await lockfile.lock(configPath, {
+      retries: {
+        retries: 5,
+        minTimeout: 100,
+        maxTimeout: 1000,
+      },
+      stale: 10000,
+    });
+
+    writeFileSync(configPath, JSON.stringify(dataToSave, null, 2), "utf-8");
+
+    cache.set(config.serverId, {
+      data: dataToSave,
+      timestamp: Date.now(),
+      fileModifiedTime: getFileModifiedTime(configPath),
+    });
+  } catch (err) {
+    console.error(`❌ Erro ao salvar ${config.serverId}.json com lock:`, err);
+    throw err;
+  } finally {
+    if (release) {
+      try {
+        await release();
+      } catch (err) {
+        console.error(`❌ Erro ao liberar lock de ${config.serverId}.json:`, err);
+      }
+    }
+  }
+};
+
+const loadServersJson = (): ServerEntry[] => {
+  if (!existsSync(SERVERS_JSON_PATH)) {
+    try {
+      writeFileSync(SERVERS_JSON_PATH, "[\n  \n]\n", "utf-8");
+    } catch (e) {
+      console.error("❌ Erro ao criar servers.json:", e);
+    }
+    return [];
+  }
+
+  try {
+    const raw = readFileSync(SERVERS_JSON_PATH, "utf-8");
+    const servers: ServerEntry[] = JSON.parse(raw);
+    return servers.filter((server) => server.enabled !== false);
+  } catch (err) {
+    console.error("❌ Erro ao carregar servers.json:", err);
+    return [];
+  }
+};
+
+const syncServerFromServersJson = async (
+  serverEntry: ServerEntry
+): Promise<ServerConfig | null> => {
+  const explicitServerId = serverEntry.id ? normalizeServerId(serverEntry.id) : "";
+  const serverId = explicitServerId || extractServerIdFromUrl(serverEntry.url);
+  const existingConfig = loadServerConfig(serverId);
+
+  const guildConfig: GuildConfig = {
+    url: serverEntry.url,
+    enabled: serverEntry.enabled !== false,
+    ...(serverEntry.webhookUrl ? { webhookUrl: serverEntry.webhookUrl } : {}),
+  };
+
+  if (existingConfig) {
+    const urlChanged = existingConfig.guild.url !== serverEntry.url;
+    const nameChanged = existingConfig.serverName !== serverEntry.name;
+    const webhookChanged =
+      serverEntry.webhookUrl !== undefined &&
+      existingConfig.guild.webhookUrl !== serverEntry.webhookUrl;
+    const enabledChanged = (existingConfig.guild.enabled ?? true) !== (serverEntry.enabled !== false);
+
+    if (urlChanged || nameChanged || webhookChanged || enabledChanged) {
+      const updatedConfig: ServerConfig = {
+        ...existingConfig,
+        serverName: serverEntry.name,
+        guild: {
+          ...existingConfig.guild,
+          url: serverEntry.url,
+          enabled: serverEntry.enabled !== false,
+          ...(serverEntry.webhookUrl ? { webhookUrl: serverEntry.webhookUrl } : {}),
+        },
+      };
+      await saveServerConfig(updatedConfig);
+      cache.delete(serverId);
+      return loadServerConfig(serverId);
+    }
+
+    return existingConfig;
+  }
+
+  const newConfig: ServerConfig = {
+    serverId,
+    serverName: serverEntry.name,
+    guild: guildConfig,
+    characters: {},
+  };
+
+  await saveServerConfig(newConfig);
+  cache.delete(serverId);
+  return loadServerConfig(serverId);
+};
+
+export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
+  ensureConfigDir();
+
+  const servers = loadServersJson();
+
+
+  const configs = await Promise.all(servers.map((server) => syncServerFromServersJson(server)));
+
+  const validConfigs = configs.filter((config): config is ServerConfig => config !== null);
+  return validConfigs;
+};
+
+export const getAllServerConfigsSync = (): ServerConfig[] => {
+  ensureConfigDir();
+  const servers = loadServersJson();
+
+  const configs = servers
+    .map((serverEntry) => {
+      const explicitServerId = serverEntry.id ? normalizeServerId(serverEntry.id) : "";
+      const serverId = explicitServerId || extractServerIdFromUrl(serverEntry.url);
+      return loadServerConfig(serverId);
+    })
+    .filter((config): config is ServerConfig => config !== null);
+
+  return configs;
+};
+
+export const createServerConfig = (guild: GuildConfig): ServerConfig => {
+  const serverId = extractServerIdFromUrl(guild.url);
+
+  const existingConfig = loadServerConfig(serverId);
+  if (existingConfig) {
+    return existingConfig;
+  }
+
+  const newConfig: ServerConfig = {
+    serverId,
+    serverName: `Server ${serverId.replace("server", "")}`,
+    guild,
+    characters: {},
+  };
+
+  saveServerConfig(newConfig);
+
+  return newConfig;
+};
+
+export const updateServerCharacters = async (
+  serverId: string,
+  characters: Record<string, CharacterInfo>
+): Promise<boolean> => {
+  const config = loadServerConfig(serverId);
+  if (!config) {
+    console.error(`❌ Servidor ${serverId} não encontrado`);
+    return false;
+  }
+
+  const hasChanges = JSON.stringify(config.characters) !== JSON.stringify(characters);
+
+  if (!hasChanges) {
+    return false;
+  }
+
+  const updatedConfig = {
+    ...config,
+    characters,
+  };
+  await saveServerConfig(updatedConfig);
+
+  return true;
+};
+
+export const updateServerWorkingStatus = async (
+  serverId: string,
+  isWorking: boolean
+): Promise<void> => {
+  const config = loadServerConfig(serverId);
+  if (!config) return;
+
+  if (config.isWorking === isWorking) {
+    return;
+  }
+
+  const updatedConfig: ServerConfig = {
+    ...config,
+    isWorking,
+    lastWorkingTest: new Date().toISOString(),
+  };
+
+  await saveServerConfig(updatedConfig);
+  cache.delete(serverId);
+};
+
+export const getServerStats = async () => {
+  const configs = await getAllServerConfigs();
+
+  return configs.map((config) => ({
+    serverId: config.serverId,
+    serverName: config.serverName,
+    characterCount: Object.keys(config.characters).length,
+    guildEnabled: config.guild.enabled !== false,
+    lastUpdate: config.lastUpdate,
+  }));
+};
+
+export const invalidateCache = (serverId?: string): void => {
+  if (serverId) {
+    cache.delete(serverId);
+  } else {
+    cache.clear();
+  }
+};
