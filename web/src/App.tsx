@@ -291,7 +291,7 @@ export default function App() {
               </section>
 
               {}
-              <CharacterSearch servers={servers} />
+              <CharacterSearch servers={servers} isLoading={isLoadingServers} />
 
               {}
               <LiveFeed events={events} />
@@ -316,7 +316,7 @@ export default function App() {
 
           {activeTab === "characters" && (
             <div className="space-y-6 animate-fade-in">
-              <CharacterSearch servers={servers} />
+              <CharacterSearch servers={servers} isLoading={isLoadingServers} />
             </div>
           )}
 
