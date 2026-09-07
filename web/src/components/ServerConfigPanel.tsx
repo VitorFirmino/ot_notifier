@@ -16,7 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ServerCardSkeleton } from "./ServerCard";
+import { ServerConfigCardSkeleton } from "./ServerCard";
 import type { ServerConfig } from "../types";
 
 interface ServerConfigPanelProps {
@@ -70,7 +70,7 @@ export const ServerConfigPanel: React.FC<ServerConfigPanelProps> = ({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {isLoading
-          ? Array.from({ length: 3 }).map((_, i) => <ServerCardSkeleton key={i} />)
+          ? Array.from({ length: 3 }).map((_, i) => <ServerConfigCardSkeleton key={i} />)
           : servers.map((server) => {
           const isEnabled = server.guild.enabled !== false;
           const isWorking = server.isWorking !== false;
