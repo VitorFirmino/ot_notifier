@@ -29,7 +29,6 @@ export default function App() {
   const [isApiOffline, setIsApiOffline] = useState(false);
   const [isLoadingServers, setIsLoadingServers] = useState(true);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
-  void isLoadingEvents;
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [testingScrapeId, setTestingScrapeId] = useState<string | null>(null);
@@ -294,7 +293,7 @@ export default function App() {
               <CharacterSearch servers={servers} isLoading={isLoadingServers} />
 
               {}
-              <LiveFeed events={events} />
+              <LiveFeed events={events} isLoading={isLoadingEvents} />
             </div>
           )}
 
@@ -322,7 +321,7 @@ export default function App() {
 
           {activeTab === "feed" && (
             <div className="space-y-6 animate-fade-in">
-              <LiveFeed events={events} />
+              <LiveFeed events={events} isLoading={isLoadingEvents} />
             </div>
           )}
 
