@@ -29,7 +29,6 @@ export default function App() {
   const [isApiOffline, setIsApiOffline] = useState(false);
   const [isLoadingServers, setIsLoadingServers] = useState(true);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
-  void isLoadingServers;
   void isLoadingEvents;
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -258,6 +257,7 @@ export default function App() {
                   activeWorkers: servers.filter((s) => s.guild.enabled !== false).length,
                   monitoredGuilds: servers.length,
                 }}
+                isLoading={isLoadingServers}
               />
 
               {}
