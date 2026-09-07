@@ -12,7 +12,6 @@ import {
   MapPin,
   Swords,
   Crown,
-  Loader2,
   AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,6 +48,27 @@ const CharacterCardSkeleton: React.FC = () => (
     <div className="flex items-center justify-between border-t border-border pt-2">
       <Skeleton className="h-3 w-28" />
       <Skeleton className="h-3 w-16" />
+    </div>
+  </div>
+);
+
+const CharacterDetailsSkeleton: React.FC = () => (
+  <div className="space-y-4">
+    <div className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-secondary/30 p-3 sm:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="space-y-1.5">
+          <Skeleton className="h-2.5 w-12" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+      ))}
+    </div>
+    <div className="space-y-3">
+      <Skeleton className="h-3 w-40" />
+      <div className="grid grid-cols-3 gap-2 rounded-lg border border-border bg-secondary/20 p-4">
+        {Array.from({ length: 10 }).map((_, i) => (
+          <Skeleton key={i} className="aspect-square rounded-lg" />
+        ))}
+      </div>
     </div>
   </div>
 );
@@ -210,12 +230,7 @@ export const CharacterSearch: React.FC<CharacterSearchProps> = ({ servers, isLoa
                 <p className="font-mono text-xs text-primary">{selectedCharacter.serverName}</p>
               </DialogHeader>
 
-              {inspecting && (
-                <div className="flex flex-col items-center justify-center gap-3 py-12 text-xs text-muted-foreground">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <span>Carregando dados ao vivo diretamente do site...</span>
-                </div>
-              )}
+              {inspecting && <CharacterDetailsSkeleton />}
 
               {inspectError && !inspecting && (
                 <div className="space-y-2 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive">
