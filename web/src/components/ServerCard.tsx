@@ -200,3 +200,56 @@ export const ServerCardSkeleton: React.FC = () => (
     </CardContent>
   </Card>
 );
+
+// Taller variant matching ServerConfigPanel.tsx's real card layout (badge+title row,
+// bordered URL box, 2x2 stats grid, full-width webhook badge, separator, button row) —
+// ServerCardSkeleton above is sized for the shorter dashboard ServerCard and would cause
+// layout shift if reused here.
+export const ServerConfigCardSkeleton: React.FC = () => (
+  <Card className="glass-surface py-0">
+    <CardContent className="flex flex-col justify-between gap-4 p-5">
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-1.5">
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <Skeleton className="h-3 w-20 shrink-0" />
+        </div>
+
+        <div className="space-y-2 rounded-lg border border-border bg-secondary/40 p-2.5">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="h-3 w-full" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1.5 rounded-lg border border-border bg-secondary/40 p-2">
+            <Skeleton className="h-2.5 w-10" />
+            <Skeleton className="h-3.5 w-16" />
+          </div>
+          <div className="space-y-1.5 rounded-lg border border-border bg-secondary/40 p-2">
+            <Skeleton className="h-2.5 w-14" />
+            <Skeleton className="h-3.5 w-12" />
+          </div>
+          <div className="col-span-2 space-y-1.5 rounded-lg border border-border bg-secondary/40 p-2">
+            <Skeleton className="h-2.5 w-32" />
+            <Skeleton className="h-3.5 w-8" />
+          </div>
+        </div>
+
+        <Skeleton className="h-6 w-full rounded-full" />
+      </div>
+
+      <Separator />
+
+      <div className="flex items-center justify-between gap-2">
+        <Skeleton className="h-7 flex-1 rounded-lg" />
+        <div className="flex gap-1">
+          <Skeleton className="h-7 w-7 rounded-lg" />
+          <Skeleton className="h-7 w-7 rounded-lg" />
+          <Skeleton className="h-7 w-7 rounded-lg" />
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
