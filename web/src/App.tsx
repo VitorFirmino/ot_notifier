@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { StatCards } from "./components/StatCards";
-import { ServerCard } from "./components/ServerCard";
+import { ServerCard, ServerCardSkeleton } from "./components/ServerCard";
 import { ServerConfigPanel } from "./components/ServerConfigPanel";
 import { LiveFeed } from "./components/LiveFeed";
 import { CharacterSearch } from "./components/CharacterSearch";
@@ -290,17 +290,19 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {filteredServers.map((server) => (
-                    <ServerCard
-                      key={server.serverId}
-                      server={server}
-                      onToggleStatus={handleToggleStatus}
-                      onTestScrape={handleTestScrape}
-                      onEdit={handleOpenEditModal}
-                      onDelete={handleDeleteServer}
-                      isTestingScrape={testingScrapeId === server.serverId}
-                    />
-                  ))}
+                  {isLoadingServers
+                    ? Array.from({ length: 3 }).map((_, i) => <ServerCardSkeleton key={i} />)
+                    : filteredServers.map((server) => (
+                        <ServerCard
+                          key={server.serverId}
+                          server={server}
+                          onToggleStatus={handleToggleStatus}
+                          onTestScrape={handleTestScrape}
+                          onEdit={handleOpenEditModal}
+                          onDelete={handleDeleteServer}
+                          isTestingScrape={testingScrapeId === server.serverId}
+                        />
+                      ))}
                 </div>
               </section>
 
@@ -317,6 +319,7 @@ export default function App() {
               {/* Health Monitoring & Config Panel */}
               <ServerConfigPanel
                 servers={servers}
+                isLoading={isLoadingServers}
                 onToggleStatus={handleToggleStatus}
                 onTestScrape={handleTestScrape}
                 onEditServer={handleOpenEditModal}
