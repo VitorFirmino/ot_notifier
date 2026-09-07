@@ -29,10 +29,7 @@ export default function App() {
   const [isApiOffline, setIsApiOffline] = useState(false);
   // True until the first loadRealData/loadEvents call resolves.
   const [isLoadingServers, setIsLoadingServers] = useState(true);
-  // Not yet consumed as a prop — LiveFeed doesn't accept isLoading until that task lands;
-  // this line only satisfies noUnusedLocals in the meantime.
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
-  void isLoadingEvents;
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [testingScrapeId, setTestingScrapeId] = useState<string | null>(null);
@@ -310,7 +307,7 @@ export default function App() {
               <CharacterSearch servers={servers} isLoading={isLoadingServers} />
 
               {/* Live Activity Feed */}
-              <LiveFeed events={events} />
+              <LiveFeed events={events} isLoading={isLoadingEvents} />
             </div>
           )}
 
@@ -338,7 +335,7 @@ export default function App() {
 
           {activeTab === "feed" && (
             <div className="space-y-6 animate-fade-in">
-              <LiveFeed events={events} />
+              <LiveFeed events={events} isLoading={isLoadingEvents} />
             </div>
           )}
 
