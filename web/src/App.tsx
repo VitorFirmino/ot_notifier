@@ -27,12 +27,11 @@ export default function App() {
     cloudflareBypasses: 0,
   });
   const [isApiOffline, setIsApiOffline] = useState(false);
-  // True until the first loadRealData/loadEvents call resolves. Not yet consumed as
-  // props here — StatCards/CharacterSearch/LiveFeed don't accept isLoading until their
-  // own tasks land; these two lines only satisfy noUnusedLocals in the meantime.
+  // True until the first loadRealData/loadEvents call resolves.
   const [isLoadingServers, setIsLoadingServers] = useState(true);
+  // Not yet consumed as a prop — LiveFeed doesn't accept isLoading until that task lands;
+  // this line only satisfies noUnusedLocals in the meantime.
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
-  void isLoadingServers;
   void isLoadingEvents;
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -274,6 +273,7 @@ export default function App() {
                   activeWorkers: servers.filter((s) => s.guild.enabled !== false).length,
                   monitoredGuilds: servers.length,
                 }}
+                isLoading={isLoadingServers}
               />
 
               {/* Servers Grid */}
