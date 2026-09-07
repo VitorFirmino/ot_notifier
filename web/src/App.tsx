@@ -245,6 +245,7 @@ export default function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         serverCount={servers.length}
+        isLoadingServers={isLoadingServers}
       />
 
       {/* Main Content Area */}
@@ -278,7 +279,7 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-bold text-white tracking-tight">
-                      Servidores Open Tibia Monitored ({filteredServers.length})
+                      Servidores Open Tibia Monitored{isLoadingServers ? "" : ` (${filteredServers.length})`}
                     </h2>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Gerenciamento individual de guildas e parâmetros de scraping
