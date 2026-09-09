@@ -56,3 +56,6 @@ src/infrastructure/storage/data/
 
 # Throwaway debug scripts
 scratch/
+
+# Local git worktrees
+.worktrees/
