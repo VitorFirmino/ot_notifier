@@ -2,6 +2,7 @@ import { logger } from "@shared/utils/logger";
 import { shutdownAllProcesses } from "./processManager";
 import { stopRenderLoop } from "./renderManager";
 import { clearRender } from "@shared/utils/blockRenderer";
+import { stopServerQueueWorker } from "../workers/queueWorker";
 
 interface ShutdownState {
   shutdownInProgress: boolean;
@@ -27,7 +28,7 @@ export const shutdown = async (): Promise<void> => {
     stopRenderLoop();
     clearRender();
 
-    const shutdownPromise = shutdownAllProcesses();
+    const shutdownPromise = Promise.all([shutdownAllProcesses(), stopServerQueueWorker()]);
     const timeoutPromise = new Promise<void>((resolve) => {
       setTimeout(() => {
         resolve();
@@ -84,7 +85,10 @@ export const setupShutdownHandlers = (): void => {
 
   process.on("uncaughtException", (error) => {
     logger.error("Erro não capturado:", error);
-    shutdown().catch(() => process.exit(1));
+    shutdown().catch((err: unknown) => {
+      logger.error("Fatal error during uncaught exception shutdown:", err);
+      process.exit(1);
+    });
   });
 
   process.on("unhandledRejection", (reason, promise) => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Server, Save, Compass, Loader2, Image as ImageIcon, ShieldCheck } from "lucide-react";
 import {
   Dialog,
@@ -6,14 +7,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { ServerConfig, GuildDiscovered } from "../types";
-import { api } from "../services/api";
+} from "@components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@components/ui/tabs";
+import { Input } from "@components/ui/input";
+import { Label } from "@components/ui/label";
+import { Button } from "@components/ui/button";
+import { Skeleton } from "@components/ui/skeleton";
+import type { ServerConfig, GuildDiscovered } from "@types";
+import { api, getProxiedImageUrl } from "@services/api";
 
 interface ServerModalProps {
   isOpen: boolean;
@@ -39,9 +40,20 @@ export const ServerModal: React.FC<ServerModalProps> = ({
   const [requestDelay, setRequestDelay] = useState(1000);
 
   const [discoveryUrl, setDiscoveryUrl] = useState("https://www.otdbo.com.br/?subtopic=guilds");
-  const [isDiscovering, setIsDiscovering] = useState(false);
-  const [discoveredGuilds, setDiscoveredGuilds] = useState<GuildDiscovered[]>([]);
-  const [discoveryError, setDiscoveryError] = useState<string | null>(null);
+  const [selectedDiscoveredGuild, setSelectedDiscoveredGuild] = useState<GuildDiscovered | null>(null);
+
+  const discoverMutation = useMutation({
+    mutationFn: (url: string) => api.discoverGuilds(url),
+  });
+  const isDiscovering = discoverMutation.isPending;
+  const discoveredGuilds = discoverMutation.data?.guilds ?? [];
+  const discoveryError = discoverMutation.isError
+    ? discoverMutation.error instanceof Error
+      ? discoverMutation.error.message
+      : "Erro ao efetuar scraping no servidor AAC."
+    : discoverMutation.isSuccess && discoveredGuilds.length === 0
+      ? "Nenhuma guilda encontrada nesta URL. Verifique se o endereço está correto."
+      : null;
 
   useEffect(() => {
     if (initialServer) {
@@ -64,40 +76,31 @@ export const ServerModal: React.FC<ServerModalProps> = ({
       setCheckInterval(120);
       setConcurrency(3);
       setRequestDelay(1000);
+      setSelectedDiscoveredGuild(null);
+      discoverMutation.reset();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialServer, isOpen]);
 
-  const handleDiscover = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleDiscover = (event: React.FormEvent) => {
+    event.preventDefault();
     if (!discoveryUrl) return;
-
-    setIsDiscovering(true);
-    setDiscoveryError(null);
-    setDiscoveredGuilds([]);
-
-    try {
-      const res = await api.discoverGuilds(discoveryUrl);
-      setDiscoveredGuilds(res.guilds);
-      if (res.guilds.length === 0) {
-        setDiscoveryError("Nenhuma guilda encontrada nesta URL. Verifique se o endereço está correto.");
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erro ao efetuar scraping no servidor AAC.";
-      setDiscoveryError(message);
-    } finally {
-      setIsDiscovering(false);
-    }
+    discoverMutation.mutate(discoveryUrl);
   };
 
   const handleSelectDiscoveredGuild = (guild: GuildDiscovered) => {
     setServerName(guild.name);
     setGuildUrl(guild.url);
-    if (guild.logoUrl) setLogoUrl(guild.logoUrl);
-    setActiveTab("manual");
+    setLogoUrl(guild.logoUrl || "");
+    setSelectedDiscoveredGuild(guild);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleBackToDiscoveredList = () => {
+    setSelectedDiscoveredGuild(null);
+  };
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
     if (!serverName || !guildUrl) return;
 
     const generatedId =
@@ -137,7 +140,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
         </DialogHeader>
 
         {!initialServer ? (
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "manual" | "auto")}>
+          <Tabs value={activeTab} onValueChange={(tab) => setActiveTab(tab as "manual" | "auto")}>
             <TabsList className="w-full">
               <TabsTrigger value="auto" className="gap-1.5">
                 <Compass className="h-3.5 w-3.5" /> Auto-descoberta
@@ -148,80 +151,130 @@ export const ServerModal: React.FC<ServerModalProps> = ({
             </TabsList>
 
             <TabsContent value="auto" className="space-y-4 pt-2">
-              <form onSubmit={handleDiscover} className="space-y-2">
-                <Label>URL do servidor / página de guildas AAC</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="url"
-                    required
-                    placeholder="https://www.otdbo.com.br/?subtopic=guilds"
-                    value={discoveryUrl}
-                    onChange={(e) => setDiscoveryUrl(e.target.value)}
-                    className="flex-1 font-mono text-xs"
-                  />
-                  <Button type="submit" disabled={isDiscovering}>
-                    {isDiscovering ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" /> Escaneando...
-                      </>
-                    ) : (
-                      <>
-                        <Compass className="h-4 w-4" /> Efetuar scraping
-                      </>
-                    )}
-                  </Button>
-                </div>
-                <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                  <ShieldCheck className="h-3.5 w-3.5 text-success" />
-                  Conexão anti-bot ativa. O scraper identificará emblemas e parâmetros de guildas.
-                </p>
-              </form>
-
-              {discoveryError && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-                  {discoveryError}
-                </div>
-              )}
-
-              {isDiscovering && (
-                <div className="grid max-h-60 grid-cols-2 gap-3 overflow-y-auto pr-1">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <DiscoveredGuildSkeleton key={i} />
-                  ))}
-                </div>
-              )}
-
-              {discoveredGuilds.length > 0 && !isDiscovering && (
-                <div className="space-y-2">
-                  <h4 className="flex items-center justify-between text-xs font-medium text-muted-foreground">
-                    <span>Guildas encontradas ({discoveredGuilds.length})</span>
-                    <span className="text-[10px] text-success">Clique para cadastrar</span>
-                  </h4>
-                  <div className="grid max-h-60 grid-cols-2 gap-3 overflow-y-auto pr-1">
-                    {discoveredGuilds.map((g, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleSelectDiscoveredGuild(g)}
-                        className="glass-surface flex items-center gap-3 rounded-lg border border-border p-3 text-left"
-                      >
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-card">
-                          {g.logoUrl ? (
-                            <img src={g.logoUrl} alt={g.name} className="h-full w-full object-cover" />
-                          ) : (
-                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium text-foreground">{g.name}</div>
-                          <div className="truncate text-[11px] text-muted-foreground">
-                            {g.kills ? `${g.kills}` : "Ativa no servidor"}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+              {selectedDiscoveredGuild ? (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="glass-surface flex items-center gap-3 rounded-lg border border-border p-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-card">
+                      {selectedDiscoveredGuild.logoUrl ? (
+                        <img
+                          src={getProxiedImageUrl(selectedDiscoveredGuild.logoUrl)}
+                          alt={selectedDiscoveredGuild.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-foreground">{selectedDiscoveredGuild.name}</div>
+                      <div className="truncate text-[11px] text-muted-foreground">
+                        {selectedDiscoveredGuild.kills || "Ativa no servidor"}
+                      </div>
+                    </div>
                   </div>
-                </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Discord webhook URL (notificações ao vivo)</Label>
+                    <Input
+                      type="url"
+                      placeholder="https://discord.com/api/webhooks/ID/TOKEN"
+                      value={webhookUrl}
+                      onChange={(event) => setWebhookUrl(event.target.value)}
+                      className="font-mono text-xs"
+                      autoFocus
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Opcional — pode deixar em branco e configurar depois em "Editar servidor".
+                    </p>
+                  </div>
+
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={handleBackToDiscoveredList}>
+                      Voltar
+                    </Button>
+                    <Button type="submit">
+                      <Save className="h-4 w-4" /> Salvar
+                    </Button>
+                  </DialogFooter>
+                </form>
+              ) : (
+                <>
+                  <form onSubmit={handleDiscover} className="space-y-2">
+                    <Label>URL do servidor (site do AAC)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        required
+                        placeholder="www.otdbo.com.br ou https://www.otdbo.com.br/?subtopic=guilds"
+                        value={discoveryUrl}
+                        onChange={(event) => setDiscoveryUrl(event.target.value)}
+                        className="flex-1 font-mono text-xs"
+                      />
+                      <Button type="submit" disabled={isDiscovering}>
+                        {isDiscovering ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" /> Escaneando...
+                          </>
+                        ) : (
+                          <>
+                            <Compass className="h-4 w-4" /> Efetuar scraping
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <ShieldCheck className="h-3.5 w-3.5 text-success" />
+                      Pode colar só o domínio — o scraper testa sozinho os padrões mais comuns de página de guildas (?subtopic=guilds, /guilds.php, /guilds, etc.).
+                    </p>
+                  </form>
+
+                  {discoveryError && (
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                      {discoveryError}
+                    </div>
+                  )}
+
+                  {isDiscovering && (
+                    <div className="grid max-h-60 grid-cols-2 gap-3 overflow-y-auto pr-1">
+                      {Array.from({ length: 4 }).map((_, skeletonIndex) => (
+                        <DiscoveredGuildSkeleton key={skeletonIndex} />
+                      ))}
+                    </div>
+                  )}
+
+                  {discoveredGuilds.length > 0 && !isDiscovering && (
+                    <div className="space-y-2">
+                      <h4 className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+                        <span>Guildas encontradas ({discoveredGuilds.length})</span>
+                        <span className="text-[10px] text-success">Clique para cadastrar</span>
+                      </h4>
+                      <div className="grid max-h-60 grid-cols-2 gap-3 overflow-y-auto pr-1">
+                        {discoveredGuilds.map((discoveredGuild, guildIndex) => (
+                          <button
+                            key={guildIndex}
+                            type="button"
+                            onClick={() => handleSelectDiscoveredGuild(discoveredGuild)}
+                            className="glass-surface flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 text-left"
+                          >
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-card">
+                              {discoveredGuild.logoUrl ? (
+                                <img src={getProxiedImageUrl(discoveredGuild.logoUrl)} alt={discoveredGuild.name} className="h-full w-full object-cover" />
+                              ) : (
+                                <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-medium text-foreground">{discoveredGuild.name}</div>
+                              <div className="truncate text-[11px] text-muted-foreground">
+                                {discoveredGuild.kills ? `${discoveredGuild.kills}` : "Ativa no servidor"}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </TabsContent>
 
@@ -283,20 +336,20 @@ const DiscoveredGuildSkeleton: React.FC = () => (
 
 interface ServerFormFieldsProps {
   serverName: string;
-  setServerName: (v: string) => void;
+  setServerName: (value: string) => void;
   guildUrl: string;
-  setGuildUrl: (v: string) => void;
+  setGuildUrl: (value: string) => void;
   logoUrl: string;
-  setLogoUrl: (v: string) => void;
+  setLogoUrl: (value: string) => void;
   webhookUrl: string;
-  setWebhookUrl: (v: string) => void;
+  setWebhookUrl: (value: string) => void;
   checkInterval: number;
-  setCheckInterval: (v: number) => void;
+  setCheckInterval: (value: number) => void;
   concurrency: number;
-  setConcurrency: (v: number) => void;
+  setConcurrency: (value: number) => void;
   requestDelay: number;
-  setRequestDelay: (v: number) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  setRequestDelay: (value: number) => void;
+  onSubmit: (event: React.FormEvent) => void;
   onCancel: () => void;
 }
 
@@ -326,7 +379,7 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
         required
         placeholder="Ex: OTDBO - Ta DEBOREST, NTOBrasil"
         value={serverName}
-        onChange={(e) => setServerName(e.target.value)}
+        onChange={(event) => setServerName(event.target.value)}
       />
     </div>
 
@@ -337,7 +390,7 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
         required
         placeholder="https://www.otdbo.com.br/?subtopic=guilds&action=view&GuildName=..."
         value={guildUrl}
-        onChange={(e) => setGuildUrl(e.target.value)}
+        onChange={(event) => setGuildUrl(event.target.value)}
         className="font-mono text-xs"
       />
     </div>
@@ -349,12 +402,12 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
           type="url"
           placeholder="https://www.otdbo.com.br/guild_image.php?id=18"
           value={logoUrl}
-          onChange={(e) => setLogoUrl(e.target.value)}
+          onChange={(event) => setLogoUrl(event.target.value)}
           className="flex-1 font-mono text-xs"
         />
         {logoUrl && (
           <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-card">
-            <img src={logoUrl} alt="Logo" className="h-full w-full object-cover" />
+            <img src={getProxiedImageUrl(logoUrl)} alt="Logo" className="h-full w-full object-cover" />
           </div>
         )}
       </div>
@@ -366,7 +419,7 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
         type="url"
         placeholder="https://discord.com/api/webhooks/ID/TOKEN"
         value={webhookUrl}
-        onChange={(e) => setWebhookUrl(e.target.value)}
+        onChange={(event) => setWebhookUrl(event.target.value)}
         className="font-mono text-xs"
       />
     </div>
@@ -378,7 +431,7 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
           type="number"
           min="30"
           value={checkInterval}
-          onChange={(e) => setCheckInterval(Number(e.target.value))}
+          onChange={(event) => setCheckInterval(Number(event.target.value))}
         />
       </div>
 
@@ -389,7 +442,7 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
           min="1"
           max="10"
           value={concurrency}
-          onChange={(e) => setConcurrency(Number(e.target.value))}
+          onChange={(event) => setConcurrency(Number(event.target.value))}
         />
       </div>
 
@@ -400,7 +453,7 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
           min="100"
           step="100"
           value={requestDelay}
-          onChange={(e) => setRequestDelay(Number(e.target.value))}
+          onChange={(event) => setRequestDelay(Number(event.target.value))}
         />
       </div>
     </div>

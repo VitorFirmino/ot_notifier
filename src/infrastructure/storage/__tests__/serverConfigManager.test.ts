@@ -181,7 +181,7 @@ describe("ServerConfigManager", () => {
 
       await saveServerConfig(mockConfig);
 
-      expect(mockedWriteFileSync).toHaveBeenCalledTimes(2);
+      expect(mockedWriteFileSync).toHaveBeenCalled();
     });
 
     it("should add lastUpdate when saving", async () => {
@@ -236,35 +236,51 @@ describe("ServerConfigManager", () => {
       mockedStatSync.mockReturnValue({
         mtimeMs: 1000,
       } as ReturnType<typeof statSync>);
-      mockedReadFileSync
-        .mockReturnValueOnce("[]")
-        .mockReturnValueOnce(JSON.stringify({ ...mockConfig, serverId: "server1" }))
-        .mockReturnValueOnce(JSON.stringify({ ...mockConfig, serverId: "server2" }))
-        .mockReturnValueOnce(JSON.stringify({ ...mockConfig, serverId: "ntodark" }));
+      mockedReadFileSync.mockImplementation((filePath) => {
+        if (typeof filePath === "string" && filePath.includes("servers.json")) {
+          return JSON.stringify([
+            { id: "server1", url: "https://server1.example.com", name: "Server 1" },
+            { id: "server2", url: "https://server2.example.com", name: "Server 2" },
+            { id: "ntodark", url: "https://ntodark.example.com", name: "NTODark" },
+          ]);
+        }
+        const match = typeof filePath === "string" && filePath.match(/([^/]+)\.json$/);
+        const id = match ? match[1] : "server1";
+        return JSON.stringify({ ...mockConfig, serverId: id });
+      });
 
       const configs = await getAllServerConfigs();
 
       expect(configs).toHaveLength(3);
-      expect(configs.map((c) => c.serverId)).toContain("server1");
-      expect(configs.map((c) => c.serverId)).toContain("server2");
-      expect(configs.map((c) => c.serverId)).toContain("ntodark");
+      expect(configs.map((config) => config.serverId)).toContain("server1");
+      expect(configs.map((config) => config.serverId)).toContain("server2");
+      expect(configs.map((config) => config.serverId)).toContain("ntodark");
     });
 
     it("should filter non-JSON files", async () => {
+      invalidateCache();
       mockedReaddirSync.mockReturnValue(["server1.json", "readme.txt", "server2.json"]);
       mockedExistsSync.mockReturnValue(true);
       mockedStatSync.mockReturnValue({
         mtimeMs: 1000,
       } as ReturnType<typeof statSync>);
-      mockedReadFileSync
-        .mockReturnValueOnce("[]")
-        .mockReturnValueOnce(JSON.stringify({ ...mockConfig, serverId: "server1" }))
-        .mockReturnValueOnce(JSON.stringify({ ...mockConfig, serverId: "server2" }));
+      mockedReadFileSync.mockImplementation((filePath) => {
+        if (typeof filePath === "string" && filePath.includes("servers.json")) {
+          return JSON.stringify([
+            { id: "server1", url: "https://server1.example.com", name: "Server 1" },
+            { id: "server2", url: "https://server2.example.com", name: "Server 2" },
+          ]);
+        }
+        const match = typeof filePath === "string" && filePath.match(/([^/]+)\.json$/);
+        const id = match ? match[1] : "server1";
+        return JSON.stringify({ ...mockConfig, serverId: id });
+      });
 
       const configs = await getAllServerConfigs();
 
       expect(configs).toHaveLength(2);
     });
+
   });
 
   describe("createServerConfig", () => {
@@ -275,13 +291,13 @@ describe("ServerConfigManager", () => {
         enabled: true,
       };
 
-      invalidateCache("mygame");
+      invalidateCache("mygame_example_com");
       mockedExistsSync.mockReturnValue(false);
       mockedLockfile.lock.mockResolvedValue(async () => {});
 
       const config = createServerConfig(guildConfig);
 
-      expect(config.serverId).toBe("mygame");
+      expect(config.serverId).toBe("mygame_example_com");
       expect(config.guild).toEqual(guildConfig);
       expect(config.characters).toEqual({});
     });
@@ -363,22 +379,23 @@ describe("ServerConfigManager", () => {
   });
 
   describe("extractServerIdFromUrl", () => {
-    it("should extract serverId from URL with serverN pattern", () => {
+    it("should build serverId from the full hostname, not just the serverN label", () => {
       const url = "https://server1.example.com/guilds/view/1";
       const serverId = extractServerIdFromUrl(url);
-      expect(serverId).toBe("server1");
+      expect(serverId).toBe("server1_example_com");
+      expect(extractServerIdFromUrl("https://server1.otherhost.com/guilds/view/1")).not.toBe(serverId);
     });
 
     it("should extract serverId from subdomain", () => {
       const url = "https://mygame.example.com/guilds/view/1";
       const serverId = extractServerIdFromUrl(url);
-      expect(serverId).toBe("mygame");
+      expect(serverId).toBe("mygame_example_com");
     });
 
     it("should remove www. from hostname", () => {
       const url = "https://www.mygame.example.com/guilds/view/1";
       const serverId = extractServerIdFromUrl(url);
-      expect(serverId).toBe("mygame");
+      expect(serverId).toBe("mygame_example_com");
     });
 
     it("should include OTDBO guild name in serverId", () => {

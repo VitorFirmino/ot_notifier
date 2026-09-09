@@ -1,15 +1,16 @@
 import Bottleneck from "bottleneck";
+import { isSensitiveServer } from "../utils/urlUtils";
 
 const limiters = new Map<string, Bottleneck>();
 
 const createBottleneckLimiter = (serverId?: string): Bottleneck => {
-  const isServer1OrServer2 = serverId === "server1" || serverId === "server2";
+  const sensitive = isSensitiveServer(serverId);
 
   return new Bottleneck({
-    maxConcurrent: isServer1OrServer2 ? 1 : 2,
-    minTime: isServer1OrServer2 ? 500 : 200,
-    reservoir: isServer1OrServer2 ? 100 : 200,
-    reservoirRefreshAmount: isServer1OrServer2 ? 100 : 200,
+    maxConcurrent: sensitive ? 1 : 2,
+    minTime: sensitive ? 500 : 200,
+    reservoir: sensitive ? 100 : 200,
+    reservoirRefreshAmount: sensitive ? 100 : 200,
     reservoirRefreshInterval: 60 * 1000,
   });
 };

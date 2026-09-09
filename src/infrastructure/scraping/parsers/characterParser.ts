@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import type { CharacterStatus, DeathInfo } from "@shared/types/index";
-import { extractDeathInfo } from "./deathParser";
+import { extractDeathInfo, extractAllDeaths } from "./deathParser";
 
 const OFFLINE_INDICATORS = ["status: offline", "offline"];
 const normalizeText = (text: string): string => text.replace(/\s+/g, " ").trim();
@@ -176,10 +176,10 @@ export const extractLevel = ($: cheerio.CheerioAPI): number | null => {
   const words = pageText.split(/\s+/);
   const wordMatch = words
     .slice(0, -1)
-    .map((word, i) => {
+    .map((word, wordIndex) => {
       const lowerWord = word.toLowerCase();
       if (lowerWord.includes("level") || lowerWord.includes("nível")) {
-        const nextWord = words[i + 1]?.replace(/[^\d]/g, "") || "";
+        const nextWord = words[wordIndex + 1]?.replace(/[^\d]/g, "") || "";
         if (nextWord) {
           const level = parseInt(nextWord, 10);
           if (!isNaN(level) && level > 0 && level < 10000) return level;
@@ -357,7 +357,7 @@ export const parseCharacterFromHtml = (
   let lastDeath: DeathInfo | null = null;
   try {
     lastDeath = extractDeathInfo($);
-  } catch {
+  } catch (err: unknown) {
     lastDeath = null;
   }
 
@@ -367,5 +367,92 @@ export const parseCharacterFromHtml = (
     level,
     isOnline,
     lastDeath: lastDeath ?? null,
+  };
+};
+
+export const parseCharacterDetailsFromHtml = (
+  html: string,
+  name: string,
+  url: string
+) => {
+  const $ = cheerio.load(html);
+  const pageText = $("body").text().toLowerCase();
+
+  const doesNotExist =
+    pageText.includes("could not find character") ||
+    pageText.includes("character does not exist") ||
+    pageText.includes("personagem não encontrado") ||
+    pageText.includes("personagem não existe");
+
+  if (doesNotExist) {
+    return {
+      exists: false,
+      name,
+      url,
+      level: 0,
+      isOnline: false,
+      error: "Personagem não encontrado no servidor",
+    };
+  }
+
+  const level = extractLevel($) || 100;
+  const isOnline = extractOnlineStatus($);
+
+  let vocation = "";
+  let residence = "";
+  let sex = "";
+  let accountStatus = "";
+  let guildName = "";
+  let lastLogin = "";
+  let createdAt = "";
+
+  $("td, th").each((_, el) => {
+    const text = $(el).text().trim().toLowerCase();
+    const nextText = $(el).next().text().trim();
+
+    if (text.includes("vocation") || text.includes("vocação")) {
+      if (nextText && !vocation) vocation = nextText;
+    }
+    if (text.includes("residence") || text.includes("residência") || text.includes("town")) {
+      if (nextText && !residence) residence = nextText;
+    }
+    if (text.includes("sex") || text.includes("sexo")) {
+      if (nextText && !sex) sex = nextText;
+    }
+    if (text.includes("account status") || text.includes("status da conta")) {
+      if (nextText && !accountStatus) accountStatus = nextText;
+    }
+    if (text.includes("guild") || text.includes("guilda")) {
+      if (nextText && !guildName) guildName = nextText;
+    }
+    if (text.includes("login") && (text.includes("last") || text.includes("ultimo") || text.includes("último"))) {
+      if (nextText && !lastLogin) lastLogin = nextText;
+    }
+    if (text.includes("criado") || text.includes("created")) {
+      if (nextText && !createdAt) createdAt = nextText;
+    }
+  });
+
+  let deaths: DeathInfo[] = [];
+  try {
+    deaths = extractAllDeaths($);
+  } catch (err: unknown) {
+    deaths = [];
+  }
+
+  return {
+    exists: true,
+    name,
+    url,
+    level,
+    isOnline,
+    vocation: vocation || undefined,
+    residence: residence || undefined,
+    sex: sex || undefined,
+    guild: guildName ? { name: guildName } : undefined,
+    accountStatus: accountStatus || undefined,
+    lastLogin: lastLogin || undefined,
+    createdAt: createdAt || undefined,
+    deaths,
   };
 };

@@ -3,7 +3,7 @@ const normalizeText = (value: string): string => value.replace(/\s+/g, " ").trim
 const safeDecode = (value: string): string => {
   try {
     return decodeURIComponent(value.replace(/\+/g, " "));
-  } catch {
+  } catch (err: unknown) {
     return value.replace(/\+/g, " ");
   }
 };
@@ -21,7 +21,7 @@ const getSearchParamCaseInsensitive = (url: URL, key: string): string | null => 
 const getResolvedUrl = (href: string, baseUrl: string): URL | null => {
   try {
     return new URL(href, baseUrl);
-  } catch {
+  } catch (err: unknown) {
     return null;
   }
 };
@@ -51,6 +51,11 @@ export const extractCharacterNameFromHref = (href: string, baseUrl: string): str
     return normalizeText(safeDecode(searchRouteMatch[1]));
   }
 
+  const viewPathMatch = resolved.pathname.match(/(?:^|\/)character\/view\/([^/?#&]+)/i);
+  if (viewPathMatch?.[1]) {
+    return normalizeText(safeDecode(viewPathMatch[1]));
+  }
+
   return "";
 };
 
@@ -70,6 +75,7 @@ export const isCharacterProfileHref = (href: string, baseUrl: string): boolean =
 
   if (/(?:^|\/)characters\/[^/?#&]+/i.test(resolved.pathname)) return true;
   if (/(?:^|[?&])characters\/[^&?#]+/i.test(resolved.search)) return true;
+  if (/(?:^|\/)character\/view\/[^/?#&]+/i.test(resolved.pathname)) return true;
 
   return false;
 };

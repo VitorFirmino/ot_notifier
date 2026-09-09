@@ -62,6 +62,7 @@ export const fetchGuildPageWithHeaders = async (
             if (detectedFatalReason) {
               throw new Error(`servidor retornou página com ${detectedFatalReason}`);
             }
+            await markServerAsCloudflare(serverId);
             return fallbackHtml;
           }
         }
@@ -102,6 +103,7 @@ export const fetchGuildPage = async (guildUrl: string): Promise<string> => {
   const serverId = extractServerIdFromUrl(guildUrl);
   let hadForbidden = false;
   let fatalPageReason: string | null = null;
+  let networkErrorMessage: string | null = null;
 
   const headerStrategies = [createRequestHeaders(urlObj.origin), createMinimalHeaders()];
 
@@ -188,7 +190,12 @@ export const fetchGuildPage = async (guildUrl: string): Promise<string> => {
             console.warn(`⚠️ [${serverId}] Guild page retornou ${status} ${statusText || ""}`);
             return null;
           }
+
+          networkErrorMessage = error.message || error.code || null;
+          return null;
         }
+
+        networkErrorMessage = error instanceof Error ? error.message : String(error);
         return null;
       }
     }, serverId);
@@ -215,6 +222,7 @@ export const fetchGuildPage = async (guildUrl: string): Promise<string> => {
           fatalPageReason = detectedFatalReason;
         } else {
           console.log(`✅ [${serverId}] Guild carregada via Playwright após bloqueio 403`);
+          await markServerAsCloudflare(serverId);
           return fallbackHtml;
         }
       }
@@ -229,6 +237,10 @@ export const fetchGuildPage = async (guildUrl: string): Promise<string> => {
 
   if (hadForbidden) {
     throw new Error(`Erro ao acessar ${guildUrl}: Todas as estratégias falharam (403/proteção anti-bot)`);
+  }
+
+  if (networkErrorMessage) {
+    throw new Error(`Erro ao acessar ${guildUrl}: Todas as estratégias falharam (${networkErrorMessage})`);
   }
 
   throw new Error(`Erro ao acessar ${guildUrl}: Todas as estratégias falharam`);

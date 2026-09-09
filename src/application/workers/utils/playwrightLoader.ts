@@ -13,7 +13,8 @@ export const loadPlaywrightManager = async (): Promise<PlaywrightManagerLike | n
     const playwrightModule = await import("@infrastructure/scraping/playwrightManager");
     playwrightManager = playwrightModule.playwrightManager as PlaywrightManagerLike;
     return playwrightManager || null;
-  } catch {
+  } catch (err: unknown) {
+    console.warn("Playwright manager dynamically skipped/unavailable:", err);
     playwrightManager = false;
     return null;
   }

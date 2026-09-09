@@ -1,4 +1,4 @@
-import { writeFileSync, existsSync, readFileSync, mkdirSync, readdirSync, statSync } from "fs";
+import { writeFileSync, existsSync, readFileSync, mkdirSync, statSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import * as lockfile from "proper-lockfile";
@@ -40,7 +40,7 @@ const getServerConfigPath = (serverId: string): string => {
 const getFileModifiedTime = (filePath: string): number => {
   try {
     return statSync(filePath).mtimeMs;
-  } catch {
+  } catch (err: unknown) {
     return 0;
   }
 };
@@ -75,18 +75,8 @@ export const extractServerIdFromUrl = (url: string): string => {
     }
 
     const cleanHostname = hostname.replace(/^www\./, "");
-    const domainParts = cleanHostname.split(".");
-
-    if (domainParts[0].match(/^server\d+$/i)) {
-      return domainParts[0].toLowerCase();
-    }
-
-    if (domainParts.length >= 2) {
-      return domainParts[0].toLowerCase();
-    }
-
-    return cleanHostname.replace(/\./g, "_");
-  } catch {
+    return toSafeSlug(cleanHostname) || cleanHostname;
+  } catch (err: unknown) {
     return "unknown";
   }
 };
@@ -155,6 +145,14 @@ export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
       timestamp: Date.now(),
       fileModifiedTime: getFileModifiedTime(configPath),
     });
+
+    addOrUpdateServerInServersJson({
+      id: config.serverId,
+      url: config.guild.url,
+      name: config.serverName,
+      enabled: config.guild.enabled !== false,
+      webhookUrl: config.guild.webhookUrl,
+    });
   } catch (err) {
     console.error(`❌ Erro ao salvar ${config.serverId}.json com lock:`, err);
     throw err;
@@ -173,16 +171,15 @@ const loadServersJson = (): ServerEntry[] => {
   if (!existsSync(SERVERS_JSON_PATH)) {
     try {
       writeFileSync(SERVERS_JSON_PATH, "[\n  \n]\n", "utf-8");
-    } catch (e) {
-      console.error("❌ Erro ao criar servers.json:", e);
+    } catch (err: unknown) {
+      console.error("❌ Erro ao criar servers.json:", err);
     }
     return [];
   }
 
   try {
     const raw = readFileSync(SERVERS_JSON_PATH, "utf-8");
-    const servers: ServerEntry[] = JSON.parse(raw);
-    return servers.filter((server) => server.enabled !== false);
+    return JSON.parse(raw) as ServerEntry[];
   } catch (err) {
     console.error("❌ Erro ao carregar servers.json:", err);
     return [];
@@ -245,7 +242,6 @@ export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
   ensureConfigDir();
 
   const servers = loadServersJson();
-
 
   const configs = await Promise.all(servers.map((server) => syncServerFromServersJson(server)));
 
@@ -344,6 +340,60 @@ export const getServerStats = async () => {
     guildEnabled: config.guild.enabled !== false,
     lastUpdate: config.lastUpdate,
   }));
+};
+
+export const deleteServerConfig = async (serverId: string): Promise<boolean> => {
+  const configPath = getServerConfigPath(serverId);
+  cache.delete(serverId);
+
+  if (existsSync(configPath)) {
+    try {
+      const fs = await import("fs");
+      fs.unlinkSync(configPath);
+    } catch (err: unknown) {
+      console.error(`Erro ao apagar arquivo ${configPath}:`, err);
+    }
+  }
+
+  if (existsSync(SERVERS_JSON_PATH)) {
+    try {
+      const raw = readFileSync(SERVERS_JSON_PATH, "utf-8");
+      const servers: ServerEntry[] = JSON.parse(raw);
+      const filtered = servers.filter((entry) => {
+        const id = entry.id ? normalizeServerId(entry.id) : extractServerIdFromUrl(entry.url);
+        return id !== serverId;
+      });
+      writeFileSync(SERVERS_JSON_PATH, JSON.stringify(filtered, null, 2), "utf-8");
+    } catch (err: unknown) {
+      console.error("Erro ao atualizar servers.json na exclusão:", err);
+    }
+  }
+
+  return true;
+};
+
+export const addOrUpdateServerInServersJson = (entry: ServerEntry): void => {
+  try {
+    let servers: ServerEntry[] = [];
+    if (existsSync(SERVERS_JSON_PATH)) {
+      const raw = readFileSync(SERVERS_JSON_PATH, "utf-8");
+      servers = JSON.parse(raw);
+    }
+    const targetId = entry.id ? normalizeServerId(entry.id) : extractServerIdFromUrl(entry.url);
+
+    const index = servers.findIndex((existingEntry) => {
+      const id = existingEntry.id ? normalizeServerId(existingEntry.id) : extractServerIdFromUrl(existingEntry.url);
+      return id === targetId;
+    });
+
+    const updatedServers = index >= 0
+      ? servers.map((existingEntry, entryIndex) => (entryIndex === index ? { ...existingEntry, ...entry } : existingEntry))
+      : [...servers, entry];
+
+    writeFileSync(SERVERS_JSON_PATH, JSON.stringify(updatedServers, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Erro ao atualizar servers.json:", err);
+  }
 };
 
 export const invalidateCache = (serverId?: string): void => {

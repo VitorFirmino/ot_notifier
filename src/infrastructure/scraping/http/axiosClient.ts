@@ -43,6 +43,35 @@ export const getCookieJar = (serverId?: string): CookieJar => {
   return jar;
 };
 
+export const saveBrowserCookiesToJar = async (
+  cookies: Array<{ name: string; value: string; domain?: string; path?: string }>,
+  targetUrl: string,
+  serverId?: string
+): Promise<void> => {
+  if (!cookies || !cookies.length) return;
+  try {
+    const jar = getCookieJar(serverId);
+    const urlObj = new URL(targetUrl);
+    const domain = urlObj.hostname;
+
+    for (const cookie of cookies) {
+      try {
+        const cookieObj = new Cookie({
+          key: cookie.name,
+          value: cookie.value,
+          domain: (cookie.domain || domain).replace(/^\./, ""),
+          path: cookie.path || "/",
+        });
+        await jar.setCookie(cookieObj, targetUrl);
+      } catch (err: unknown) {
+        continue;
+      }
+    }
+  } catch (err: unknown) {
+    return;
+  }
+};
+
 const loadCookiesIntoJar = async (
   jar: CookieJar,
   cookieString: string,
@@ -72,11 +101,11 @@ const loadCookiesIntoJar = async (
           cookie.path = "/";
           await jar.setCookie(cookie, `https://${domain}`);
         }
-      } catch {
+      } catch (err: unknown) {
         continue;
       }
     }
-  } catch {
+  } catch (err: unknown) {
     return;
   }
 };
@@ -155,6 +184,7 @@ export const fetchWithAxios = async (
 export type AxiosFetchResult = {
   html: string | null;
   statusCode: number | null;
+  errorCode?: string;
 };
 
 export const fetchWithAxiosResult = async (
@@ -241,10 +271,17 @@ export const fetchWithAxiosResult = async (
             statusCode: status,
           };
         }
+
+        return {
+          html: null,
+          statusCode: null,
+          errorCode: error.message || error.code,
+        };
       }
       return {
         html: null,
         statusCode: null,
+        errorCode: error instanceof Error ? error.message : String(error),
       };
     }
   }, serverId);

@@ -5,12 +5,12 @@ import {
   Users,
   Bell,
   Settings,
-  ShieldCheck,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@components/ui/badge";
+import { Button } from "@components/ui/button";
+import logo from "@assets/logo.png";
 
 export type NavTab = "dashboard" | "servers" | "characters" | "feed" | "settings";
 
@@ -46,8 +46,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div>
         <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <ShieldCheck className="h-5 w-5" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg">
+              <img src={logo} alt="OT Notifier" className="h-full w-full object-cover" />
             </div>
             {!isCollapsed && (
               <div>
@@ -79,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
                 title={isCollapsed ? item.label : undefined}
-                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex cursor-pointer items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                   isCollapsed ? "justify-center" : "justify-between"
                 } ${
                   isActive

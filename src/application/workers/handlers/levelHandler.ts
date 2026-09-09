@@ -1,9 +1,12 @@
-import type { CharacterInfo } from "@shared/types/index";
+import type { CharacterInfo, DeathInfo } from "@shared/types/index";
 import { sendWebhook } from "@infrastructure/webhooks/webhook";
+import { recordEvent } from "@infrastructure/events/eventLog";
 import { UP_MESSAGES } from "@infrastructure/storage/messageRules";
 
 interface LevelUpParams {
   webhookUrl: string;
+  serverId: string;
+  serverName: string;
   name: string;
   currentLevel: number;
   lastLevel: number;
@@ -12,12 +15,14 @@ interface LevelUpParams {
 
 interface LevelDownParams {
   webhookUrl: string;
+  serverId: string;
+  serverName: string;
   name: string;
   currentLevel: number;
 }
 
 const calculateMilestone = (streak: number, lastMilestone: number): number | undefined => {
-  const sortedMilestones = UP_MESSAGES.map(({ minStreak }) => minStreak).sort((a, b) => b - a);
+  const sortedMilestones = UP_MESSAGES.map(({ minStreak }) => minStreak).sort((streakA, streakB) => streakB - streakA);
 
   return sortedMilestones.find((milestone) => streak >= milestone && milestone > lastMilestone);
 };
@@ -41,15 +46,16 @@ const createLevelUpUpdate = (
 };
 
 export const handleLevelUp = async (params: LevelUpParams): Promise<CharacterInfo> => {
-  const { webhookUrl, name, currentLevel, lastLevel, info } = params;
+  const { webhookUrl, serverId, serverName, name, currentLevel, lastLevel, info } = params;
   const { newStreak, nextMilestone, ...updates } = createLevelUpUpdate(
     currentLevel,
     lastLevel,
     info
   );
 
+  let webhookSent = false;
   try {
-    await sendWebhook({
+    webhookSent = await sendWebhook({
       webhookUrl,
       name,
       currentLevel,
@@ -61,6 +67,20 @@ export const handleLevelUp = async (params: LevelUpParams): Promise<CharacterInf
     console.error(error);
   }
 
+  await recordEvent({
+    id: `evt-${Date.now()}-${name}`,
+    timestamp: new Date().toISOString(),
+    serverId,
+    serverName,
+    type: "level_up",
+    characterName: name,
+    level: currentLevel,
+    previousLevel: lastLevel,
+    streak: newStreak,
+    milestone: nextMilestone,
+    webhookSent,
+  });
+
   return {
     ...info,
     ...updates,
@@ -68,10 +88,11 @@ export const handleLevelUp = async (params: LevelUpParams): Promise<CharacterInf
 };
 
 export const handleLevelDown = async (params: LevelDownParams): Promise<Partial<CharacterInfo>> => {
-  const { webhookUrl, name, currentLevel } = params;
+  const { webhookUrl, serverId, serverName, name, currentLevel } = params;
 
+  let webhookSent = false;
   try {
-    await sendWebhook({
+    webhookSent = await sendWebhook({
       webhookUrl,
       name,
       currentLevel,
@@ -83,17 +104,32 @@ export const handleLevelDown = async (params: LevelDownParams): Promise<Partial<
     console.error(error);
   }
 
+  await recordEvent({
+    id: `evt-${Date.now()}-${name}`,
+    timestamp: new Date().toISOString(),
+    serverId,
+    serverName,
+    type: "level_down",
+    characterName: name,
+    level: currentLevel,
+    webhookSent,
+  });
+
   return {
     last_level: currentLevel,
     up_streak: 0,
   };
 };
 
-export const initializeFirstTimeCharacter = (level: number): Partial<CharacterInfo> => {
+export const initializeFirstTimeCharacter = (
+  level: number,
+  lastDeath?: DeathInfo | null
+): Partial<CharacterInfo> => {
   return {
     last_level: level,
     up_streak: 0,
     last_milestone: 0,
+    last_death: lastDeath ?? null,
   };
 };
 

@@ -115,7 +115,7 @@ export const sendWebhook = async ({
   status,
   upStreak,
   milestoneReached,
-}: SendWebhookParams): Promise<void> => {
+}: SendWebhookParams): Promise<boolean> => {
   const messageMap: Record<number, string> = Object.fromEntries(
     UP_MESSAGES.map((rule) => [rule.minStreak, rule.message])
   );
@@ -143,10 +143,17 @@ export const sendWebhook = async ({
         milestoneReached ?? "-"
       })`
     );
+    return true;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro desconhecido";
     console.error(`❌ Erro ao enviar webhook para ${name}: ${message}`);
+    return false;
   }
+};
+
+export const sendTestWebhook = async (webhookUrl: string): Promise<void> => {
+  const content = `🔔 **OT Notifier** — Teste de webhook\n✅ Ping enviado com sucesso!\n📅 \`${new Date().toLocaleString("pt-BR")}\``;
+  await sendWebhookRequest(webhookUrl, content);
 };
 
 export const sendGuildSyncWebhook = async ({
@@ -188,7 +195,7 @@ export const sendDeathWebhook = async ({
   killers,
   deathText,
   time,
-}: SendDeathWebhookParams): Promise<void> => {
+}: SendDeathWebhookParams): Promise<boolean> => {
   const killersList = killers.length > 0 ? killers.join(", ") : "Desconhecido";
 
   const timeText = time ? `🕐 **${time}**\n\n` : "";
@@ -205,8 +212,10 @@ export const sendDeathWebhook = async ({
     });
 
     console.log(`[Webhook de morte enviado] ${name} (nível ${deathLevel})`);
+    return true;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro desconhecido";
     console.error(`❌ Erro ao enviar webhook de morte para ${name}: ${message}`);
+    return false;
   }
 };

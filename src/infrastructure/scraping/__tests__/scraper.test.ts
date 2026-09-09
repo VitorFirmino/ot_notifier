@@ -320,6 +320,42 @@ describe("Scraper - getCharacterStatus", () => {
       )
     ).rejects.toThrow();
   });
+
+  it("should surface the underlying network error code when the site is completely unreachable", async () => {
+    mockedAxiosGet.mockRejectedValue(
+      Object.assign(new Error("getaddrinfo ENOTFOUND deadserver.example.com"), {
+        code: "ENOTFOUND",
+        isAxiosError: true,
+      })
+    );
+
+    await expect(
+      getCharacterStatus(
+        "AADanzou",
+        "https://deadserver.example.com/character/view/AADanzou",
+        undefined,
+        "deadserver"
+      )
+    ).rejects.toThrow(/enotfound/i);
+  });
+
+  it("should surface a timeout as such even though axios reports it under the ECONNABORTED code", async () => {
+    mockedAxiosGet.mockRejectedValue(
+      Object.assign(new Error("timeout of 15000ms exceeded"), {
+        code: "ECONNABORTED",
+        isAxiosError: true,
+      })
+    );
+
+    await expect(
+      getCharacterStatus(
+        "AADanzou",
+        "https://slowserver.example.com/character/view/AADanzou",
+        undefined,
+        "slowserver"
+      )
+    ).rejects.toThrow(/timeout/i);
+  });
 });
 
 describe("Scraper - getGuildMembers", () => {
@@ -348,9 +384,9 @@ describe("Scraper - getGuildMembers", () => {
     );
 
     expect(members).toHaveLength(3);
-    expect(members.map((m) => m.name)).toContain("SrGUSTAVO");
-    expect(members.map((m) => m.name)).toContain("TerrorZone");
-    expect(members.map((m) => m.name)).toContain("AAAz");
+    expect(members.map((member) => member.name)).toContain("SrGUSTAVO");
+    expect(members.map((member) => member.name)).toContain("TerrorZone");
+    expect(members.map((member) => member.name)).toContain("AAAz");
   });
 
   it("should extract guild members when href query params are uppercase", async () => {
@@ -373,8 +409,8 @@ describe("Scraper - getGuildMembers", () => {
     );
 
     expect(members).toHaveLength(2);
-    expect(members.map((m) => m.name)).toContain("SrGUSTAVO");
-    expect(members.map((m) => m.name)).toContain("TerrorZone");
+    expect(members.map((member) => member.name)).toContain("SrGUSTAVO");
+    expect(members.map((member) => member.name)).toContain("TerrorZone");
   });
 
   it("should extract guild members and invited characters from OTDBO sections", async () => {
@@ -433,11 +469,32 @@ describe("Scraper - getGuildMembers", () => {
       "https://www.otdbo.com.br/?subtopic=guilds&action=view&GuildName=Ta+DEBOREST"
     );
 
-    expect(members.map((m) => m.name)).toEqual([
+    expect(members.map((member) => member.name)).toEqual([
       "HyoTeN StyLe EdiTeD",
       "Kinho Neverlose",
       "Epsteinsszpdiddy",
     ]);
+  });
+
+  it("should throw descriptive error when guild does not exist on OT server", async () => {
+    const mockHtml = `
+      <html>
+        <body>
+          <div style="clear:both; padding: 10px;">
+            Guild with name <b>Ta DEBOREST</b> doesn't exist.
+          </div>
+        </body>
+      </html>
+    `;
+
+    mockedAxiosGet.mockResolvedValueOnce({
+      status: 200,
+      data: mockHtml,
+    });
+
+    await expect(
+      getGuildMembers("https://www.otdbo.com.br/?subtopic=guilds&action=view&GuildName=Ta+DEBOREST")
+    ).rejects.toThrow("Guild with name Ta DEBOREST doesn't exist.");
   });
 
   it("should extract guild members from route style ?characters/Name", async () => {
@@ -468,7 +525,7 @@ describe("Scraper - getGuildMembers", () => {
 
     const members = await getGuildMembers("https://dbogame.com.br/?guilds/PRIQUITAO+DA+GORETE");
 
-    expect(members.map((m) => m.name)).toEqual(["Barao Blue", "Kyro K"]);
+    expect(members.map((member) => member.name)).toEqual(["Barao Blue", "Kyro K"]);
   });
 
   it("should extract guild members from /characters?name=Name links", async () => {
@@ -496,7 +553,7 @@ describe("Scraper - getGuildMembers", () => {
 
     const members = await getGuildMembers("https://rubinot.com.br/guilds/Anathema");
 
-    expect(members.map((m) => m.name)).toEqual(["Pepeco", "Lord Syan"]);
+    expect(members.map((member) => member.name)).toEqual(["Pepeco", "Lord Syan"]);
   });
 
   it("should include invited section when title is localized", async () => {
@@ -536,7 +593,7 @@ describe("Scraper - getGuildMembers", () => {
       "https://www.otdbo.com.br/?subtopic=guilds&action=view&GuildName=Ta+DEBOREST"
     );
 
-    expect(members.map((m) => m.name)).toEqual(["Kinho Neverlose", "Azulino Maloqueiro"]);
+    expect(members.map((member) => member.name)).toEqual(["Kinho Neverlose", "Azulino Maloqueiro"]);
   });
 
   it("should extract guild members with characters_path structure", async () => {
@@ -567,7 +624,7 @@ describe("Scraper - getGuildMembers", () => {
     );
 
     expect(members.length).toBeGreaterThan(0);
-    expect(members.some((m) => m.name === "SrGUSTAVO")).toBe(true);
+    expect(members.some((member) => member.name === "SrGUSTAVO")).toBe(true);
   });
 
   it("should normalize relative URLs to absolute", async () => {
@@ -612,7 +669,7 @@ describe("Scraper - getGuildMembers", () => {
       "https://example.com/guilds/view/1"
     );
 
-    const uniqueNames = new Set(members.map((m) => m.name));
+    const uniqueNames = new Set(members.map((member) => member.name));
     expect(uniqueNames.size).toBe(members.length);
   });
 
@@ -639,7 +696,7 @@ describe("Scraper - getGuildMembers", () => {
       "https://example.com/guilds/view/1"
     );
 
-    expect(members.every((m) => m.name !== "Leader")).toBe(true);
+    expect(members.every((member) => member.name !== "Leader")).toBe(true);
   });
 
   it("should use custom headers when provided", async () => {
@@ -689,6 +746,32 @@ describe("Scraper - getGuildMembers", () => {
 
     expect(members.length).toBeGreaterThan(0);
     expect(mockedAxiosGet).toHaveBeenCalledTimes(2);
+  });
+
+  it("should surface the underlying network error code when the site is completely unreachable", async () => {
+    mockedAxiosGet.mockRejectedValue(
+      Object.assign(new Error("getaddrinfo ENOTFOUND deadserver.example.com"), {
+        code: "ENOTFOUND",
+        isAxiosError: true,
+      })
+    );
+
+    await expect(
+      getGuildMembers("https://deadserver.example.com/guilds/view/1")
+    ).rejects.toThrow(/enotfound/i);
+  });
+
+  it("should surface a timeout as such even though axios reports it under the ECONNABORTED code", async () => {
+    mockedAxiosGet.mockRejectedValue(
+      Object.assign(new Error("timeout of 15000ms exceeded"), {
+        code: "ECONNABORTED",
+        isAxiosError: true,
+      })
+    );
+
+    await expect(
+      getGuildMembers("https://slowserver.example.com/guilds/view/1")
+    ).rejects.toThrow(/timeout/i);
   });
 });
 
@@ -749,12 +832,12 @@ describe("Scraper - getAllDeaths", () => {
           <table>
             ${Array.from(
               { length: 15 },
-              (_, i) => `
+              (_, index) => `
               <tr>
-                <td>2024-01-15 ${i}:00:00</td>
+                <td>2024-01-15 ${index}:00:00</td>
                 <td>
-                  Eliminado no nível ${100 - i} por 
-                  <a href="/character/Monster${i}">Monster${i}</a>
+                  Eliminado no nível ${100 - index} por
+                  <a href="/character/Monster${index}">Monster${index}</a>
                 </td>
               </tr>
             `

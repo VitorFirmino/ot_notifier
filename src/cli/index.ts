@@ -4,7 +4,7 @@ import { stdout, stdin } from "process";
 import chalk from "chalk";
 import boxen from "boxen";
 import gradient from "gradient-string";
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
@@ -40,12 +40,11 @@ interface ServerJson {
   lastUpdate?: string;
 }
 
-
 const loadServers = (): ServerEntry[] => {
   if (!existsSync(SERVERS_JSON)) return [];
   try {
     return JSON.parse(readFileSync(SERVERS_JSON, "utf-8")) as ServerEntry[];
-  } catch {
+  } catch (err: unknown) {
     return [];
   }
 };
@@ -60,7 +59,7 @@ const loadServerJson = (serverId: string): ServerJson | null => {
   if (!existsSync(path)) return null;
   try {
     return JSON.parse(readFileSync(path, "utf-8")) as ServerJson;
-  } catch {
+  } catch (err: unknown) {
     return null;
   }
 };
@@ -73,12 +72,12 @@ const saveServerJson = (config: ServerJson): void => {
 
 const extractServerId = (url: string): string => {
   try {
-    const u = new URL(url);
-    const hostname = u.hostname.toLowerCase().replace(/^www\./, "");
+    const parsedUrl = new URL(url);
+    const hostname = parsedUrl.hostname.toLowerCase().replace(/^www\./, "");
     const parts = hostname.split(".");
 
     if (hostname.includes("otdbo.com.br")) {
-      const guild = u.searchParams.get("GuildName") || u.searchParams.get("guildname");
+      const guild = parsedUrl.searchParams.get("GuildName") || parsedUrl.searchParams.get("guildname");
       if (guild) {
         const slug = guild
           .replace(/\+/g, " ")
@@ -92,7 +91,7 @@ const extractServerId = (url: string): string => {
     }
 
     return parts[0].toLowerCase().replace(/[^a-z0-9_]/g, "_");
-  } catch {
+  } catch (err: unknown) {
     return "unknown";
   }
 };
@@ -110,8 +109,8 @@ const getWebhookForServer = (entry: ServerEntry): string | null => {
   if (process.env[exactKey]) return `${process.env[exactKey]} (.env)`;
 
   const parts = normalizedId.split("_");
-  for (let i = parts.length - 1; i > 0; i--) {
-    const groupKey = `WEBHOOK_URL_${parts.slice(0, i).join("_")}`;
+  for (let prefixLength = parts.length - 1; prefixLength > 0; prefixLength--) {
+    const groupKey = `WEBHOOK_URL_${parts.slice(0, prefixLength).join("_")}`;
     if (process.env[groupKey]) return `${process.env[groupKey]} (.env)`;
   }
 
@@ -129,7 +128,7 @@ const isValidUrl = (url: string): boolean => {
   try {
     new URL(url);
     return url.startsWith("http");
-  } catch {
+  } catch (err: unknown) {
     return false;
   }
 };
@@ -141,7 +140,6 @@ const maskUrl = (url: string): string => {
   if (url.length <= 40) return url;
   return url.slice(0, 30) + "…" + url.slice(-10);
 };
-
 
 const rl = createInterface({ input: stdin, output: stdout });
 
@@ -163,8 +161,8 @@ const clear = (): void => {
 };
 
 const printHeader = (): void => {
-  const g = gradient(["#06B6D4", "#0EA5E9", "#14B8A6", "#F59E0B"]);
-  const title = g("⚔  OT Notifier — Gerenciador");
+  const titleGradient = gradient(["#06B6D4", "#0EA5E9", "#14B8A6", "#F59E0B"]);
+  const title = titleGradient("⚔  OT Notifier — Gerenciador");
   console.log(
     boxen(title, {
       padding: { left: 2, right: 2, top: 0, bottom: 0 },
@@ -180,7 +178,6 @@ const error = (msg: string): void => console.log(`  ${chalk.red("✗")} ${msg}`)
 const info = (msg: string): void => console.log(`  ${chalk.blue("ℹ")} ${msg}`);
 const warn = (msg: string): void => console.log(`  ${chalk.yellow("⚠")} ${msg}`);
 
-
 const listServers = (): void => {
   const servers = loadServers();
 
@@ -190,17 +187,17 @@ const listServers = (): void => {
     return;
   }
 
-  const rows = servers.map((s, i) => {
-    const serverId = s.id || extractServerId(s.url);
+  const rows = servers.map((server, serverIndex) => {
+    const serverId = server.id || extractServerId(server.url);
     const charCount = getCharacterCount(serverId);
-    const webhook = getWebhookForServer(s);
-    const statusIcon = s.enabled ? chalk.green("●") : chalk.red("○");
+    const webhook = getWebhookForServer(server);
+    const statusIcon = server.enabled ? chalk.green("●") : chalk.red("○");
     const webhookStatus = webhook
       ? chalk.green("✓ Configurado")
       : chalk.red("✗ Sem webhook");
     const charText = charCount > 0 ? chalk.cyan(`${charCount} chars`) : chalk.gray("sem chars");
-    const num = chalk.gray(`${String(i + 1).padStart(2)}.`);
-    const name = s.enabled ? chalk.white(s.name) : chalk.gray(s.name);
+    const num = chalk.gray(`${String(serverIndex + 1).padStart(2)}.`);
+    const name = server.enabled ? chalk.white(server.name) : chalk.gray(server.name);
 
     return `${num} ${statusIcon} ${name.padEnd(32)} ${webhookStatus.padEnd(22)} ${charText}`;
   });
@@ -239,7 +236,7 @@ const addServer = async (): Promise<void> => {
   }
 
   const servers = loadServers();
-  const existingIndex = servers.findIndex((s) => (s.id || extractServerId(s.url)) === id);
+  const existingIndex = servers.findIndex((server) => (server.id || extractServerId(server.url)) === id);
 
   if (existingIndex !== -1) {
     const overwrite = await askYN(`Servidor '${id}' já existe. Atualizar?`);
@@ -261,7 +258,6 @@ const addServer = async (): Promise<void> => {
   }
 
   saveServers(servers);
-
 
   const existingJson = loadServerJson(id);
   const serverJson: ServerJson = {
@@ -508,7 +504,7 @@ const showDetails = async (): Promise<void> => {
   const webhook = getWebhookForServer(server);
   const charCount = Object.keys(serverJson?.characters ?? {}).length;
   const trackedCount = Object.values(serverJson?.characters ?? {}).filter(
-    (c: unknown) => (c as { last_level: number | null }).last_level !== null
+    (character: unknown) => (character as { last_level: number | null }).last_level !== null
   ).length;
 
   const lines = [
@@ -536,7 +532,6 @@ const showDetails = async (): Promise<void> => {
   );
 };
 
-
 type MenuAction = () => Promise<void>;
 
 const MENU_ITEMS: Array<{ label: string; action: MenuAction }> = [
@@ -550,8 +545,8 @@ const MENU_ITEMS: Array<{ label: string; action: MenuAction }> = [
 ];
 
 const printMenu = (): void => {
-  const items = MENU_ITEMS.map((item, i) =>
-    `  ${chalk.cyan(`${i + 1}.`)} ${item.label}`
+  const items = MENU_ITEMS.map((item, itemIndex) =>
+    `  ${chalk.cyan(`${itemIndex + 1}.`)} ${item.label}`
   ).join("\n");
 
   console.log(

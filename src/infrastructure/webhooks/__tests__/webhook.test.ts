@@ -129,6 +129,19 @@ describe("Webhook - sendWebhook", () => {
 
     consoleErrorSpy.mockRestore();
   });
+
+  it("should resolve to true when the webhook is sent successfully", async () => {
+    mockedAxiosPost.mockResolvedValueOnce({ status: 200 });
+
+    await expect(sendWebhook(mockParams)).resolves.toBe(true);
+  });
+
+  it("should resolve to false when sending ultimately fails", async () => {
+    mockedRetryWithBackoff.mockRejectedValueOnce(new Error("Network error"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(sendWebhook(mockParams)).resolves.toBe(false);
+  });
 });
 
 describe("Webhook - sendGuildSyncWebhook", () => {
@@ -174,7 +187,7 @@ describe("Webhook - sendGuildSyncWebhook", () => {
   });
 
   it("should limit list to 10 members", async () => {
-    const manyMembers = Array.from({ length: 15 }, (_, i) => `Player${i + 1}`);
+    const manyMembers = Array.from({ length: 15 }, (_, index) => `Player${index + 1}`);
     mockedAxiosPost.mockResolvedValueOnce({ status: 200 });
 
     await sendGuildSyncWebhook({
@@ -270,5 +283,18 @@ describe("Webhook - sendDeathWebhook", () => {
     const content = (callArgs?.[1] as { content?: string })?.content as string;
 
     expect(content).not.toContain("🕐");
+  });
+
+  it("should resolve to true when the death webhook is sent successfully", async () => {
+    mockedAxiosPost.mockResolvedValueOnce({ status: 200 });
+
+    await expect(sendDeathWebhook(mockParams)).resolves.toBe(true);
+  });
+
+  it("should resolve to false when sending ultimately fails", async () => {
+    mockedRetryWithBackoff.mockRejectedValueOnce(new Error("Network error"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(sendDeathWebhook(mockParams)).resolves.toBe(false);
   });
 });

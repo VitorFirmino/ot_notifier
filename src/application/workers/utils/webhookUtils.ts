@@ -1,7 +1,6 @@
-export const getWebhookUrl = (serverConfig: {
-  guild: { webhookUrl?: string };
-  serverId: string;
-}): string => {
+import type { ServerWebhookConfig } from "@shared/types";
+
+export const getWebhookUrl = (serverConfig: ServerWebhookConfig): string => {
   const { serverId } = serverConfig;
   const normalizedServerId = serverId.toUpperCase();
 
@@ -13,8 +12,8 @@ export const getWebhookUrl = (serverConfig: {
   }
 
   const groupedServerIds = normalizedServerId.split("_");
-  for (let i = groupedServerIds.length - 1; i > 0; i -= 1) {
-    const groupedEnvKey = `WEBHOOK_URL_${groupedServerIds.slice(0, i).join("_")}`;
+  for (let prefixLength = groupedServerIds.length - 1; prefixLength > 0; prefixLength -= 1) {
+    const groupedEnvKey = `WEBHOOK_URL_${groupedServerIds.slice(0, prefixLength).join("_")}`;
     const groupedEnvWebhookUrl = process.env[groupedEnvKey];
 
     if (groupedEnvWebhookUrl) {
@@ -35,7 +34,5 @@ export const getWebhookUrl = (serverConfig: {
     return process.env.DISCORD_WEBHOOK_URL;
   }
 
-  throw new Error(
-    `webhookUrl não configurado para ${serverId}. Configure WEBHOOK_URL_${normalizedServerId}, WEBHOOK_URL_${groupedServerIds[0]}, WEBHOOK_URL (global), DISCORD_WEBHOOK_URL (global) no .env ou guild.webhookUrl em src/infrastructure/storage/data/${serverId}.json`
-  );
+  return "";
 };

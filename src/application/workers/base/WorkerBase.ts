@@ -77,8 +77,8 @@ export abstract class WorkerBase {
     let successful = 0;
     let failed = 0;
 
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
+    for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+      const item = items[itemIndex];
       const result = await this.processItem(item, processor, options);
 
       if (result.success) {
@@ -89,7 +89,7 @@ export abstract class WorkerBase {
         failed++;
       }
 
-      options.onProgress?.(i + 1, items.length);
+      options.onProgress?.(itemIndex + 1, items.length);
     }
 
     return {

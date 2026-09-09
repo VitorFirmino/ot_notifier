@@ -49,3 +49,10 @@ temp/
 
 # Docs
 docs/
+
+# Runtime server state (contains live webhook URLs, per-character tracking data)
+data/
+src/infrastructure/storage/data/
+
+# Throwaway debug scripts
+scratch/

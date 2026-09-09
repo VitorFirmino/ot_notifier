@@ -10,8 +10,8 @@ const SERVER_COLORS = [
 
 const getServerColorFn = (serverId: string): ((text: string) => string) => {
   let hash = 0;
-  for (let i = 0; i < serverId.length; i++) {
-    hash = (hash << 5) - hash + serverId.charCodeAt(i);
+  for (let charIndex = 0; charIndex < serverId.length; charIndex++) {
+    hash = (hash << 5) - hash + serverId.charCodeAt(charIndex);
     hash = hash & hash;
   }
   const colorMap: Record<string, any> = {
@@ -56,7 +56,9 @@ const renderContent = (content: string): void => {
   }
 
   const now = Date.now();
+  if (now - lastScrollPrintAt < scrollPrintIntervalMs) return;
   lastScrollPrintAt = now;
+  console.log(content);
 };
 
 
@@ -129,9 +131,9 @@ export const renderProcessingBlock = (states: ServerStates): string => {
   if (workingServers.length === 0) return "";
 
   const lines: string[] = [];
-  const NAME_COL = Math.min(22, Math.max(8, ...workingServers.map((s) => s.serverName.length)));
+  const NAME_COL = Math.min(22, Math.max(8, ...workingServers.map((server) => server.serverName.length)));
 
-  workingServers.sort((a, b) => a.serverId.localeCompare(b.serverId)).forEach((server) => {
+  workingServers.sort((serverA, serverB) => serverA.serverId.localeCompare(serverB.serverId)).forEach((server) => {
     const state = states[server.serverId];
     const colorFn = getServerColorFn(server.serverId);
     const name = truncateWithEllipsis(server.serverName, NAME_COL).padEnd(NAME_COL);
@@ -182,22 +184,22 @@ export const renderProcessingBlock = (states: ServerStates): string => {
 export const renderFinishedBlock = (states: ServerStates): string => {
   const finishedStates = Object.entries(states)
     .filter(([_, state]) => state.finished)
-    .sort((a, b) => (b[1].finished?.timestamp || 0) - (a[1].finished?.timestamp || 0))
+    .sort((entryA, entryB) => (entryB[1].finished?.timestamp || 0) - (entryA[1].finished?.timestamp || 0))
     .slice(0, 5);
 
   if (finishedStates.length === 0) return "";
 
   const configs = getAllServerConfigsSync();
   const lines: string[] = finishedStates.map(([serverId, state]) => {
-    const config = configs.find(c => c.serverId === serverId);
+    const config = configs.find((serverConfig) => serverConfig.serverId === serverId);
     const rawName = config?.serverName || serverId;
     const name = truncateWithEllipsis(rawName, 22).padEnd(22);
-    const f = state.finished!;
+    const finished = state.finished!;
 
-    const onlineText = chalk.cyan.bold(String(f.online).padStart(3));
-    const changesText = f.changes > 0 ? chalk.green.bold(`${f.changes} mudança${f.changes !== 1 ? "s" : ""}`) : chalk.gray("sem mudanças");
-    const errText = f.errors > 0 ? ` ${chalk.red(`${f.errors} erro${f.errors !== 1 ? "s" : ""}`)}` : "";
-    const durText = chalk.gray(`${f.duration}s`);
+    const onlineText = chalk.cyan.bold(String(finished.online).padStart(3));
+    const changesText = finished.changes > 0 ? chalk.green.bold(`${finished.changes} mudança${finished.changes !== 1 ? "s" : ""}`) : chalk.gray("sem mudanças");
+    const errText = finished.errors > 0 ? ` ${chalk.red(`${finished.errors} erro${finished.errors !== 1 ? "s" : ""}`)}` : "";
+    const durText = chalk.gray(`${finished.duration}s`);
 
     return `${chalk.white(name)} ${chalk.gray("→")} ${chalk.cyan("Online:")}${onlineText}  ${changesText}${errText}  ${durText}`;
   });
@@ -213,11 +215,11 @@ export const renderFinishedBlock = (states: ServerStates): string => {
 
 export const renderWarningsBlock = (states: ServerStates): string => {
   const warnedServers = getAllServerConfigsSync().filter(
-    (s) => s.guild?.enabled !== false && !!states[s.serverId]?.warn
+    (server) => server.guild?.enabled !== false && !!states[server.serverId]?.warn
   );
   if (warnedServers.length === 0) return "";
 
-  const nameMaxLength = Math.min(20, Math.max(8, ...warnedServers.map((s) => s.serverName.length)));
+  const nameMaxLength = Math.min(20, Math.max(8, ...warnedServers.map((server) => server.serverName.length)));
   const msgMaxLength = getUiWidth() - 4 - nameMaxLength - 3;
   const lines = warnedServers.map((server) => {
     const name = truncateWithEllipsis(server.serverName, nameMaxLength).padEnd(nameMaxLength);

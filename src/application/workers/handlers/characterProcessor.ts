@@ -6,9 +6,12 @@ import {
   initializeFirstTimeCharacter,
   isFirstTimeCharacter,
 } from "./levelHandler";
+import { handleDeath, isNewDeath } from "./deathHandler";
 
 interface ProcessCharacterParams {
   webhookUrl: string;
+  serverId: string;
+  serverName: string;
   results: ProcessCharacterResult[];
   characters: Record<string, CharacterInfo>;
 }
@@ -29,65 +32,79 @@ const processSingleCharacter = async (
   result: ProcessCharacterResult,
   params: ProcessCharacterParams
 ): Promise<ProcessSingleCharacterResult> => {
-  const { webhookUrl, characters } = params;
-  const { name, level, isOnline, error } = result;
+  const { webhookUrl, serverId, serverName, characters } = params;
+  const { name, level, isOnline, error, lastDeath } = result;
   const info = characters[name];
 
   if (!info) return { updated: false };
   if (error) return { updated: false };
   if (level === null) return { updated: false };
 
+  const withOnlineStatus = (character: CharacterInfo): CharacterInfo => ({ ...character, isOnline });
+
   if (isFirstTimeCharacter(info)) {
-    const updates = initializeFirstTimeCharacter(level);
+    const updates = initializeFirstTimeCharacter(level, lastDeath);
     return {
       updated: true,
-      character: {
+      character: withOnlineStatus({
         ...info,
         ...updates,
-      },
+      }),
     };
   }
 
-  if (!isOnline) return { updated: false };
+  let deathUpdate: Partial<CharacterInfo> | undefined;
+  if (isNewDeath(info.last_death, lastDeath)) {
+    try {
+      deathUpdate = await handleDeath({ webhookUrl, serverId, serverName, name, death: lastDeath });
+    } catch (err: unknown) {
+      console.warn(`Error handling death for ${name}:`, err);
+    }
+  }
+
+  const withDeath = (character: CharacterInfo): ProcessSingleCharacterResult => ({
+    updated: true,
+    character: withOnlineStatus(deathUpdate ? { ...character, ...deathUpdate } : character),
+  });
+  const deathOnlyOrSkip = (): ProcessSingleCharacterResult => withDeath(info);
+
+  if (!isOnline) return deathOnlyOrSkip();
 
   const { last_level } = info;
   if (last_level === null || level === last_level) {
-    return { updated: false };
+    return deathOnlyOrSkip();
   }
 
   if (level > last_level) {
     try {
       const updatedCharacter = await handleLevelUp({
         webhookUrl,
+        serverId,
+        serverName,
         name,
         currentLevel: level,
         lastLevel: last_level,
         info,
       });
-      return {
-        updated: true,
-        character: updatedCharacter,
-      };
-    } catch {
-      return { updated: false };
+      return withDeath(updatedCharacter);
+    } catch (err: unknown) {
+      console.warn(`Error handling level up for ${name}:`, err);
+      return deathOnlyOrSkip();
     }
   }
 
   try {
     const updates = await handleLevelDown({
       webhookUrl,
+      serverId,
+      serverName,
       name,
       currentLevel: level,
     });
-    return {
-      updated: true,
-      character: {
-        ...info,
-        ...updates,
-      },
-    };
-  } catch {
-    return { updated: false };
+    return withDeath({ ...info, ...updates });
+  } catch (err: unknown) {
+    console.warn(`Error handling level down for ${name}:`, err);
+    return deathOnlyOrSkip();
   }
 };
 
@@ -131,7 +148,7 @@ export const processCharacterResults = async (
 
       if (processed.updated && processed.character) {
         const info = characters[name];
-        if (info && info.last_level !== null) {
+        if (info && info.last_level !== null && processed.character.last_level !== info.last_level) {
           stats.levelChanged++;
         }
         updatedCharactersMap.set(name, processed.character);
