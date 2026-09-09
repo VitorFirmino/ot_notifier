@@ -40,7 +40,7 @@ const extractServerIdFromUrl = (url: string): string => {
 
     const match = hostname.match(/^(server\d+)/i);
     return match ? match[1] : "unknown";
-  } catch {
+  } catch (err: unknown) {
     return "unknown";
   }
 };
@@ -101,8 +101,8 @@ const loadConfigFromDisk = (): Config => {
 
   try {
     return parseConfig(raw);
-  } catch {
-    console.error("❌ Erro ao parsear config.json. Verifique o JSON.");
+  } catch (err: unknown) {
+    console.error("❌ Erro ao parsear config.json. Verifique o JSON.", err);
     process.exit(1);
   }
 };

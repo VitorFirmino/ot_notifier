@@ -1,41 +1,102 @@
-import { useState, useEffect } from "react";
-import { Sidebar } from "./components/Sidebar";
-import { TopBar } from "./components/TopBar";
-import { StatCards } from "./components/StatCards";
-import { ServerCard, ServerCardSkeleton } from "./components/ServerCard";
-import { ServerConfigPanel } from "./components/ServerConfigPanel";
-import { LiveFeed } from "./components/LiveFeed";
-import { CharacterSearch } from "./components/CharacterSearch";
-import { GlobalSettingsView } from "./components/GlobalSettingsView";
-import { ServerModal } from "./components/ServerModal";
-import type { ServerConfig, ActivityEvent, SystemStats } from "./types";
+import { useState } from "react";
+import { useLocation, useNavigate, matchPath } from "react-router-dom";
+import { Sidebar } from "@components/Sidebar";
+import { TopBar } from "@components/TopBar";
+import { StatCards } from "@components/StatCards";
+import { ServerCard, ServerCardSkeleton } from "@components/ServerCard";
+import { ServerConfigPanel } from "@components/ServerConfigPanel";
+import { ServerDetailView } from "@components/ServerDetailView";
+import { LiveFeed } from "@components/LiveFeed";
+import { CharacterSearch } from "@components/CharacterSearch";
+import { GlobalSettingsView } from "@components/GlobalSettingsView";
+import { ServerModal } from "@components/ServerModal";
+import { ConfirmDeleteServerDialog } from "@components/ConfirmDeleteServerDialog";
+import type { ServerConfig, ActivityEvent, SystemStats } from "@types";
 import { CheckCircle2, AlertCircle } from "lucide-react";
-import { api } from "./services/api";
+import { useServers } from "@hooks/useServers";
+import { useEvents, EVENTS_QUERY_KEY } from "@hooks/useEvents";
+import {
+  useToggleServerStatus,
+  useSyncServer,
+  useTestWebhook,
+  useDeleteServer,
+  useAddServer,
+  useUpdateServer,
+} from "@hooks/useServerMutations";
+import { useQueryClient } from "@tanstack/react-query";
+
+type TabId = "dashboard" | "servers" | "characters" | "feed" | "settings";
+
+const TAB_PATHS: Record<TabId, string> = {
+  dashboard: "/",
+  servers: "/servers",
+  characters: "/characters",
+  feed: "/feed",
+  settings: "/settings",
+};
+
+const getTabFromPath = (pathname: string): TabId => {
+  const match = (Object.entries(TAB_PATHS) as [TabId, string][]).find(([, path]) => path === pathname);
+  if (match) return match[0];
+  if (pathname.startsWith("/servers/")) return "servers";
+  return "dashboard";
+};
+
+const computeStats = (servers: ServerConfig[], events: ActivityEvent[]): SystemStats => {
+  const active = servers.filter((server) => server.guild.enabled !== false && server.isWorking !== false);
+  const totalCharacters = active.reduce((sum, server) => sum + Object.keys(server.characters || {}).length, 0);
+  const onlineCharacters = active.reduce(
+    (sum, server) => sum + Object.values(server.characters || {}).filter((character) => character.isOnline === true).length,
+    0
+  );
+
+  const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+  const notifications24h = events.filter(
+    (evt) => evt.webhookSent && new Date(evt.timestamp).getTime() >= oneDayAgo
+  ).length;
+
+  return {
+    activeWorkers: active.length,
+    monitoredGuilds: servers.length,
+    totalCharacters,
+    onlineCharacters,
+    notifications24h,
+    cloudflareBypasses: servers.filter((server) => server.hasCloudflare).length,
+  };
+};
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "servers" | "characters" | "feed" | "settings">("dashboard");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = getTabFromPath(location.pathname);
+  const handleTabChange = (tab: TabId) => navigate(TAB_PATHS[tab]);
+  const detailServerId = matchPath("/servers/:serverId", location.pathname)?.params.serverId;
+
   const [searchTerm, setSearchTerm] = useState("");
 
-  const [servers, setServers] = useState<ServerConfig[]>([]);
-  const [events, setEvents] = useState<ActivityEvent[]>([]);
-  const [stats, setStats] = useState<SystemStats>({
-    activeWorkers: 0,
-    monitoredGuilds: 0,
-    totalCharacters: 0,
-    onlineCharacters: 0,
-    notifications24h: 0,
-    cloudflareBypasses: 0,
-  });
-  const [isApiOffline, setIsApiOffline] = useState(false);
-  // True until the first loadRealData/loadEvents call resolves.
-  const [isLoadingServers, setIsLoadingServers] = useState(true);
-  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const queryClient = useQueryClient();
+  const serversQuery = useServers();
+  const eventsQuery = useEvents();
+
+  const servers = serversQuery.data ?? [];
+  const events = eventsQuery.data ?? [];
+  const stats = computeStats(servers, events);
+  const isApiOffline = serversQuery.isError;
+  const isLoadingServers = serversQuery.isLoading;
+  const isLoadingEvents = eventsQuery.isLoading;
+
+  const toggleStatusMutation = useToggleServerStatus();
+  const syncMutation = useSyncServer();
+  const testWebhookMutation = useTestWebhook();
+  const deleteMutation = useDeleteServer();
+  const addServerMutation = useAddServer();
+  const updateServerMutation = useUpdateServer();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [testingScrapeId, setTestingScrapeId] = useState<string | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingServer, setEditingServer] = useState<ServerConfig | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   const showToast = (text: string, type: 'success' | 'info' | 'error' = 'success') => {
@@ -43,111 +104,68 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Load real server configurations from backend API — this is the single source
-  // of truth for the dashboard; it never falls back to mock data, so an empty or
-  // failed response must be reflected as such instead of showing fake servers/stats.
-  const loadRealData = async (): Promise<boolean> => {
-    try {
-      const [realServers, realStats] = await Promise.all([api.getServers(), api.getStats()]);
-      setServers(realServers);
-      setStats({
-        activeWorkers: realStats.activeServers,
-        monitoredGuilds: realStats.totalServers,
-        totalCharacters: realStats.monitoredCharacters,
-        onlineCharacters: realStats.onlineCharacters,
-        notifications24h: 0,
-        cloudflareBypasses: realServers.filter((s) => s.hasCloudflare).length,
-      });
-      setIsApiOffline(false);
-      return true;
-    } catch (err: unknown) {
-      console.warn("Failed to load real stats:", err);
-      setIsApiOffline(true);
-      return false;
-    } finally {
-      setIsLoadingServers(false);
-    }
-  };
-
-  const loadEvents = async () => {
-    try {
-      const realEvents = await api.getEvents();
-      setEvents(realEvents);
-    } catch (err: unknown) {
-      console.warn("Failed to load activity events:", err);
-    } finally {
-      setIsLoadingEvents(false);
-    }
-  };
-
-  useEffect(() => {
-    loadRealData();
-    loadEvents();
-
-    const eventsPollId = window.setInterval(loadEvents, 20000);
-    return () => window.clearInterval(eventsPollId);
-  }, []);
-
-  // Toggle server active status
-  const handleToggleStatus = async (serverId: string) => {
-    const target = servers.find((s) => s.serverId === serverId);
+  const handleToggleStatus = (serverId: string) => {
+    const target = servers.find((server) => server.serverId === serverId);
     if (!target) return;
 
     const newStatus = !(target.guild.enabled !== false);
-    setServers((prev) =>
-      prev.map((s) => (s.serverId === serverId ? { ...s, guild: { ...s.guild, enabled: newStatus } } : s))
+    toggleStatusMutation.mutate(
+      { serverId, enabled: newStatus },
+      {
+        onSuccess: () =>
+          showToast(`Servidor ${target.serverName} foi ${newStatus ? "ativado" : "pausado"}.`, "info"),
+        onError: () =>
+          showToast(`Falha ao atualizar ${target.serverName} no backend. Nada foi alterado.`, "error"),
+      }
     );
-
-    try {
-      await api.updateServer(serverId, { enabled: newStatus });
-      showToast(`Servidor ${target.serverName} foi ${newStatus ? "ativado" : "pausado"}.`, "info");
-    } catch (err: unknown) {
-      console.warn("Failed to update server status on API:", err);
-      setServers((prev) =>
-        prev.map((s) => (s.serverId === serverId ? { ...s, guild: { ...s.guild, enabled: !newStatus } } : s))
-      );
-      showToast(`Falha ao atualizar ${target.serverName} no backend. Nada foi alterado.`, "error");
-    }
   };
 
-  // Test scraping with live backend sync
-  const handleTestScrape = async (serverId: string) => {
-    const targetServer = servers.find((s) => s.serverId === serverId);
+  const handleTestScrape = (serverId: string) => {
+    const targetServer = servers.find((server) => server.serverId === serverId);
     if (!targetServer) return;
 
-    setTestingScrapeId(serverId);
+    syncMutation.mutate(serverId, {
+      onSuccess: (updatedConfig) => {
+        showToast(`✅ Scraping concluído em ${targetServer.serverName}! Membros e estáticas atualizadas com sucesso.`, "success");
 
-    try {
-      const updatedConfig = await api.syncServer(serverId);
-      setTestingScrapeId(null);
-      setServers((prev) => prev.map((s) => (s.serverId === serverId ? updatedConfig : s)));
-      showToast(`✅ Scraping concluído em ${targetServer.serverName}! Membros e estáticas atualizadas com sucesso.`, "success");
-
-      const newEvent: ActivityEvent = {
-        id: `evt-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        serverId: targetServer.serverId,
-        serverName: targetServer.serverName,
-        type: "guild_sync",
-        details: `Varredura manual executada (${Object.keys(updatedConfig.characters || {}).length} membros)`,
-        webhookSent: false,
-      };
-      setEvents((prev) => [newEvent, ...prev]);
-    } catch (err: unknown) {
-      setTestingScrapeId(null);
-      const message = err instanceof Error ? err.message : "Erro desconhecido ao sincronizar";
-      showToast(`❌ Falha ao testar ${targetServer.serverName}: ${message}`, "error");
-      // The backend may have already flipped isWorking to false before throwing —
-      // reload so the card reflects that instead of showing the stale prior status.
-      await loadRealData();
-    }
+        const newEvent: ActivityEvent = {
+          id: `evt-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          serverId: targetServer.serverId,
+          serverName: targetServer.serverName,
+          type: "guild_sync",
+          details: `Varredura manual executada (${Object.keys(updatedConfig.characters || {}).length} membros)`,
+          webhookSent: false,
+        };
+        queryClient.setQueryData<ActivityEvent[]>(EVENTS_QUERY_KEY, (old) => [newEvent, ...(old ?? [])]);
+      },
+      onError: (err: unknown) => {
+        const message = err instanceof Error ? err.message : "Erro desconhecido ao sincronizar";
+        showToast(`❌ Falha ao testar ${targetServer.serverName}: ${message}`, "error");
+      },
+    });
   };
+  const testingScrapeId = syncMutation.isPending ? (syncMutation.variables ?? null) : null;
 
-  // Refresh all servers
+  const handleTestWebhook = (serverId: string) => {
+    const targetServer = servers.find((server) => server.serverId === serverId);
+    if (!targetServer) return;
+
+    testWebhookMutation.mutate(serverId, {
+      onSuccess: () => showToast(`✅ Mensagem de teste enviada! Confira o canal Discord de ${targetServer.serverName}.`, "success"),
+      onError: (err: unknown) => {
+        const message = err instanceof Error ? err.message : "Erro desconhecido ao testar webhook";
+        showToast(`❌ Falha ao testar webhook de ${targetServer.serverName}: ${message}`, "error");
+      },
+    });
+  };
+  const testingWebhookId = testWebhookMutation.isPending ? (testWebhookMutation.variables ?? null) : null;
+
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
-    const [success] = await Promise.all([loadRealData(), loadEvents()]);
+    const [serversResult, eventsResult] = await Promise.allSettled([serversQuery.refetch(), eventsQuery.refetch()]);
     setIsRefreshing(false);
+    const success = serversResult.status === "fulfilled" && eventsResult.status === "fulfilled";
     if (success) {
       showToast("Dados atualizados a partir do backend.", "success");
     } else {
@@ -155,74 +173,72 @@ export default function App() {
     }
   };
 
-  // Modal open for create
   const handleOpenAddModal = () => {
     setEditingServer(null);
     setIsModalOpen(true);
   };
 
-  // Modal open for edit
   const handleOpenEditModal = (server: ServerConfig) => {
     setEditingServer(server);
     setIsModalOpen(true);
   };
 
-  // Delete server
-  const handleDeleteServer = async (serverId: string) => {
-    const target = servers.find((s) => s.serverId === serverId);
-    setServers((prev) => prev.filter((s) => s.serverId !== serverId));
-    try {
-      await api.deleteServer(serverId);
-      showToast("Servidor removido do backend com sucesso.", "info");
-    } catch (err: unknown) {
-      console.warn("Failed to delete server on API:", err);
-      if (target) {
-        setServers((prev) => [...prev, target]);
-      }
-      showToast("Falha ao remover o servidor no backend. Ele continua cadastrado.", "error");
-    }
+  const handleRequestDeleteServer = (serverId: string) => {
+    setDeleteTargetId(serverId);
   };
 
-  // Save server from modal to backend
-  const handleSaveServer = async (serverData: Partial<ServerConfig>) => {
+  const handleConfirmDeleteServer = (serverId: string) => {
+    setDeleteTargetId(null);
+    deleteMutation.mutate(serverId, {
+      onSuccess: () => {
+        showToast("Servidor removido do backend com sucesso.", "info");
+        if (detailServerId === serverId) navigate("/servers");
+      },
+      onError: () => showToast("Falha ao remover o servidor no backend. Ele continua cadastrado.", "error"),
+    });
+  };
+
+  const handleSaveServer = (serverData: Partial<ServerConfig>) => {
     if (editingServer) {
-      try {
-        const updated = await api.updateServer(editingServer.serverId, serverData);
-        setServers((prev) => prev.map((s) => (s.serverId === editingServer.serverId ? updated : s)));
-        showToast(`Configurações de ${serverData.serverName} salvas no backend.`, "success");
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Erro desconhecido ao salvar";
-        showToast(`❌ Falha ao salvar ${serverData.serverName}: ${message}`, "error");
-      }
+      updateServerMutation.mutate(
+        { serverId: editingServer.serverId, payload: serverData },
+        {
+          onSuccess: () => showToast(`Configurações de ${serverData.serverName} salvas no backend.`, "success"),
+          onError: (err: unknown) => {
+            const message = err instanceof Error ? err.message : "Erro desconhecido ao salvar";
+            showToast(`❌ Falha ao salvar ${serverData.serverName}: ${message}`, "error");
+          },
+        }
+      );
     } else {
-      try {
-        const newServer = await api.addServer({
+      addServerMutation.mutate(
+        {
           url: serverData.guild?.url || "",
           name: serverData.serverName,
           logoUrl: serverData.guild?.logoUrl,
           webhookUrl: serverData.guild?.webhookUrl,
           kills: serverData.guild?.kills,
           world: serverData.guild?.world,
-        });
-        setServers((prev) => [newServer, ...prev]);
-        showToast(`Novo servidor ${newServer.serverName} cadastrado no backend!`, "success");
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Erro ao adicionar servidor";
-        showToast(message, "error");
-      }
+        },
+        {
+          onSuccess: (newServer) => showToast(`Novo servidor ${newServer.serverName} cadastrado no backend!`, "success"),
+          onError: (err: unknown) => {
+            const message = err instanceof Error ? err.message : "Erro ao adicionar servidor";
+            showToast(message, "error");
+          },
+        }
+      );
     }
   };
 
-  // Filtered servers based on topbar search
-  const filteredServers = servers.filter((s) =>
+  const filteredServers = servers.filter((server) =>
     !searchTerm ||
-    s.serverName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.serverId.toLowerCase().includes(searchTerm.toLowerCase())
+    server.serverName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    server.serverId.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div className="dashboard-layout">
-      {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 animate-fade-in bg-slate-900 border border-white/15 backdrop-blur-xl px-4 py-3 rounded-lg text-white font-medium text-xs shadow-2xl flex items-center gap-2">
           {toastMessage.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
@@ -232,7 +248,6 @@ export default function App() {
         </div>
       )}
 
-      {/* API Offline Banner — the dashboard never falls back to fake data, so a real backend outage must be visible */}
       {isApiOffline && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-fade-in bg-rose-950/90 border border-rose-500/40 backdrop-blur-xl px-4 py-2.5 rounded-lg text-rose-200 font-medium text-xs shadow-2xl flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-rose-400" />
@@ -240,17 +255,14 @@ export default function App() {
         </div>
       )}
 
-      {/* Left Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         serverCount={servers.length}
         isLoadingServers={isLoadingServers}
       />
 
-      {/* Main Content Area */}
       <div className="main-content">
-        {/* Top Header */}
         <TopBar
           activeTab={activeTab}
           searchTerm={searchTerm}
@@ -258,23 +270,29 @@ export default function App() {
           onAddServer={handleOpenAddModal}
           onRefreshAll={handleRefreshAll}
           isRefreshing={isRefreshing}
+          hasServers={servers.length > 0}
         />
 
-        {/* Dynamic Views Rendering */}
         <main className="p-6 flex-1 space-y-6">
+          {detailServerId ? (
+            <ServerDetailView
+              server={servers.find((server) => server.serverId === detailServerId)}
+              events={events.filter((event) => event.serverId === detailServerId)}
+              isLoadingEvents={isLoadingEvents}
+              onToggleStatus={handleToggleStatus}
+              onTestScrape={handleTestScrape}
+              onTestWebhook={handleTestWebhook}
+              onEdit={handleOpenEditModal}
+              onDelete={handleRequestDeleteServer}
+              isTestingScrape={testingScrapeId === detailServerId}
+              isTestingWebhook={testingWebhookId === detailServerId}
+            />
+          ) : (
+          <>
           {activeTab === "dashboard" && (
             <div className="space-y-6 animate-fade-in">
-              {/* KPI Stats */}
-              <StatCards
-                stats={{
-                  ...stats,
-                  activeWorkers: servers.filter((s) => s.guild.enabled !== false).length,
-                  monitoredGuilds: servers.length,
-                }}
-                isLoading={isLoadingServers}
-              />
+              <StatCards stats={stats} isLoading={isLoadingServers} />
 
-              {/* Servers Grid */}
               <section className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -289,69 +307,79 @@ export default function App() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {isLoadingServers
-                    ? Array.from({ length: 3 }).map((_, i) => <ServerCardSkeleton key={i} />)
+                    ? Array.from({ length: 3 }).map((_, skeletonIndex) => (
+                        <ServerCardSkeleton key={skeletonIndex} />
+                      ))
                     : filteredServers.map((server) => (
                         <ServerCard
                           key={server.serverId}
                           server={server}
                           onToggleStatus={handleToggleStatus}
                           onTestScrape={handleTestScrape}
+                          onTestWebhook={handleTestWebhook}
                           onEdit={handleOpenEditModal}
-                          onDelete={handleDeleteServer}
+                          onDelete={handleRequestDeleteServer}
                           isTestingScrape={testingScrapeId === server.serverId}
+                          isTestingWebhook={testingWebhookId === server.serverId}
                         />
                       ))}
                 </div>
               </section>
 
-              {/* Character Inspector */}
-              <CharacterSearch servers={servers} isLoading={isLoadingServers} />
+              <CharacterSearch servers={servers} isLoading={isLoadingServers} initialSearch={searchTerm} />
 
-              {/* Live Activity Feed */}
-              <LiveFeed events={events} isLoading={isLoadingEvents} />
+              <LiveFeed events={events} servers={servers} isLoading={isLoadingEvents} initialSearch={searchTerm} />
             </div>
           )}
 
           {activeTab === "servers" && (
             <div className="space-y-6 animate-fade-in">
-              {/* Health Monitoring & Config Panel */}
               <ServerConfigPanel
-                servers={servers}
+                servers={filteredServers}
                 isLoading={isLoadingServers}
                 onToggleStatus={handleToggleStatus}
                 onTestScrape={handleTestScrape}
+                onTestWebhook={handleTestWebhook}
                 onEditServer={handleOpenEditModal}
-                onDeleteServer={handleDeleteServer}
+                onDeleteServer={handleRequestDeleteServer}
                 onAddServer={handleOpenAddModal}
                 testingServerId={testingScrapeId}
+                testingWebhookId={testingWebhookId}
               />
             </div>
           )}
 
           {activeTab === "characters" && (
             <div className="space-y-6 animate-fade-in">
-              <CharacterSearch servers={servers} isLoading={isLoadingServers} />
+              <CharacterSearch servers={servers} isLoading={isLoadingServers} initialSearch={searchTerm} />
             </div>
           )}
 
           {activeTab === "feed" && (
             <div className="space-y-6 animate-fade-in">
-              <LiveFeed events={events} isLoading={isLoadingEvents} />
+              <LiveFeed events={events} servers={servers} isLoading={isLoadingEvents} initialSearch={searchTerm} />
             </div>
           )}
 
           {activeTab === "settings" && (
             <GlobalSettingsView />
           )}
+          </>
+          )}
         </main>
       </div>
 
-      {/* Server Create/Edit Modal */}
       <ServerModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveServer}
         initialServer={editingServer}
+      />
+
+      <ConfirmDeleteServerDialog
+        server={servers.find((server) => server.serverId === deleteTargetId) ?? null}
+        onCancel={() => setDeleteTargetId(null)}
+        onConfirm={handleConfirmDeleteServer}
       />
     </div>
   );

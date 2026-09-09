@@ -5,16 +5,24 @@ import type { CharacterInfo, ProcessCharacterResult } from "@shared/types/index"
 
 vi.mock("@infrastructure/webhooks/webhook", () => ({
   sendWebhook: vi.fn(),
+  sendDeathWebhook: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock("@infrastructure/events/eventLog", () => ({
+  recordEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockedSendWebhook = vi.mocked(sendWebhook);
+
+const SERVER_ID = "server1";
+const SERVER_NAME = "Server 1";
 
 describe("Webhook Integration - Real Flow", () => {
   const mockWebhookUrl = "https://discord.com/api/webhooks/real-test";
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockedSendWebhook.mockResolvedValue(undefined);
+    mockedSendWebhook.mockResolvedValue(true);
   });
 
   it("should send webhook when SrGUSTAVO levels up from 150 to 151", async () => {
@@ -38,6 +46,8 @@ describe("Webhook Integration - Real Flow", () => {
 
     const { stats } = await processCharacterResults({
       webhookUrl: mockWebhookUrl,
+      serverId: SERVER_ID,
+      serverName: SERVER_NAME,
       results,
       characters,
     });
@@ -75,6 +85,8 @@ describe("Webhook Integration - Real Flow", () => {
 
     const { stats } = await processCharacterResults({
       webhookUrl: mockWebhookUrl,
+      serverId: SERVER_ID,
+      serverName: SERVER_NAME,
       results,
       characters,
     });
@@ -111,6 +123,8 @@ describe("Webhook Integration - Real Flow", () => {
 
     const { stats } = await processCharacterResults({
       webhookUrl: mockWebhookUrl,
+      serverId: SERVER_ID,
+      serverName: SERVER_NAME,
       results,
       characters,
     });
@@ -161,6 +175,8 @@ describe("Webhook Integration - Real Flow", () => {
 
     const { stats } = await processCharacterResults({
       webhookUrl: mockWebhookUrl,
+      serverId: SERVER_ID,
+      serverName: SERVER_NAME,
       results,
       characters,
     });

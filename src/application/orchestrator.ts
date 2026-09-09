@@ -6,6 +6,8 @@ import { setupShutdownHandlers } from "./managers/shutdownManager";
 import { startRenderLoop } from "./managers/renderManager";
 import { initializeBanner } from "./managers/bannerManager";
 import { cleanupServerStates } from "@shared/utils/serverStateManager";
+import { syncAllActiveServersToQueue } from "@infrastructure/queue/serverQueueManager";
+import { startServerQueueWorker } from "./workers/queueWorker";
 import type { ServerConfig } from "@shared/types/index";
 
 dotenv.config({ quiet: true });
@@ -42,7 +44,6 @@ const separateServers = (
   );
 };
 
-
 const startWorkingServers = (servers: ServerConfig[]): void => {
   servers.forEach(({ serverId }) => {
     try {
@@ -62,21 +63,32 @@ const initialize = async (): Promise<void> => {
     process.exit(1);
   }
 
-  const activeIds = serverConfigs.map(s => s.serverId);
+  const activeIds = serverConfigs.map((server) => server.serverId);
   await cleanupServerStates(activeIds);
 
   await initializeBanner(serverConfigs.length);
   setupShutdownHandlers();
 
-  const { working } = separateServers(serverConfigs);
+  let queueStarted = false;
+  try {
+    await syncAllActiveServersToQueue(serverConfigs);
+    startServerQueueWorker();
+    queueStarted = true;
+  } catch (err: unknown) {
+    console.warn("⚠️ [BullMQ] Erro ao sincronizar/iniciar fila Redis (verifique se Redis está rodando):", err);
+  }
 
-  startWorkingServers(working);
+  if (!queueStarted) {
+    const { working } = separateServers(serverConfigs);
+    startWorkingServers(working);
+  }
+
   startRenderLoop(2000, 1000);
 };
 
 try {
   await initialize();
-} catch (error) {
+} catch (error: unknown) {
   console.error("Erro fatal ao iniciar sistema:", error);
   process.exit(1);
 }

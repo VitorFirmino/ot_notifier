@@ -6,18 +6,24 @@ import type { CharacterInfo, ProcessCharacterResult } from "@shared/types/index"
 
 vi.mock("@infrastructure/webhooks/webhook", () => ({
   sendWebhook: vi.fn(),
+  sendDeathWebhook: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock("@infrastructure/events/eventLog", () => ({
+  recordEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockedSendWebhook = vi.mocked(sendWebhook);
+
+const SERVER_ID = "server1";
+const SERVER_NAME = "Server 1";
 
 describe("Webhook Flow Integration", () => {
   const mockWebhookUrl = "https://discord.com/api/webhooks/test";
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockedSendWebhook.mockImplementation(async () => {
-      return Promise.resolve();
-    });
+    mockedSendWebhook.mockImplementation(async () => true);
   });
 
   describe("Level Up Flow", () => {
@@ -31,6 +37,8 @@ describe("Webhook Flow Integration", () => {
 
       const result = await handleLevelUp({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         name: "SrGUSTAVO",
         currentLevel: 151,
         lastLevel: 150,
@@ -83,6 +91,8 @@ describe("Webhook Flow Integration", () => {
 
       const { stats } = await processCharacterResults({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         results,
         characters,
       });
@@ -103,6 +113,8 @@ describe("Webhook Flow Integration", () => {
     it("should send webhook when character levels down", async () => {
       const result = await handleLevelDown({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         name: "TerrorZone",
         currentLevel: 99,
       });
@@ -140,6 +152,8 @@ describe("Webhook Flow Integration", () => {
 
       const { stats } = await processCharacterResults({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         results,
         characters,
       });
@@ -198,6 +212,8 @@ describe("Webhook Flow Integration", () => {
 
       const { stats } = await processCharacterResults({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         results,
         characters,
       });
@@ -226,6 +242,8 @@ describe("Webhook Flow Integration", () => {
 
       const { stats } = await processCharacterResults({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         results,
         characters,
       });
@@ -253,6 +271,8 @@ describe("Webhook Flow Integration", () => {
 
       const { stats } = await processCharacterResults({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         results,
         characters,
       });
@@ -274,6 +294,8 @@ describe("Webhook Flow Integration", () => {
 
       const result = await handleLevelUp({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         name: "SrGUSTAVO",
         currentLevel: 151,
         lastLevel: 150,

@@ -1,8 +1,9 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Server, Users, Bell, ShieldCheck } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { SystemStats } from "../types";
+import { Card, CardContent } from "@components/ui/card";
+import { Skeleton } from "@components/ui/skeleton";
+import type { SystemStats } from "@types";
 
 interface StatCardsProps {
   stats: SystemStats;
@@ -29,23 +30,39 @@ interface StatTileProps {
   icon: React.ElementType;
   accent: AccentColor;
   detail: React.ReactNode;
+  to: string;
 }
 
-const StatTile: React.FC<StatTileProps> = ({ label, value, icon: Icon, accent, detail }) => (
-  <Card className={`overflow-hidden py-0 ${CARD_TINT_CLASSES[accent]}`}>
-    <CardContent className="flex flex-col gap-5 p-6">
-      <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${ICON_CHIP_CLASSES[accent]}`}>
-        <Icon className="h-5 w-5" />
-      </div>
+const StatTile: React.FC<StatTileProps> = ({ label, value, icon: Icon, accent, detail, to }) => {
+  const navigate = useNavigate();
 
-      <div className="space-y-1.5">
-        <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</span>
-        <div className="font-heading text-4xl font-bold leading-none text-foreground">{value}</div>
-        <div className="pt-0.5 text-xs text-muted-foreground">{detail}</div>
-      </div>
-    </CardContent>
-  </Card>
-);
+  return (
+    <Card
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate(to)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          navigate(to);
+        }
+      }}
+      className={`overflow-hidden py-0 cursor-pointer transition-colors hover:brightness-110 ${CARD_TINT_CLASSES[accent]}`}
+    >
+      <CardContent className="flex flex-col gap-5 p-6">
+        <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${ICON_CHIP_CLASSES[accent]}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+
+        <div className="space-y-1.5">
+          <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</span>
+          <div className="font-heading text-4xl font-bold leading-none text-foreground">{value}</div>
+          <div className="pt-0.5 text-xs text-muted-foreground">{detail}</div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const StatTileSkeleton: React.FC = () => (
   <Card className="glass-surface py-0">
@@ -64,8 +81,8 @@ export const StatCards: React.FC<StatCardsProps> = ({ stats, isLoading }) => {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <StatTileSkeleton key={i} />
+        {Array.from({ length: 4 }).map((_, skeletonIndex) => (
+          <StatTileSkeleton key={skeletonIndex} />
         ))}
       </div>
     );
@@ -79,6 +96,7 @@ export const StatCards: React.FC<StatCardsProps> = ({ stats, isLoading }) => {
         icon={Server}
         accent="primary"
         detail={<span className="text-success">workers on</span>}
+        to="/servers"
       />
 
       <StatTile
@@ -87,6 +105,7 @@ export const StatCards: React.FC<StatCardsProps> = ({ stats, isLoading }) => {
         icon={Users}
         accent="success"
         detail={<span>{stats.onlineCharacters} online</span>}
+        to="/characters"
       />
 
       <StatTile
@@ -95,6 +114,7 @@ export const StatCards: React.FC<StatCardsProps> = ({ stats, isLoading }) => {
         icon={Bell}
         accent="warning"
         detail={<span>disparos</span>}
+        to="/feed"
       />
 
       <StatTile
@@ -103,6 +123,7 @@ export const StatCards: React.FC<StatCardsProps> = ({ stats, isLoading }) => {
         icon={ShieldCheck}
         accent="primary"
         detail={<span>servidores protegidos</span>}
+        to="/servers"
       />
     </div>
   );

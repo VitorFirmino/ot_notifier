@@ -64,8 +64,8 @@ export const processQueueInBatches = async (
   const effectiveConcurrency = Math.max(1, concurrency);
   const limiter = pLimit(effectiveConcurrency);
 
-  for (let i = 0; i < queue.length; i += batchSize) {
-    const batch = queue.slice(i, i + batchSize);
+  for (let batchStart = 0; batchStart < queue.length; batchStart += batchSize) {
+    const batch = queue.slice(batchStart, batchStart + batchSize);
     await Promise.all(
       batch.map(({ name, url }) =>
         limiter(async () => {
@@ -93,7 +93,7 @@ export const processQueueInBatches = async (
       )
     );
 
-    if (i + batchSize < queue.length) {
+    if (batchStart + batchSize < queue.length) {
       await sleep(requestDelay * 2);
     }
   }

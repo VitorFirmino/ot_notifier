@@ -13,9 +13,40 @@ import {
   processCharacterResults,
 } from "./characterProcessor";
 import { getWebhookUrl } from "../utils/webhookUtils";
-import { DEFAULT_CONCURRENCY, DEFAULT_REQUEST_DELAY, parsePositiveInt } from "../utils/constants";
+import { recordEvent } from "@infrastructure/events/eventLog";
+import {
+  DEFAULT_CHECK_INTERVAL,
+  DEFAULT_CONCURRENCY,
+  DEFAULT_REQUEST_DELAY,
+  parsePositiveInt,
+} from "../utils/constants";
 import { serverHasCloudflare } from "@infrastructure/scraping/utils/cloudflareDetector";
-import type { CharacterInfo } from "@shared/types/index";
+import { fetchOnlineCharacterNames } from "@infrastructure/scraping/utils/onlinePlayersDiscovery";
+import type { CharacterInfo, ProcessCharacterResult } from "@shared/types/index";
+
+const getNormalCheckInterval = (settings?: { checkInterval?: number }): number =>
+  settings?.checkInterval ?? parsePositiveInt(process.env.CHECK_INTERVAL, DEFAULT_CHECK_INTERVAL);
+
+const serversInProgress = new Set<string>();
+
+const syncScheduleForWorkingStatus = async (
+  serverId: string,
+  isWorking: boolean,
+  settings?: { checkInterval?: number }
+): Promise<void> => {
+  try {
+    const { addOrUpdateServerSchedule, scheduleServerRetry } = await import(
+      "@infrastructure/queue/serverQueueManager"
+    );
+    if (isWorking) {
+      await addOrUpdateServerSchedule(serverId, getNormalCheckInterval(settings));
+    } else {
+      await scheduleServerRetry(serverId);
+    }
+  } catch (err: unknown) {
+    console.warn(`⚠️ [${serverId}] Falha ao reagendar verificação no BullMQ:`, err);
+  }
+};
 
 const toLowerMessage = (error: unknown): string =>
   error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
@@ -64,6 +95,10 @@ const isServerDownError = (error: unknown): boolean => {
     "fatal error",
     "syntax error",
     "unexpected '--'",
+    "doesn't exist",
+    "does not exist",
+    "não encontrada",
+    "não existe",
   ];
 
   return downIndicators.some((indicator) => message.includes(indicator));
@@ -93,6 +128,12 @@ const withTimeout = async <T>(
 };
 
 export const processServerCheck = async (serverId: string): Promise<void> => {
+  if (serversInProgress.has(serverId)) {
+    console.log(`⏭️ [${serverId}] Verificação já em andamento, pulando execução sobreposta.`);
+    return;
+  }
+  serversInProgress.add(serverId);
+
   const startTime = Date.now();
 
   try {
@@ -104,7 +145,6 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
 
     const { serverName, guild, characters, settings } = serverConfig;
     const knownCloudflareProtection = serverHasCloudflare(serverId);
-
 
     await updateServerState(serverId, {
       name: serverName,
@@ -129,9 +169,9 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
 
     let totalCharacters = Object.keys(characters).length;
 
-    if (totalCharacters === 0 && guild?.url) {
+    if (guild?.url) {
       console.log(
-        `🔄 [${serverId}] Nenhum personagem encontrado - sincronizando guild automaticamente...`
+        `🔄 [${serverId}] Sincronizando e verificando guild (${guild.url})...`
       );
 
       try {
@@ -141,6 +181,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
         if (members.length === 0) {
           const duration = ((Date.now() - startTime) / 1000).toFixed(2);
           await updateServerWorkingStatus(serverId, true);
+          await syncScheduleForWorkingStatus(serverId, true, settings);
           await updateServerState(serverId, {
             name: serverName,
             finished: {
@@ -162,42 +203,41 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
           return;
         }
 
-        const newCharacters = members.reduce<Record<string, CharacterInfo>>(
-          (acc, { name, url }) => ({
-            ...acc,
-            [name]: {
-              url,
-              last_level: null,
-              up_streak: 0,
-              last_milestone: 0,
-              last_death: null,
-            },
-          }),
-          {}
-        );
-
-        await updateServerCharacters(serverId, newCharacters);
-        console.log(`✅ [${serverId}] ${members.length} personagens sincronizados automaticamente`);
-
-        const updatedConfig = loadServerConfig(serverId);
-        if (!updatedConfig) {
-          await updateServerState(serverId, {
-            name: serverName,
-            warn: {
-              message: "Erro ao recarregar configuração após sincronização",
-              timestamp: Date.now(),
-            },
-          });
-          return;
+        const hadExistingCharacters = Object.keys(characters).length > 0;
+        const newMemberNames: string[] = [];
+        const updatedCharMap: Record<string, CharacterInfo> = {};
+        for (const { name, url } of members) {
+          const existing = characters[name];
+          if (!existing) newMemberNames.push(name);
+          updatedCharMap[name] = {
+            url,
+            last_level: existing?.last_level ?? null,
+            up_streak: existing?.up_streak ?? 0,
+            last_milestone: existing?.last_milestone ?? 0,
+            last_death: existing?.last_death ?? null,
+            isOnline: existing?.isOnline,
+          };
         }
 
-        const updatedCharacters = { ...updatedConfig.characters };
-        Object.keys(updatedCharacters).forEach((name) => {
-          if (!characters[name]) {
-            characters[name] = { ...updatedCharacters[name] };
-          }
-        });
+        await updateServerCharacters(serverId, updatedCharMap);
+        console.log(`✅ [${serverId}] ${members.length} personagens sincronizados da guild`);
 
+        if (hadExistingCharacters && newMemberNames.length > 0) {
+          await recordEvent({
+            id: `evt-${Date.now()}-guild-sync`,
+            timestamp: new Date().toISOString(),
+            serverId,
+            serverName,
+            type: "guild_sync",
+            details: `Sincronização de guild concluída: ${newMemberNames.length} novo(s) membro(s) encontrado(s)`,
+            webhookSent: false,
+          });
+        }
+
+        const updatedConfig = loadServerConfig(serverId);
+        if (updatedConfig) {
+          Object.assign(characters, updatedConfig.characters);
+        }
         totalCharacters = Object.keys(characters).length;
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Erro desconhecido";
@@ -205,10 +245,12 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
         const isDown = isServerDownError(error);
         if (isAntiBot) {
           await updateServerWorkingStatus(serverId, true);
+          await syncScheduleForWorkingStatus(serverId, true, settings);
         } else if (isDown) {
           await updateServerWorkingStatus(serverId, false);
+          await syncScheduleForWorkingStatus(serverId, false, settings);
         }
-        console.warn(`⚠️ [${serverId}] Erro ao sincronizar guild automaticamente: ${errorMsg}`);
+        console.warn(`⚠️ [${serverId}] Erro ao sincronizar guild: ${errorMsg}`);
         await updateServerState(serverId, {
           name: serverName,
           warn: {
@@ -235,17 +277,44 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
       return;
     }
 
-    const entriesToProcess = Object.entries(characters).filter(([, char]) => {
+    const eligibleEntries = Object.entries(characters).filter(([, char]) => {
       if (char.last_level === null) return true;
       return char.last_level !== undefined && char.last_level > 0;
     });
-    const charactersToProcess = Object.fromEntries(entriesToProcess);
+
+    const onlineNames = guild?.url
+      ? await fetchOnlineCharacterNames(guild.url, settings?.headers).catch(() => null)
+      : null;
+
+    let charactersToProcess: Record<string, CharacterInfo> = Object.fromEntries(eligibleEntries);
+    const syntheticOfflineResults: ProcessCharacterResult[] = [];
+
+    if (onlineNames) {
+      const onlineEntries: Record<string, CharacterInfo> = {};
+      for (const [name, info] of eligibleEntries) {
+        if (onlineNames.has(name)) {
+          onlineEntries[name] = info;
+        } else if (info.last_level !== null) {
+          syntheticOfflineResults.push({
+            name,
+            level: info.last_level,
+            isOnline: false,
+            lastDeath: info.last_death ?? null,
+          });
+        }
+      }
+      charactersToProcess = onlineEntries;
+      console.log(
+        `🟢 [${serverId}] ${onlineNames.size} online no servidor, ${Object.keys(onlineEntries).length} são da guild — pulando fetch individual de ${syntheticOfflineResults.length} offline`
+      );
+    }
+
     const totalToProcess = Object.keys(charactersToProcess).length;
     const hasTrackedCharacters = Object.values(charactersToProcess).some(
       (char) => char.last_level !== null && char.last_level > 0
     );
 
-    if (totalToProcess === 0) {
+    if (totalToProcess === 0 && syntheticOfflineResults.length === 0) {
       console.log(`⏭️  [${serverId}] Nenhum personagem elegível para processar (0/${totalCharacters})`);
       return;
     }
@@ -257,11 +326,12 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
 
       try {
         webhookUrl = getWebhookUrl(serverConfig);
-      } catch {
+      } catch (err: unknown) {
         webhookUrl = "";
       }
     }
 
+    const isInitialSync = !hasTrackedCharacters;
     const processLabel = hasTrackedCharacters
       ? `▶️  [${serverId}] Processando ${totalToProcess}/${totalCharacters} personagens`
       : `🌱 [${serverId}] Carregando nível inicial de ${totalToProcess}/${totalCharacters} personagens`;
@@ -273,6 +343,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
         totalCharacters: totalToProcess,
         processed: 0,
         startTime: startTime,
+        isInitialSync,
       },
     });
 
@@ -291,8 +362,10 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
           totalCharacters: totalToProcess,
           processed,
           startTime: startTime,
+          isInitialSync,
         },
-      }).catch(() => {
+      }).catch((err: unknown) => {
+        console.warn(`[${serverId}] Failed to update processing state:`, err);
       });
     };
 
@@ -321,7 +394,8 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
     };
 
     try {
-      const checkTimeoutMs = parsePositiveInt(process.env.SERVER_CHECK_TIMEOUT_MS, 120000);
+      const scaledTimeoutMs = Math.max(120000, totalToProcess * 3000);
+      const checkTimeoutMs = parsePositiveInt(process.env.SERVER_CHECK_TIMEOUT_MS, scaledTimeoutMs);
       const processResult = await withTimeout(
         fetchAndProcessCharactersWithProgress(
           charactersToProcess,
@@ -342,7 +416,6 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
         pendingUpdate = null;
       }
       progressCancelled = true;
-
 
       await clearProcessingState(serverId);
       const verifyStartTime = Date.now();
@@ -375,7 +448,9 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
         const { updatedCharacters, stats } = await withTimeout(
           processCharacterResults({
             webhookUrl,
-            results: processResult.results,
+            serverId,
+            serverName,
+            results: [...processResult.results, ...syntheticOfflineResults],
             characters,
           }),
           verifyTimeoutMs,
@@ -385,7 +460,8 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
         let saved = false;
         try {
           saved = await updateServerCharacters(serverId, updatedCharacters);
-        } catch {
+        } catch (err: unknown) {
+          console.warn(`[${serverId}] Error persisting character updates:`, err);
           saved = false;
         }
 
@@ -435,6 +511,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
 
         if (shouldMarkServerDown) {
           await updateServerWorkingStatus(serverId, false);
+          await syncScheduleForWorkingStatus(serverId, false, settings);
           await updateServerState(serverId, {
             name: serverName,
             warn: {
@@ -444,6 +521,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
           });
         } else if (allErrorsAreAntiBot) {
           await updateServerWorkingStatus(serverId, true);
+          await syncScheduleForWorkingStatus(serverId, true, settings);
           await updateServerState(serverId, {
             name: serverName,
             warn: {
@@ -453,6 +531,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
           });
         } else {
           await updateServerWorkingStatus(serverId, true);
+          await syncScheduleForWorkingStatus(serverId, true, settings);
         }
       } finally {
         clearInterval(updateInterval);
@@ -470,10 +549,10 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
       const isDown = !allProcessed && isServerDownError(error);
       if (isAntiBot) {
         await updateServerWorkingStatus(serverId, true);
+        await syncScheduleForWorkingStatus(serverId, true, settings);
       } else if (isDown) {
         await updateServerWorkingStatus(serverId, false);
-      } else {
-        await updateServerWorkingStatus(serverId, true);
+        await syncScheduleForWorkingStatus(serverId, false, settings);
       }
       await clearProcessingState(serverId);
       await updateServerState(serverId, {
@@ -495,8 +574,10 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
     const isDown = isServerDownError(error);
     if (isAntiBot) {
       await updateServerWorkingStatus(serverId, true);
+      await syncScheduleForWorkingStatus(serverId, true, serverConfig?.settings);
     } else if (isDown) {
       await updateServerWorkingStatus(serverId, false);
+      await syncScheduleForWorkingStatus(serverId, false, serverConfig?.settings);
     }
     await updateServerState(serverId, {
       name: serverConfig?.serverName || serverId,
@@ -510,5 +591,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
       },
     });
     throw error;
+  } finally {
+    serversInProgress.delete(serverId);
   }
 };

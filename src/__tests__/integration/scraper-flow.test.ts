@@ -121,7 +121,7 @@ describe("Scraper Flow Integration", () => {
       );
 
       expect(members).toHaveLength(3);
-      expect(members.map((m) => m.name)).toContain("SrGUSTAVO");
+      expect(members.map((member) => member.name)).toContain("SrGUSTAVO");
       expect(mockedAxiosGet).toHaveBeenCalled();
     });
   });

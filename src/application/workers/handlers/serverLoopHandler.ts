@@ -142,7 +142,9 @@ export const runServerLoop = async (): Promise<void> => {
             timestamp: nextCheck,
             checkInterval: effectiveIntervalAfterRun,
           },
-        }).catch(() => undefined);
+        }).catch((err: unknown) => {
+          console.warn(`Failed to update next check state for server ${serverId}:`, err);
+        });
 
         await sleep(1000);
       }

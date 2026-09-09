@@ -1,16 +1,17 @@
 import { RateLimiterMemory } from "rate-limiter-flexible";
+import { isSensitiveServer } from "../utils/urlUtils";
 
 const createRateLimiter = (serverId?: string) => {
-  const isServer1OrServer2 = serverId === "server1" || serverId === "server2";
+  const sensitive = isSensitiveServer(serverId);
 
-  const points = isServer1OrServer2 ? 2 : 5;
+  const points = sensitive ? 2 : 5;
   const duration = 1;
 
   return new RateLimiterMemory({
     points,
     duration,
     execEvenly: true,
-    execEvenlyMinDelayMs: isServer1OrServer2 ? 500 : 200,
+    execEvenlyMinDelayMs: sensitive ? 500 : 200,
   });
 };
 
