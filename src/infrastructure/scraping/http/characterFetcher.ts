@@ -9,6 +9,7 @@ import {
 import { parseCharacterFromHtml } from "../parsers/characterParser";
 import { extractServerIdFromUrl } from "../utils/urlUtils";
 import { detectServerFatalPage } from "../utils/pageHealthDetector";
+import { markServerAsCloudflare } from "../utils/cloudflareDetector";
 import { playwrightManager } from "../playwrightManager";
 
 export const getCharacterStatus = async (
@@ -24,6 +25,7 @@ export const getCharacterStatus = async (
   const headerStrategies = customHeaders ? [customHeaders] : createDefaultHeaderStrategies(origin);
   let hadForbidden = false;
   let fatalPageReason: string | null = null;
+  let networkErrorCode: string | null = null;
 
   const tryStrategy = async (
     headers: Record<string, string>,
@@ -38,6 +40,9 @@ export const getCharacterStatus = async (
     if (response.statusCode === 403) {
       hadForbidden = true;
     }
+    if (response.errorCode) {
+      networkErrorCode = response.errorCode;
+    }
     if (!response.html) return null;
 
     const detectedFatalReason = detectServerFatalPage(response.html);
@@ -48,7 +53,8 @@ export const getCharacterStatus = async (
 
     try {
       return parseCharacterFromHtml(response.html, name, url);
-    } catch {
+    } catch (err: unknown) {
+      console.warn(`Error parsing character HTML for ${name}:`, err);
       return null;
     }
   };
@@ -68,7 +74,9 @@ export const getCharacterStatus = async (
     }
 
     if (index === headerStrategies.length - 1) {
-      lastError = new Error("Todas as estratégias falharam");
+      lastError = new Error(
+        networkErrorCode ? `Todas as estratégias falharam (${networkErrorCode})` : "Todas as estratégias falharam"
+      );
     }
   }
 
@@ -85,6 +93,7 @@ export const getCharacterStatus = async (
         if (detectedFatalReason) {
           fatalPageReason = detectedFatalReason;
         } else {
+          await markServerAsCloudflare(finalServerId);
           return parseCharacterFromHtml(fallbackHtml, name, url);
         }
       }

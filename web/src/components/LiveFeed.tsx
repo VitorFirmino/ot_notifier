@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -9,15 +9,19 @@ import {
   Filter,
   Flame,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { ActivityEvent, EventType } from "../types";
+import { Card, CardContent } from "@components/ui/card";
+import { Badge } from "@components/ui/badge";
+import { Input } from "@components/ui/input";
+import { Skeleton } from "@components/ui/skeleton";
+import { NativeSelect } from "@components/ui/native-select";
+import type { ActivityEvent, EventType, ServerConfig } from "@types";
+import { getSiteHostname } from "@lib/hostname";
 
 interface LiveFeedProps {
   events: ActivityEvent[];
+  servers: ServerConfig[];
   isLoading: boolean;
+  initialSearch?: string;
 }
 
 const formatRelativeTime = (isoTimestamp: string): string => {
@@ -86,9 +90,14 @@ const EventRowSkeleton: React.FC = () => (
   </div>
 );
 
-export const LiveFeed: React.FC<LiveFeedProps> = ({ events, isLoading }) => {
+export const LiveFeed: React.FC<LiveFeedProps> = ({ events, servers, isLoading, initialSearch }) => {
   const [filterType, setFilterType] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>(initialSearch ?? "");
+  useEffect(() => {
+    if (initialSearch !== undefined) setSearchQuery(initialSearch);
+  }, [initialSearch]);
+
+  const hostnameByServerId = new Map(servers.map((server) => [server.serverId, getSiteHostname(server.guild.url)]));
 
   const filteredEvents = events.filter((evt) => {
     const matchesFilter = filterType === "all" || evt.type === filterType;
@@ -122,31 +131,33 @@ export const LiveFeed: React.FC<LiveFeedProps> = ({ events, isLoading }) => {
                 type="text"
                 placeholder="Buscar no feed..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(event) => setSearchQuery(event.target.value)}
                 className="h-9 w-48 pl-9"
               />
             </div>
 
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
-              <select
+              <NativeSelect
                 value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="h-9 cursor-pointer rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <option value="all">Todos os eventos</option>
-                <option value="level_up">Level up</option>
-                <option value="death">Mortes</option>
-                <option value="level_down">Level down</option>
-                <option value="guild_sync">Guild sync</option>
-              </select>
+                onChange={setFilterType}
+                options={[
+                  { value: "all", label: "Todos os eventos" },
+                  { value: "level_up", label: "Level up" },
+                  { value: "death", label: "Mortes" },
+                  { value: "level_down", label: "Level down" },
+                  { value: "guild_sync", label: "Guild sync" },
+                ]}
+              />
             </div>
           </div>
         </div>
 
         <div className="max-h-[520px] space-y-3 overflow-y-auto pr-1">
           {isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => <EventRowSkeleton key={i} />)
+            Array.from({ length: 4 }).map((_, skeletonIndex) => (
+              <EventRowSkeleton key={skeletonIndex} />
+            ))
           ) : filteredEvents.length === 0 ? (
             <div className="py-12 text-center text-xs text-muted-foreground">
               Nenhum evento encontrado para os filtros selecionados.
@@ -192,8 +203,14 @@ export const LiveFeed: React.FC<LiveFeedProps> = ({ events, isLoading }) => {
 
                   <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
                     <span>
-                      Servidor: <strong className="text-foreground">{evt.serverName}</strong>
+                      Guilda: <strong className="text-foreground">{evt.serverName}</strong>
                     </span>
+                    {hostnameByServerId.get(evt.serverId) && (
+                      <>
+                        <span className="text-border">·</span>
+                        <span className="font-mono">{hostnameByServerId.get(evt.serverId)}</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

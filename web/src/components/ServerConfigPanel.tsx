@@ -7,17 +7,18 @@ import {
   Edit2,
   Trash2,
   RefreshCw,
-  Zap,
+  Loader2,
   Clock,
   Globe,
   Settings,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@components/ui/card";
+import { Badge } from "@components/ui/badge";
+import { Button } from "@components/ui/button";
+import { Separator } from "@components/ui/separator";
 import { ServerConfigCardSkeleton } from "./ServerCard";
-import type { ServerConfig } from "../types";
+import { DiscordIcon } from "./icons/DiscordIcon";
+import type { ServerConfig } from "@types";
 
 interface ServerConfigPanelProps {
   servers: ServerConfig[];
@@ -27,8 +28,10 @@ interface ServerConfigPanelProps {
   onToggleStatus: (serverId: string) => void;
   onDeleteServer: (serverId: string) => void;
   onTestScrape: (serverId: string) => void;
+  onTestWebhook: (serverId: string) => void;
   testingServerId?: string | null;
   testingScrapeId?: string | null;
+  testingWebhookId?: string | null;
 }
 
 export const ServerConfigPanel: React.FC<ServerConfigPanelProps> = ({
@@ -39,8 +42,10 @@ export const ServerConfigPanel: React.FC<ServerConfigPanelProps> = ({
   onToggleStatus,
   onDeleteServer,
   onTestScrape,
+  onTestWebhook,
   testingServerId,
   testingScrapeId,
+  testingWebhookId,
 }) => {
   const currentTestingId = testingServerId || testingScrapeId;
 
@@ -70,11 +75,14 @@ export const ServerConfigPanel: React.FC<ServerConfigPanelProps> = ({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {isLoading
-          ? Array.from({ length: 3 }).map((_, i) => <ServerConfigCardSkeleton key={i} />)
+          ? Array.from({ length: 3 }).map((_, skeletonIndex) => (
+              <ServerConfigCardSkeleton key={skeletonIndex} />
+            ))
           : servers.map((server) => {
           const isEnabled = server.guild.enabled !== false;
           const isWorking = server.isWorking !== false;
           const isTesting = currentTestingId === server.serverId;
+          const isTestingWebhook = testingWebhookId === server.serverId;
           const characterCount = Object.keys(server.characters || {}).length;
 
           return (
@@ -138,7 +146,7 @@ export const ServerConfigPanel: React.FC<ServerConfigPanelProps> = ({
                   </div>
 
                   <Badge variant={server.guild.webhookUrl ? "secondary" : "outline"} className="w-full justify-center py-1 text-muted-foreground">
-                    <Zap className="h-3 w-3" />
+                    <DiscordIcon className="h-3 w-3" />
                     {server.guild.webhookUrl ? "Discord Webhook Conectado" : "Webhook Global (.env) em uso"}
                   </Badge>
                 </div>
@@ -165,6 +173,20 @@ export const ServerConfigPanel: React.FC<ServerConfigPanelProps> = ({
                       onClick={() => onToggleStatus(server.serverId)}
                     >
                       {isEnabled ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Testar webhook do Discord"
+                      title="Enviar mensagem de teste para o Discord"
+                      disabled={isTestingWebhook}
+                      onClick={() => onTestWebhook(server.serverId)}
+                    >
+                      {isTestingWebhook ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <DiscordIcon className="h-3.5 w-3.5" />
+                      )}
                     </Button>
                     <Button
                       variant="ghost"

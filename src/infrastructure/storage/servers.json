@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "id": "server1_ntobrasil_com_br",
+    "url": "https://server1.ntobrasil.com.br/index.php/guilds/view/3857",
+    "name": "Red Sky",
+    "enabled": true,
+    "webhookUrl": "https://discord.com/api/webhooks/1438709661179314196/mC0MBFh5VOaplskElFvMvruQhMkMFKNJ9XLL4Gb8zXuW_tu6HTdeSB9fd2POdU-AOG55"
+  },
+  {
+    "id": "server1_dbobrasil_com_br",
+    "url": "https://server1.dbobrasil.com.br/index.php/guilds/view/3222",
+    "name": "Hezbollah",
+    "enabled": true,
+    "webhookUrl": "https://discord.com/api/webhooks/1438709513191424278/AEMK2NS2yG95gI99r9lN9wTUYbXn_BJMhOcWjr2XI34Jtn9QVowg6whYoyXJMijhsYbE"
+  }
+]

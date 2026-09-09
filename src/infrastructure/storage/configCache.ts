@@ -18,7 +18,7 @@ class ConfigCache {
   private getFileModifiedTime = (): number => {
     try {
       return statSync(this.filePath).mtimeMs;
-    } catch {
+    } catch (err: unknown) {
       return 0;
     }
   };

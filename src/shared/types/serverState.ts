@@ -5,13 +5,14 @@ export interface ServerState {
     totalCharacters: number;
     processed: number;
     startTime: number;
-  };
+    isInitialSync: boolean;
+  } | null;
   verifying?: {
     totalCharacters: number;
     processed: number;
     startTime: number;
     elapsed: number;
-  };
+  } | null;
   finished?: {
     online: number;
     offline: number;
@@ -22,15 +23,15 @@ export interface ServerState {
     saved: boolean;
     duration: string;
     timestamp: number;
-  };
+  } | null;
   warn?: {
     message: string;
     timestamp: number;
-  };
+  } | null;
   nextCheck?: {
     timestamp: number;
     checkInterval: number;
-  };
+  } | null;
 }
 
 export interface ServerStates {

@@ -73,22 +73,12 @@ describe("webhookUtils", () => {
     expect(webhook).toBe("https://discord.com/api/webhooks/env");
   });
 
-  it("throws when no webhook is configured", () => {
-    expect(() =>
-      getWebhookUrl({
-        serverId: "server_with_no_webhook",
-        guild: {},
-      })
-    ).toThrow("webhookUrl não configurado");
-  });
-
-  it("throws error message containing server ID for easy diagnosis", () => {
-    expect(() =>
-      getWebhookUrl({
-        serverId: "myserver",
-        guild: {},
-      })
-    ).toThrow("WEBHOOK_URL_MYSERVER");
+  it("returns empty string when no webhook is configured", () => {
+    const webhook = getWebhookUrl({
+      serverId: "server_with_no_webhook",
+      guild: {},
+    });
+    expect(webhook).toBe("");
   });
 
   it("falls back to DISCORD_WEBHOOK_URL global env", () => {

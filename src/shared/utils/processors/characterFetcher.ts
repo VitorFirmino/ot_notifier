@@ -1,5 +1,6 @@
 import type { CharacterStatus, ProcessCharacterResult } from "@shared/types/index";
 import { getCharacterStatus } from "@infrastructure/scraping/scraper";
+import { isSensitiveServer } from "@infrastructure/scraping/utils/urlUtils";
 import { characterCache } from "../cache";
 
 export interface ProcessCharacterWithRetryParams {
@@ -50,8 +51,7 @@ export const processCharacterWithRetry = async ({
   }
 
   try {
-    const isServer1OrServer2 = serverId === "server1" || serverId === "server2";
-    const baseDelay = isServer1OrServer2
+    const baseDelay = isSensitiveServer(serverId)
       ? Math.max(requestDelay, 500)
       : requestDelay;
 

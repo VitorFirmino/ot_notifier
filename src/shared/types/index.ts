@@ -3,6 +3,7 @@ export type DeathInfo = {
   killers: string[];
   deathText: string;
   time?: string;
+  date?: string;
 };
 
 export type CharacterInfo = {
@@ -11,12 +12,49 @@ export type CharacterInfo = {
   up_streak?: number;
   last_milestone?: number;
   last_death?: DeathInfo | null;
+  isOnline?: boolean;
+  vocation?: string;
+  residence?: string;
+  sex?: string;
+  guildName?: string;
+  guildRank?: string;
+  accountStatus?: string;
+};
+
+export type CharacterGuildInfo = {
+  name: string;
+  rank?: string;
+};
+
+export type CharacterDetails = {
+  exists?: boolean;
+  name: string;
+  serverName?: string;
+  serverId?: string;
+  url?: string;
+  level: number;
+  vocation?: string;
+  residence?: string;
+  sex?: string;
+  guild?: CharacterGuildInfo;
+  accountStatus?: string;
+  isOnline: boolean;
+  lastLogin?: string;
+  createdAt?: string;
+  up_streak?: number;
+  last_milestone?: number;
+  deaths?: DeathInfo[];
+  error?: string;
 };
 
 export type GuildConfig = {
   url: string;
   webhookUrl?: string;
   enabled?: boolean;
+  logoUrl?: string;
+  emblemUrl?: string;
+  kills?: string;
+  world?: string;
 };
 
 export type Config = {
@@ -32,6 +70,14 @@ export type Character = {
 export type GuildMember = {
   name: string;
   url: string;
+};
+
+export type GuildDiscovered = {
+  name: string;
+  url: string;
+  logoUrl?: string;
+  kills?: string;
+  world?: string;
 };
 
 export type CharacterStatus = {
@@ -94,4 +140,73 @@ export type ServerConfig = {
     batchSize?: number;
     headers?: Record<string, string>;
   };
+  liveState?: {
+    processing?: { totalCharacters: number; processed: number; startTime: number; isInitialSync: boolean };
+    verifying?: { totalCharacters: number; processed: number; startTime: number; elapsed: number };
+  };
+};
+
+export type AddServerPayload = {
+  url: string;
+  name?: string;
+  webhookUrl?: string;
+  logoUrl?: string;
+  kills?: string;
+  world?: string;
+};
+
+export type UpdateServerPayload = {
+  serverName?: string;
+  enabled?: boolean;
+  webhookUrl?: string;
+  logoUrl?: string;
+  guild?: Partial<GuildConfig>;
+  settings?: Partial<ServerConfig["settings"]>;
+};
+
+export type InspectCharacterParams = {
+  name: string;
+  url?: string;
+  serverId?: string;
+};
+
+export type DiscoverGuildsPayload = {
+  url: string;
+};
+
+export type DiscoverGuildsResponse = {
+  guilds: GuildDiscovered[];
+  htmlLength?: number;
+};
+
+export type SystemStatsResponse = {
+  activeServers: number;
+  totalServers: number;
+  monitoredCharacters: number;
+  onlineCharacters: number;
+  antiBotStatus: string;
+  antiBotChecks: number;
+};
+
+export type ServerWebhookConfig = {
+  guild: { webhookUrl?: string };
+  serverId: string;
+};
+
+export type EventType = "level_up" | "level_down" | "death" | "guild_sync";
+
+export type ActivityEvent = {
+  id: string;
+  timestamp: string;
+  serverId: string;
+  serverName: string;
+  type: EventType;
+  characterName?: string;
+  level?: number;
+  previousLevel?: number;
+  killers?: string[];
+  details?: string;
+  streak?: number;
+  milestone?: number;
+  webhookSent: boolean;
 };

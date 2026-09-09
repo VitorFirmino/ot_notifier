@@ -1,21 +1,41 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { processCharacterResults, fetchAndProcessCharacters } from "../characterProcessor";
 import { processCharacters } from "@shared/utils/characterProcessor";
-import type { CharacterInfo, ProcessCharacterResult } from "@shared/types/index";
+import { sendWebhook } from "@infrastructure/webhooks/webhook";
+import { recordEvent } from "@infrastructure/events/eventLog";
+import type { CharacterInfo, ProcessCharacterResult, DeathInfo } from "@shared/types/index";
 
 vi.mock("@shared/utils/characterProcessor", () => ({
   processCharacters: vi.fn(),
 }));
 
 vi.mock("@infrastructure/webhooks/webhook", () => ({
-  sendWebhook: vi.fn().mockResolvedValue(undefined),
+  sendWebhook: vi.fn().mockResolvedValue(true),
+  sendDeathWebhook: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock("@infrastructure/events/eventLog", () => ({
+  recordEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockedProcessCharacters = vi.mocked(processCharacters);
+const mockedSendWebhook = vi.mocked(sendWebhook);
+const mockedRecordEvent = vi.mocked(recordEvent);
+
+const SERVER_ID = "server1";
+const SERVER_NAME = "Server 1";
+
+const death: DeathInfo = {
+  level: 99,
+  killers: ["Dragon"],
+  deathText: "Eliminado no nível 99 por Dragon",
+  time: "2024-01-15 10:30:00",
+};
 
 describe("CharacterProcessor Handler", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedSendWebhook.mockResolvedValue(true);
   });
 
   describe("processCharacterResults", () => {
@@ -61,6 +81,8 @@ describe("CharacterProcessor Handler", () => {
 
       const result = await processCharacterResults({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         results: mockResults,
         characters: mockCharacters,
       });
@@ -88,6 +110,8 @@ describe("CharacterProcessor Handler", () => {
 
       const result = await processCharacterResults({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         results: mockResults,
         characters: mockCharacters,
       });
@@ -115,6 +139,8 @@ describe("CharacterProcessor Handler", () => {
 
       const result = await processCharacterResults({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         results: mockResults,
         characters: mockCharacters,
       });
@@ -141,6 +167,8 @@ describe("CharacterProcessor Handler", () => {
 
       const result = await processCharacterResults({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         results: mockResults,
         characters: mockCharacters,
       });
@@ -160,6 +188,8 @@ describe("CharacterProcessor Handler", () => {
 
       const result = await processCharacterResults({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         results: mockResults,
         characters: mockCharacters,
       });
@@ -180,6 +210,8 @@ describe("CharacterProcessor Handler", () => {
 
       const result = await processCharacterResults({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         results: mockResults,
         characters: mockCharacters,
       });
@@ -202,6 +234,8 @@ describe("CharacterProcessor Handler", () => {
 
       const result = await processCharacterResults({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         results: mockResults,
         characters: mockCharacters,
       });
@@ -222,12 +256,127 @@ describe("CharacterProcessor Handler", () => {
 
       const result = await processCharacterResults({
         webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
         results: mockResults,
         characters: mockCharacters,
       });
 
       expect(result.stats.levelChanged).toBe(0);
       expect(result.stats.offline).toBe(1);
+    });
+
+    it("should baseline last_death on first-time init without recording a death event", async () => {
+      const mockResults: ProcessCharacterResult[] = [
+        {
+          name: "AAAz",
+          level: 75,
+          isOnline: true,
+          lastDeath: death,
+        },
+      ];
+
+      const result = await processCharacterResults({
+        webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
+        results: mockResults,
+        characters: mockCharacters,
+      });
+
+      expect(result.updatedCharacters.AAAz?.last_death).toEqual(death);
+      expect(mockedRecordEvent).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: "death" })
+      );
+    });
+
+    it("should record a death event when a new death is detected on an already-tracked character", async () => {
+      const charactersWithNoDeath: Record<string, CharacterInfo> = {
+        SrGUSTAVO: { ...mockCharacters.SrGUSTAVO, last_death: null },
+      };
+      const mockResults: ProcessCharacterResult[] = [
+        {
+          name: "SrGUSTAVO",
+          level: 150, // same level, only the death changed
+          isOnline: true,
+          lastDeath: death,
+        },
+      ];
+
+      const result = await processCharacterResults({
+        webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
+        results: mockResults,
+        characters: charactersWithNoDeath,
+      });
+
+      expect(result.updatedCharacters.SrGUSTAVO?.last_death).toEqual(death);
+      expect(mockedRecordEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serverId: SERVER_ID,
+          serverName: SERVER_NAME,
+          type: "death",
+          characterName: "SrGUSTAVO",
+          level: 99,
+        })
+      );
+    });
+
+    it("should not re-record the same death on a later check", async () => {
+      const charactersWithDeath: Record<string, CharacterInfo> = {
+        SrGUSTAVO: { ...mockCharacters.SrGUSTAVO, last_death: death },
+      };
+      const mockResults: ProcessCharacterResult[] = [
+        {
+          name: "SrGUSTAVO",
+          level: 150,
+          isOnline: true,
+          lastDeath: death,
+        },
+      ];
+
+      const result = await processCharacterResults({
+        webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
+        results: mockResults,
+        characters: charactersWithDeath,
+      });
+
+      expect(result.stats.levelChanged).toBe(0);
+      expect(mockedRecordEvent).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: "death" })
+      );
+    });
+
+    it("should record both the level_up and death events when a character levels up and died", async () => {
+      const charactersWithNoDeath: Record<string, CharacterInfo> = {
+        SrGUSTAVO: { ...mockCharacters.SrGUSTAVO, last_death: null },
+      };
+      const mockResults: ProcessCharacterResult[] = [
+        {
+          name: "SrGUSTAVO",
+          level: 151,
+          isOnline: true,
+          lastDeath: death,
+        },
+      ];
+
+      const result = await processCharacterResults({
+        webhookUrl: mockWebhookUrl,
+        serverId: SERVER_ID,
+        serverName: SERVER_NAME,
+        results: mockResults,
+        characters: charactersWithNoDeath,
+      });
+
+      expect(result.updatedCharacters.SrGUSTAVO?.last_level).toBe(151);
+      expect(result.updatedCharacters.SrGUSTAVO?.last_death).toEqual(death);
+      expect(mockedRecordEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "level_up" })
+      );
+      expect(mockedRecordEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "death" }));
     });
   });
 

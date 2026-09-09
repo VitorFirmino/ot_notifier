@@ -134,7 +134,8 @@ const shutdownSingleProcess = (serverId: string, proc: ChildProcess): Promise<vo
       } else {
         cleanup();
       }
-    } catch {
+    } catch (err: unknown) {
+      console.warn(`Error sending SIGTERM to ${serverId}:`, err);
       cleanup();
     }
   });
