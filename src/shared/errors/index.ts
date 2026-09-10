@@ -5,4 +5,4 @@ export {
   ScraperError,
   CloudflareChallengeError,
   ValidationError,
-} from "./AppError.js";
+} from "./AppError";
