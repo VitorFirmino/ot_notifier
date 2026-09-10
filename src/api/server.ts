@@ -1,6 +1,8 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
 import dotenv from "dotenv";
+import { fromNodeHeaders } from "better-auth/node";
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { FastifyAdapter } from "@bull-board/fastify";
@@ -42,6 +44,15 @@ import type {
   DiscoverGuildsPayload,
   CharacterInfo,
 } from "../shared/types/index.js";
+import { parseOrReply } from "./validation.js";
+import {
+  testWebhookBodySchema,
+  discoverGuildsBodySchema,
+  proxyImageQuerySchema,
+  addServerBodySchema,
+  updateServerBodySchema,
+  inspectCharacterBodySchema,
+} from "./schemas.js";
 
 dotenv.config({ quiet: true });
 
@@ -53,14 +64,64 @@ interface ServerParams {
   id: string;
 }
 
-export const buildFastifyServer = () => {
+declare module "fastify" {
+  interface FastifyRequest {
+    userId?: string;
+  }
+}
+
+export const buildFastifyServer = async () => {
+  const { auth } = await import("../infrastructure/auth/auth.js");
+
   const app = Fastify({
     logger: false,
   });
 
   app.register(cors, {
-    origin: "*",
+    origin: process.env.DASHBOARD_URL ?? "http://localhost:5173",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+  });
+
+  app.register(helmet, {
+    global: true,
+    contentSecurityPolicy: false,
+  });
+
+  app.addHook("onRequest", async (request, reply) => {
+    if (request.method === "OPTIONS" || request.url.startsWith("/api/auth/")) {
+      return;
+    }
+
+    const session = await auth.api.getSession({ headers: fromNodeHeaders(request.headers) });
+    if (!session) {
+      return reply.status(401).send({ error: "Não autenticado." });
+    }
+    request.userId = session.user.id;
+  });
+
+  app.route({
+    method: ["GET", "POST"],
+    url: "/api/auth/*",
+    handler: async (request, reply) => {
+      const url = new URL(request.url, `http://${request.headers.host}`);
+      const headers = fromNodeHeaders(request.headers);
+
+      const authRequest = new Request(url.toString(), {
+        method: request.method,
+        headers,
+        body:
+          request.method === "GET" || request.method === "HEAD"
+            ? undefined
+            : JSON.stringify(request.body),
+      });
+
+      const response = await auth.handler(authRequest);
+
+      reply.status(response.status);
+      response.headers.forEach((value, key) => reply.header(key, value));
+      return reply.send(response.body ? await response.text() : null);
+    },
   });
 
   try {
@@ -99,10 +160,9 @@ export const buildFastifyServer = () => {
   });
 
   app.post<{ Body: { webhookUrl?: string } }>("/api/test-webhook", async (request, reply) => {
-    const webhookUrl = request.body?.webhookUrl?.trim();
-    if (!webhookUrl) {
-      return reply.status(400).send({ error: "Informe a URL do webhook." });
-    }
+    const body = parseOrReply(testWebhookBodySchema, request.body, reply);
+    if (!body) return;
+    const webhookUrl = body.webhookUrl;
 
     try {
       await assertPublicHttpUrl(webhookUrl);
@@ -152,12 +212,10 @@ export const buildFastifyServer = () => {
   });
 
   app.post<{ Body: DiscoverGuildsPayload }>("/api/discover", async (request, reply) => {
-    const { url: rawUrl } = request.body || {};
-    if (!rawUrl) {
-      return reply.status(400).send({ error: "URL é obrigatória" });
-    }
+    const body = parseOrReply(discoverGuildsBodySchema, request.body, reply);
+    if (!body) return;
 
-    const targetUrl = normalizeBaseUrl(rawUrl);
+    const targetUrl = normalizeBaseUrl(body.url);
 
     try {
       await assertPublicHttpUrl(targetUrl);
@@ -182,10 +240,9 @@ export const buildFastifyServer = () => {
   });
 
   app.get<{ Querystring: { url?: string } }>("/api/proxy-image", async (request, reply) => {
-    const { url: rawUrl } = request.query;
-    if (!rawUrl) {
-      return reply.status(400).send({ error: "URL é obrigatória" });
-    }
+    const query = parseOrReply(proxyImageQuerySchema, request.query, reply);
+    if (!query) return;
+    const rawUrl = query.url;
 
     try {
       await assertPublicHttpUrl(rawUrl);
@@ -218,10 +275,9 @@ export const buildFastifyServer = () => {
   });
 
   app.post<{ Body: AddServerPayload }>("/api/servers", async (request, reply) => {
-    const { url, name, webhookUrl, logoUrl, kills, world } = request.body || {};
-    if (!url) {
-      return reply.status(400).send({ error: "URL é obrigatória" });
-    }
+    const body = parseOrReply(addServerBodySchema, request.body, reply);
+    if (!body) return;
+    const { url, name, webhookUrl, logoUrl, kills, world } = body;
 
     try {
       await assertPublicHttpUrl(url);
@@ -257,6 +313,7 @@ export const buildFastifyServer = () => {
         world: world || existingConfig?.guild.world,
       },
       characters: existingConfig?.characters || {},
+      createdByUserId: existingConfig?.createdByUserId ?? request.userId,
       isWorking: true,
       lastUpdate: new Date().toISOString(),
     };
@@ -379,8 +436,12 @@ export const buildFastifyServer = () => {
       if (!existing) {
         return reply.status(404).send({ error: "Servidor não encontrado" });
       }
+      if (existing.createdByUserId && existing.createdByUserId !== request.userId) {
+        return reply.status(403).send({ error: "Você não tem permissão para editar este servidor." });
+      }
 
-      const body = request.body || {};
+      const body = parseOrReply(updateServerBodySchema, request.body ?? {}, reply);
+      if (!body) return;
 
       if (body.guild?.url) {
         try {
@@ -393,6 +454,7 @@ export const buildFastifyServer = () => {
 
       const updated: ServerConfig = {
         ...existing,
+        createdByUserId: existing.createdByUserId ?? request.userId,
         serverName: body.serverName ?? existing.serverName,
         guild: {
           ...existing.guild,
@@ -421,16 +483,23 @@ export const buildFastifyServer = () => {
 
   app.delete<{ Params: ServerParams }>("/api/servers/:id", async (request, reply) => {
     const { id: serverId } = request.params;
+    const existing = loadServerConfig(serverId);
+    if (!existing) {
+      return reply.status(404).send({ error: "Servidor não encontrado" });
+    }
+    if (existing.createdByUserId !== request.userId) {
+      return reply.status(403).send({ error: "Você não tem permissão para remover este servidor." });
+    }
+
     await deleteServerConfig(serverId);
     await removeServerSchedule(serverId);
     return reply.status(200).send({ success: true, message: `Servidor ${serverId} removido` });
   });
 
   app.post<{ Body: InspectCharacterParams }>("/api/character/inspect", async (request, reply) => {
-    const { name, url: providedUrl, serverId } = request.body || {};
-    if (!name) {
-      return reply.status(400).send({ error: "Nome do personagem é obrigatório" });
-    }
+    const body = parseOrReply(inspectCharacterBodySchema, request.body, reply);
+    if (!body) return;
+    const { name, url: providedUrl, serverId } = body;
 
     let targetUrl = providedUrl;
     if (!targetUrl && serverId) {
@@ -472,13 +541,17 @@ export const buildFastifyServer = () => {
 };
 
 export const startApiServer = async () => {
-  const app = buildFastifyServer();
   try {
+    const { AppDataSource } = await import("../infrastructure/database/dataSource.js");
+    await AppDataSource.initialize();
+    console.log("🐘 [TypeORM] Conectado ao PostgreSQL.");
+
+    const app = await buildFastifyServer();
     await app.listen({ port: PORT, host: "0.0.0.0" });
     console.log(`🚀 Fastify REST API ativa em http://localhost:${PORT}`);
     console.log(`📊 Painel Bull-Board ativo em http://localhost:${PORT}/admin/queues`);
   } catch (err: unknown) {
-    app.log.error(err);
+    console.error("❌ Erro fatal ao iniciar a API:", err);
     process.exit(1);
   }
 };
