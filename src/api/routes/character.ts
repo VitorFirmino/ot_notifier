@@ -1,11 +1,11 @@
 import type { FastifyInstance } from "fastify";
-import { loadServerConfig } from "../../infrastructure/storage/serverConfigManager.js";
-import { fetchGuildPage } from "../../infrastructure/scraping/http/guildFetcher.js";
-import { parseCharacterDetailsFromHtml } from "../../infrastructure/scraping/parsers/characterParser.js";
-import { assertPublicHttpUrl, UnsafeUrlError } from "../../shared/utils/urlSafety.js";
-import type { InspectCharacterParams } from "../../shared/types/index.js";
-import { parseOrReply } from "../validation.js";
-import { inspectCharacterBodySchema } from "../schemas.js";
+import { loadServerConfig } from "@infrastructure/storage/serverConfigManager";
+import { fetchGuildPage } from "@infrastructure/scraping/http/guildFetcher";
+import { parseCharacterDetailsFromHtml } from "@infrastructure/scraping/parsers/characterParser";
+import { assertPublicHttpUrl, UnsafeUrlError } from "@shared/utils/urlSafety";
+import type { InspectCharacterParams } from "@shared/types/index";
+import { parseOrReply } from "../validation";
+import { inspectCharacterBodySchema } from "../schemas";
 
 export const registerCharacterRoutes = (app: FastifyInstance): void => {
   app.post<{ Body: InspectCharacterParams }>("/api/character/inspect", async (request, reply) => {

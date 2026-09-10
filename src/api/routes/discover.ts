@@ -1,9 +1,9 @@
 import type { FastifyInstance } from "fastify";
-import { discoverGuildRoute, normalizeBaseUrl } from "../../infrastructure/scraping/utils/guildRouteDiscovery.js";
-import { assertPublicHttpUrl, UnsafeUrlError } from "../../shared/utils/urlSafety.js";
-import type { DiscoverGuildsPayload } from "../../shared/types/index.js";
-import { parseOrReply } from "../validation.js";
-import { discoverGuildsBodySchema } from "../schemas.js";
+import { discoverGuildRoute, normalizeBaseUrl } from "@infrastructure/scraping/utils/guildRouteDiscovery";
+import { assertPublicHttpUrl, UnsafeUrlError } from "@shared/utils/urlSafety";
+import type { DiscoverGuildsPayload } from "@shared/types/index";
+import { parseOrReply } from "../validation";
+import { discoverGuildsBodySchema } from "../schemas";
 
 export const registerDiscoverRoutes = (app: FastifyInstance): void => {
   app.post<{ Body: DiscoverGuildsPayload }>("/api/discover", async (request, reply) => {

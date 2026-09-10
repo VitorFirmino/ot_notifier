@@ -8,25 +8,25 @@ import {
   updateServerCharacters,
   deleteServerConfig,
   updateServerWorkingStatus,
-} from "../../infrastructure/storage/serverConfigManager.js";
-import { getGuildMembers } from "../../infrastructure/scraping/parsers/guildParser.js";
-import { assertPublicHttpUrl, UnsafeUrlError } from "../../shared/utils/urlSafety.js";
-import { sendTestWebhook } from "../../infrastructure/webhooks/webhook.js";
-import { getWebhookUrl } from "../../application/workers/utils/webhookUtils.js";
-import { getAllServerStates } from "../../shared/utils/serverStateManager.js";
+} from "@infrastructure/storage/serverConfigManager";
+import { getGuildMembers } from "@infrastructure/scraping/parsers/guildParser";
+import { assertPublicHttpUrl, UnsafeUrlError } from "@shared/utils/urlSafety";
+import { sendTestWebhook } from "@infrastructure/webhooks/webhook";
+import { getWebhookUrl } from "@application/workers/utils/webhookUtils";
+import { getAllServerStates } from "@shared/utils/serverStateManager";
 import {
   addOrUpdateServerSchedule,
   removeServerSchedule,
   scheduleServerRetry,
   triggerServerCheckNow,
-} from "../../infrastructure/queue/serverQueueManager.js";
+} from "@infrastructure/queue/serverQueueManager";
 import {
   clearProcessingState,
   clearVerifyingState,
-} from "../../shared/utils/serverStateManager.js";
-import type { AddServerPayload, UpdateServerPayload, CharacterInfo } from "../../shared/types/index.js";
-import { parseOrReply } from "../validation.js";
-import { addServerBodySchema, updateServerBodySchema } from "../schemas.js";
+} from "@shared/utils/serverStateManager";
+import type { AddServerPayload, UpdateServerPayload, CharacterInfo } from "@shared/types/index";
+import { parseOrReply } from "../validation";
+import { addServerBodySchema, updateServerBodySchema } from "../schemas";
 
 interface ServerParams {
   id: string;

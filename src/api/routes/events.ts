@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { getRecentEvents } from "../../infrastructure/events/eventLog.js";
+import { getRecentEvents } from "@infrastructure/events/eventLog";
 
 export const registerEventRoutes = (app: FastifyInstance): void => {
   app.get<{ Querystring: { limit?: string } }>("/api/events", async (request, reply) => {

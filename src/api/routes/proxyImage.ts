@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { fetchImageProxied } from "../../infrastructure/scraping/utils/imageProxy.js";
-import { assertPublicHttpUrl, UnsafeUrlError } from "../../shared/utils/urlSafety.js";
-import { parseOrReply } from "../validation.js";
-import { proxyImageQuerySchema } from "../schemas.js";
+import { fetchImageProxied } from "@infrastructure/scraping/utils/imageProxy";
+import { assertPublicHttpUrl, UnsafeUrlError } from "@shared/utils/urlSafety";
+import { parseOrReply } from "../validation";
+import { proxyImageQuerySchema } from "../schemas";
 
 const ALLOWED_PROXIED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"];
 

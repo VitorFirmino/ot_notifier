@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { getAllServerConfigs } from "../../infrastructure/storage/serverConfigManager.js";
+import { getAllServerConfigs } from "@infrastructure/storage/serverConfigManager";
 
 export const registerStatsRoutes = (app: FastifyInstance): void => {
   app.get("/api/stats", async (_request, reply) => {
