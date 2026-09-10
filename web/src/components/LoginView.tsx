@@ -7,6 +7,7 @@ import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { authClient } from "@lib/authClient";
+import logo from "@assets/logo.png";
 
 const loginSchema = z
   .object({
@@ -56,48 +57,62 @@ export const LoginView: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-sm py-0">
-        <CardContent className="space-y-4 p-6">
-          <h1 className="font-heading text-lg font-semibold text-foreground">
-            {mode === "login" ? "Entrar" : "Criar conta"}
-          </h1>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="animate-drift absolute -top-32 -left-24 h-96 w-96 rounded-full bg-primary/20 blur-3xl" />
+        <div className="animate-drift absolute top-1/3 -right-32 h-[28rem] w-[28rem] rounded-full bg-warning/15 blur-3xl [animation-delay:-8s]" />
+        <div className="animate-drift absolute -bottom-40 left-1/4 h-96 w-96 rounded-full bg-success/15 blur-3xl [animation-delay:-16s]" />
+      </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-            {mode === "signup" && (
+      <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-6">
+        <img
+          src={logo}
+          alt="OT Notifier"
+          className="h-20 w-20 rounded-2xl object-cover shadow-[0_0_44px_-6px_var(--primary)]"
+        />
+
+        <Card className="w-full py-0" style={{ background: "color-mix(in oklab, var(--card) 58%, transparent)" }}>
+          <CardContent className="space-y-4 p-6">
+            <h1 className="font-heading text-lg font-semibold text-foreground">
+              {mode === "login" ? "Entrar" : "Criar conta"}
+            </h1>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+              {mode === "signup" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="name">Nome</Label>
+                  <Input id="name" aria-invalid={!!errors.name} {...register("name")} />
+                  {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+                </div>
+              )}
               <div className="space-y-1.5">
-                <Label htmlFor="name">Nome</Label>
-                <Input id="name" aria-invalid={!!errors.name} {...register("name")} />
-                {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" aria-invalid={!!errors.email} {...register("email")} />
+                {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
               </div>
-            )}
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" aria-invalid={!!errors.email} {...register("email")} />
-              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Senha</Label>
-              <Input id="password" type="password" aria-invalid={!!errors.password} {...register("password")} />
-              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
-            </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="password">Senha</Label>
+                <Input id="password" type="password" aria-invalid={!!errors.password} {...register("password")} />
+                {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+              </div>
 
-            {apiError && <p className="text-xs text-destructive">{apiError}</p>}
+              {apiError && <p className="text-xs text-destructive">{apiError}</p>}
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Enviando..." : mode === "login" ? "Entrar" : "Criar conta"}
-            </Button>
-          </form>
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? "Enviando..." : mode === "login" ? "Entrar" : "Criar conta"}
+              </Button>
+            </form>
 
-          <button
-            type="button"
-            className="cursor-pointer text-xs text-primary hover:underline"
-            onClick={() => setValue("mode", mode === "login" ? "signup" : "login")}
-          >
-            {mode === "login" ? "Não tem conta? Criar uma" : "Já tem conta? Entrar"}
-          </button>
-        </CardContent>
-      </Card>
+            <button
+              type="button"
+              className="cursor-pointer text-xs text-primary hover:underline"
+              onClick={() => setValue("mode", mode === "login" ? "signup" : "login")}
+            >
+              {mode === "login" ? "Não tem conta? Criar uma" : "Já tem conta? Entrar"}
+            </button>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
