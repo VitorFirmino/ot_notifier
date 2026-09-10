@@ -1,4 +1,4 @@
-import { TimeoutError } from "../errors/AppError.js";
+import { TimeoutError } from "../errors/AppError";
 
 export const withTimeout = <T>(
   promise: Promise<T>,
