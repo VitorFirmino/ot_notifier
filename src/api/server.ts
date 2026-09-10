@@ -289,6 +289,10 @@ export const buildFastifyServer = async () => {
     const serverId = extractServerIdFromUrl(url);
     const existingConfig = loadServerConfig(serverId);
 
+    if (existingConfig?.createdByUserId && existingConfig.createdByUserId !== request.userId) {
+      return reply.status(403).send({ error: "Você não tem permissão para modificar este servidor." });
+    }
+
     if (existingConfig?.guild.url) {
       try {
         if (new URL(existingConfig.guild.url).origin !== new URL(url).origin) {
