@@ -125,6 +125,7 @@ export type ServerConfig = {
   serverName: string;
   guild: GuildConfig;
   characters: Record<string, CharacterInfo>;
+  createdByUserId?: string;
   lastUpdate?: string;
   hasCloudflare?: boolean;
   cloudflareDetectedAt?: string;

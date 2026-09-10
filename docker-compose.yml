@@ -7,11 +7,33 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    # No depends_on postgres here — the scraping/monitoring orchestrator this
+    # container runs never touches Postgres; only `pnpm api` (run separately,
+    # outside Docker today) does.
     volumes:
       - storage_data:/app/src/infrastructure/storage/data
       - states_data:/app/data
       - ./src/infrastructure/storage/servers.json:/app/src/infrastructure/storage/servers.json
 
+  postgres:
+    image: postgres:16-alpine
+    container_name: ot_notifier_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER não configurado em .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD não configurado em .env}
+      POSTGRES_DB: ${POSTGRES_DB:-ot_notifier}
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ot_notifier"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   storage_data:
   states_data:
+  postgres_data:
