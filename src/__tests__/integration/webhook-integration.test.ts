@@ -9,7 +9,7 @@ vi.mock("@infrastructure/webhooks/webhook", () => ({
 }));
 
 vi.mock("@infrastructure/events/eventLog", () => ({
-  recordEvent: vi.fn().mockResolvedValue(undefined),
+  recordCharacterEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockedSendWebhook = vi.mocked(sendWebhook);

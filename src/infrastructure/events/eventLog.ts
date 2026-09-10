@@ -23,6 +23,16 @@ export const recordEvent = async (event: ActivityEvent): Promise<void> => {
   }
 };
 
+export const recordCharacterEvent = async (
+  params: Omit<ActivityEvent, "id" | "timestamp">
+): Promise<void> => {
+  await recordEvent({
+    id: `evt-${Date.now()}-${params.characterName}`,
+    timestamp: new Date().toISOString(),
+    ...params,
+  });
+};
+
 export const getRecentEvents = async (limit = 50): Promise<ActivityEvent[]> => {
   try {
     const redis = getRedis();

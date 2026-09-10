@@ -108,6 +108,14 @@ const getCustomRetryDelay = (error: Error): number | null => {
   return null;
 };
 
+const WEBHOOK_RETRY_OPTIONS = {
+  maxRetries: 5,
+  initialDelay: 1000,
+  maxDelay: 60000,
+  backoffMultiplier: 2,
+  getRetryDelay: getCustomRetryDelay,
+} as const;
+
 export const sendWebhook = async ({
   webhookUrl,
   name,
@@ -130,11 +138,7 @@ export const sendWebhook = async ({
 
   try {
     await retryWithBackoff(() => sendWebhookRequest(webhookUrl, content), {
-      maxRetries: 5,
-      initialDelay: 1000,
-      maxDelay: 60000,
-      backoffMultiplier: 2,
-      getRetryDelay: getCustomRetryDelay,
+      ...WEBHOOK_RETRY_OPTIONS,
       onRetry: handleLevelWebhookRetry(name),
     });
 
@@ -173,11 +177,7 @@ export const sendGuildSyncWebhook = async ({
 
   try {
     await retryWithBackoff(() => sendWebhookRequest(webhookUrl, content), {
-      maxRetries: 5,
-      initialDelay: 1000,
-      maxDelay: 60000,
-      backoffMultiplier: 2,
-      getRetryDelay: getCustomRetryDelay,
+      ...WEBHOOK_RETRY_OPTIONS,
       onRetry: handleGuildWebhookRetry,
     });
 
@@ -203,11 +203,7 @@ export const sendDeathWebhook = async ({
 
   try {
     await retryWithBackoff(() => sendWebhookRequest(webhookUrl, content), {
-      maxRetries: 5,
-      initialDelay: 1000,
-      maxDelay: 60000,
-      backoffMultiplier: 2,
-      getRetryDelay: getCustomRetryDelay,
+      ...WEBHOOK_RETRY_OPTIONS,
       onRetry: handleDeathWebhookRetry(name),
     });
 

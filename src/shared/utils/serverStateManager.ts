@@ -13,6 +13,15 @@ try {
   }
 }
 
+const releaseLockSafely = async (release: (() => Promise<void>) | undefined): Promise<void> => {
+  if (!release) return;
+  try {
+    await release();
+  } catch (releaseErr: unknown) {
+    console.warn("Error releasing lockfile:", releaseErr);
+  }
+};
+
 const loadStatesSync = (): ServerStates => {
   if (!existsSync(STATE_FILE)) return {};
   try {
@@ -59,13 +68,7 @@ export const atomicUpdate = async (
     };
     writeFileSync(STATE_FILE, JSON.stringify(newStates, null, 2), "utf-8");
   } finally {
-    if (release) {
-      try {
-        await release();
-      } catch (releaseErr: unknown) {
-        console.warn("Error releasing lockfile:", releaseErr);
-      }
-    }
+    await releaseLockSafely(release);
   }
 };
 
@@ -112,13 +115,7 @@ export const clearServerState = async (serverId: string): Promise<void> => {
   } catch (err: unknown) {
     console.warn(`Failed to clear server state for ${serverId}:`, err);
   } finally {
-    if (release) {
-      try {
-        await release();
-      } catch (releaseErr: unknown) {
-        console.warn("Error releasing lockfile:", releaseErr);
-      }
-    }
+    await releaseLockSafely(release);
   }
 };
 
@@ -139,13 +136,7 @@ export const cleanupServerStates = async (activeServerIds: string[]): Promise<vo
   } catch (err: unknown) {
     console.warn("Failed to cleanup server states:", err);
   } finally {
-    if (release) {
-      try {
-        await release();
-      } catch (releaseErr: unknown) {
-        console.warn("Error releasing lockfile:", releaseErr);
-      }
-    }
+    await releaseLockSafely(release);
   }
 };
 

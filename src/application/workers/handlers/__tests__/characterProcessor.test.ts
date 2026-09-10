@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { processCharacterResults, fetchAndProcessCharacters } from "../characterProcessor";
 import { processCharacters } from "@shared/utils/characterProcessor";
 import { sendWebhook } from "@infrastructure/webhooks/webhook";
-import { recordEvent } from "@infrastructure/events/eventLog";
+import { recordCharacterEvent } from "@infrastructure/events/eventLog";
 import type { CharacterInfo, ProcessCharacterResult, DeathInfo } from "@shared/types/index";
 
 vi.mock("@shared/utils/characterProcessor", () => ({
@@ -15,12 +15,12 @@ vi.mock("@infrastructure/webhooks/webhook", () => ({
 }));
 
 vi.mock("@infrastructure/events/eventLog", () => ({
-  recordEvent: vi.fn().mockResolvedValue(undefined),
+  recordCharacterEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockedProcessCharacters = vi.mocked(processCharacters);
 const mockedSendWebhook = vi.mocked(sendWebhook);
-const mockedRecordEvent = vi.mocked(recordEvent);
+const mockedRecordCharacterEvent = vi.mocked(recordCharacterEvent);
 
 const SERVER_ID = "server1";
 const SERVER_NAME = "Server 1";
@@ -285,7 +285,7 @@ describe("CharacterProcessor Handler", () => {
       });
 
       expect(result.updatedCharacters.AAAz?.last_death).toEqual(death);
-      expect(mockedRecordEvent).not.toHaveBeenCalledWith(
+      expect(mockedRecordCharacterEvent).not.toHaveBeenCalledWith(
         expect.objectContaining({ type: "death" })
       );
     });
@@ -312,7 +312,7 @@ describe("CharacterProcessor Handler", () => {
       });
 
       expect(result.updatedCharacters.SrGUSTAVO?.last_death).toEqual(death);
-      expect(mockedRecordEvent).toHaveBeenCalledWith(
+      expect(mockedRecordCharacterEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           serverId: SERVER_ID,
           serverName: SERVER_NAME,
@@ -345,7 +345,7 @@ describe("CharacterProcessor Handler", () => {
       });
 
       expect(result.stats.levelChanged).toBe(0);
-      expect(mockedRecordEvent).not.toHaveBeenCalledWith(
+      expect(mockedRecordCharacterEvent).not.toHaveBeenCalledWith(
         expect.objectContaining({ type: "death" })
       );
     });
@@ -373,10 +373,10 @@ describe("CharacterProcessor Handler", () => {
 
       expect(result.updatedCharacters.SrGUSTAVO?.last_level).toBe(151);
       expect(result.updatedCharacters.SrGUSTAVO?.last_death).toEqual(death);
-      expect(mockedRecordEvent).toHaveBeenCalledWith(
+      expect(mockedRecordCharacterEvent).toHaveBeenCalledWith(
         expect.objectContaining({ type: "level_up" })
       );
-      expect(mockedRecordEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "death" }));
+      expect(mockedRecordCharacterEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "death" }));
     });
   });
 

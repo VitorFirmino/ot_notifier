@@ -1,6 +1,6 @@
 import type { CharacterInfo, DeathInfo } from "@shared/types/index";
 import { sendWebhook } from "@infrastructure/webhooks/webhook";
-import { recordEvent } from "@infrastructure/events/eventLog";
+import { recordCharacterEvent } from "@infrastructure/events/eventLog";
 import { UP_MESSAGES } from "@infrastructure/storage/messageRules";
 
 interface LevelUpParams {
@@ -67,9 +67,7 @@ export const handleLevelUp = async (params: LevelUpParams): Promise<CharacterInf
     console.error(error);
   }
 
-  await recordEvent({
-    id: `evt-${Date.now()}-${name}`,
-    timestamp: new Date().toISOString(),
+  await recordCharacterEvent({
     serverId,
     serverName,
     type: "level_up",
@@ -104,9 +102,7 @@ export const handleLevelDown = async (params: LevelDownParams): Promise<Partial<
     console.error(error);
   }
 
-  await recordEvent({
-    id: `evt-${Date.now()}-${name}`,
-    timestamp: new Date().toISOString(),
+  await recordCharacterEvent({
     serverId,
     serverName,
     type: "level_down",

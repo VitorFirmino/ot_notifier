@@ -6,7 +6,7 @@ import {
   isFirstTimeCharacter,
 } from "../levelHandler";
 import { sendWebhook } from "@infrastructure/webhooks/webhook";
-import { recordEvent } from "@infrastructure/events/eventLog";
+import { recordCharacterEvent } from "@infrastructure/events/eventLog";
 import type { CharacterInfo } from "@shared/types/index";
 
 vi.mock("@infrastructure/webhooks/webhook", () => ({
@@ -14,11 +14,11 @@ vi.mock("@infrastructure/webhooks/webhook", () => ({
 }));
 
 vi.mock("@infrastructure/events/eventLog", () => ({
-  recordEvent: vi.fn().mockResolvedValue(undefined),
+  recordCharacterEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockedSendWebhook = vi.mocked(sendWebhook);
-const mockedRecordEvent = vi.mocked(recordEvent);
+const mockedRecordCharacterEvent = vi.mocked(recordCharacterEvent);
 
 const SERVER_ID = "server1";
 const SERVER_NAME = "Server 1";
@@ -152,7 +152,7 @@ describe("LevelHandler", () => {
         info: mockCharacter,
       });
 
-      expect(mockedRecordEvent).toHaveBeenCalledWith(
+      expect(mockedRecordCharacterEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           serverId: SERVER_ID,
           serverName: SERVER_NAME,
@@ -178,7 +178,7 @@ describe("LevelHandler", () => {
         info: mockCharacter,
       });
 
-      expect(mockedRecordEvent).toHaveBeenCalledWith(
+      expect(mockedRecordCharacterEvent).toHaveBeenCalledWith(
         expect.objectContaining({ webhookSent: false })
       );
     });
@@ -196,7 +196,7 @@ describe("LevelHandler", () => {
         info: mockCharacter,
       });
 
-      expect(mockedRecordEvent).toHaveBeenCalledWith(
+      expect(mockedRecordCharacterEvent).toHaveBeenCalledWith(
         expect.objectContaining({ type: "level_up", webhookSent: false })
       );
     });
@@ -267,7 +267,7 @@ describe("LevelHandler", () => {
         currentLevel: 149,
       });
 
-      expect(mockedRecordEvent).toHaveBeenCalledWith(
+      expect(mockedRecordCharacterEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           serverId: SERVER_ID,
           serverName: SERVER_NAME,
