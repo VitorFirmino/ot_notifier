@@ -9,6 +9,8 @@ import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
 import dotenv from "dotenv";
+import { extractServerIdFromUrl } from "@infrastructure/storage/serverConfigManager";
+import { assertSafeServerId } from "@shared/utils/serverIdSafety";
 
 dotenv.config({ quiet: true });
 
@@ -54,12 +56,8 @@ const saveServers = (servers: ServerEntry[]): void => {
   writeFileSync(SERVERS_JSON, JSON.stringify(servers, null, 2) + "\n", "utf-8");
 };
 
-const SAFE_SERVER_ID_PATTERN = /^[a-z0-9_-]+$/i;
-
 const getServerJsonPath = (serverId: string): string => {
-  if (!SAFE_SERVER_ID_PATTERN.test(serverId)) {
-    throw new Error(`serverId inválido: ${serverId}`);
-  }
+  assertSafeServerId(serverId);
   const path = resolve(DATA_DIR, `${serverId}.json`);
   if (dirname(path) !== DATA_DIR) {
     throw new Error(`serverId inválido: ${serverId}`);
@@ -88,36 +86,10 @@ const saveServerJson = (config: ServerJson): void => {
   writeFileSync(path, JSON.stringify(config, null, 2) + "\n", "utf-8");
 };
 
-const extractServerId = (url: string): string => {
-  try {
-    const parsedUrl = new URL(url);
-    const hostname = parsedUrl.hostname.toLowerCase().replace(/^www\./, "");
-    const parts = hostname.split(".");
-
-    if (hostname.includes("otdbo.com.br")) {
-      const guild = parsedUrl.searchParams.get("GuildName") || parsedUrl.searchParams.get("guildname");
-      if (guild) {
-        const slug = guild
-          .replace(/\+/g, " ")
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "_")
-          .replace(/^_+|_+$/g, "");
-        if (slug) return `otdbo_${slug}`;
-      }
-    }
-
-    return parts[0].toLowerCase().replace(/[^a-z0-9_]/g, "_");
-  } catch (err: unknown) {
-    return "unknown";
-  }
-};
-
 const getWebhookForServer = (entry: ServerEntry): string | null => {
   if (entry.webhookUrl) return entry.webhookUrl;
 
-  const serverId = entry.id || extractServerId(entry.url);
+  const serverId = entry.id || extractServerIdFromUrl(entry.url);
 
   const serverJson = loadServerJson(serverId);
   if (serverJson?.guild?.webhookUrl) return serverJson.guild.webhookUrl;
@@ -206,7 +178,7 @@ const listServers = (): void => {
   }
 
   const rows = servers.map((server, serverIndex) => {
-    const serverId = server.id || extractServerId(server.url);
+    const serverId = server.id || extractServerIdFromUrl(server.url);
     const charCount = getCharacterCount(serverId);
     const webhook = getWebhookForServer(server);
     const statusIcon = server.enabled ? chalk.green("●") : chalk.red("○");
@@ -245,7 +217,7 @@ const addServer = async (): Promise<void> => {
     return;
   }
 
-  const suggestedId = extractServerId(url);
+  const suggestedId = extractServerIdFromUrl(url);
   const id = await ask("ID do servidor (slug)", suggestedId);
 
   const webhookUrl = await ask("URL do webhook Discord (deixe em branco para configurar depois)");
@@ -254,7 +226,7 @@ const addServer = async (): Promise<void> => {
   }
 
   const servers = loadServers();
-  const existingIndex = servers.findIndex((server) => (server.id || extractServerId(server.url)) === id);
+  const existingIndex = servers.findIndex((server) => (server.id || extractServerIdFromUrl(server.url)) === id);
 
   if (existingIndex !== -1) {
     const overwrite = await askYN(`Servidor '${id}' já existe. Atualizar?`);
@@ -317,7 +289,7 @@ const configureWebhook = async (): Promise<void> => {
   }
 
   const server = servers[index];
-  const serverId = server.id || extractServerId(server.url);
+  const serverId = server.id || extractServerIdFromUrl(server.url);
   const currentWebhook = getWebhookForServer(server);
 
   console.log();
@@ -446,7 +418,7 @@ const toggleServer = async (): Promise<void> => {
   servers[index] = { ...server, enabled: newState };
   saveServers(servers);
 
-  const serverId = server.id || extractServerId(server.url);
+  const serverId = server.id || extractServerIdFromUrl(server.url);
   const serverJson = loadServerJson(serverId);
   if (serverJson) {
     serverJson.guild.enabled = newState;
@@ -517,7 +489,7 @@ const showDetails = async (): Promise<void> => {
   }
 
   const server = servers[index];
-  const serverId = server.id || extractServerId(server.url);
+  const serverId = server.id || extractServerIdFromUrl(server.url);
   const serverJson = loadServerJson(serverId);
   const webhook = getWebhookForServer(server);
   const charCount = Object.keys(serverJson?.characters ?? {}).length;

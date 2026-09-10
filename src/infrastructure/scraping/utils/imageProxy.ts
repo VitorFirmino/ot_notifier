@@ -1,6 +1,6 @@
 import axios from "axios";
 import { createRequestHeaders } from "../http/axiosClient";
-import { extractServerIdFromUrl } from "./urlUtils";
+import { extractServerIdFromUrl } from "@shared/utils/serverIdentity";
 import { playwrightManager } from "../playwrightManager";
 import { assertPublicHttpUrl } from "@shared/utils/urlSafety";
 

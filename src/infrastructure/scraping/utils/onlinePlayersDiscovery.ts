@@ -1,7 +1,7 @@
 import * as cheerio from "cheerio";
 import { createRequestHeaders, fetchWithAxiosResult, type AxiosFetchResult } from "../http/axiosClient";
 import { isCharacterProfileHref, extractCharacterNameFromHref } from "../scrapers/characterLinkUtils";
-import { extractServerIdFromUrl } from "./urlUtils";
+import { extractServerIdFromUrl } from "@shared/utils/serverIdentity";
 import { playwrightManager } from "../playwrightManager";
 
 const CANDIDATE_TIMEOUT_MS = 8000;

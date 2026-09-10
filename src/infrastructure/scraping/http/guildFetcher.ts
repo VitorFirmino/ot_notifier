@@ -6,7 +6,7 @@ import {
   getCookieJar,
 } from "./axiosClient";
 import { scheduleWithBottleneck } from "./bottleneckLimiter";
-import { extractServerIdFromUrl } from "../utils/urlUtils";
+import { extractServerIdFromUrl } from "@shared/utils/serverIdentity";
 import {
   detectCloudflareFromResponse,
   detectCloudflareFromHtml,

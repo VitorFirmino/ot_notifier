@@ -1,6 +1,6 @@
 import { createRequestHeaders, fetchWithAxiosResult, type AxiosFetchResult } from "../http/axiosClient";
 import { discoverGuildsFromList, isGuildNotExistHtml } from "../parsers/guildParser";
-import { extractServerIdFromUrl } from "./urlUtils";
+import { extractServerIdFromUrl } from "@shared/utils/serverIdentity";
 import { playwrightManager } from "../playwrightManager";
 import type { GuildDiscovered } from "../../../shared/types/index";
 
