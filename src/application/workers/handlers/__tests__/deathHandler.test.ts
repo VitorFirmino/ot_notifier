@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { handleDeath, isNewDeath } from "../deathHandler";
 import { sendDeathWebhook } from "@infrastructure/webhooks/webhook";
-import { recordEvent } from "@infrastructure/events/eventLog";
+import { recordCharacterEvent } from "@infrastructure/events/eventLog";
 import type { DeathInfo } from "@shared/types/index";
 
 vi.mock("@infrastructure/webhooks/webhook", () => ({
@@ -9,11 +9,11 @@ vi.mock("@infrastructure/webhooks/webhook", () => ({
 }));
 
 vi.mock("@infrastructure/events/eventLog", () => ({
-  recordEvent: vi.fn().mockResolvedValue(undefined),
+  recordCharacterEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockedSendDeathWebhook = vi.mocked(sendDeathWebhook);
-const mockedRecordEvent = vi.mocked(recordEvent);
+const mockedRecordCharacterEvent = vi.mocked(recordCharacterEvent);
 
 const SERVER_ID = "server1";
 const SERVER_NAME = "Server 1";
@@ -65,7 +65,7 @@ describe("deathHandler", () => {
         death,
       });
 
-      expect(mockedRecordEvent).toHaveBeenCalledWith(
+      expect(mockedRecordCharacterEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           serverId: SERVER_ID,
           serverName: SERVER_NAME,
@@ -90,7 +90,7 @@ describe("deathHandler", () => {
       });
 
       expect(result.last_death).toEqual(death);
-      expect(mockedRecordEvent).toHaveBeenCalledWith(
+      expect(mockedRecordCharacterEvent).toHaveBeenCalledWith(
         expect.objectContaining({ type: "death", webhookSent: false })
       );
     });

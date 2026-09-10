@@ -111,6 +111,14 @@ const WARN_MESSAGES = {
   TEMP_ERROR: "Atualização indisponível no momento.",
 } as const;
 
+const buildWarnState = (message: string): { message: string; timestamp: number } => ({
+  message,
+  timestamp: Date.now(),
+});
+
+const classifyCheckFailure = (isAntiBot: boolean, isDown: boolean): string =>
+  isAntiBot ? WARN_MESSAGES.PROTECTED : isDown ? WARN_MESSAGES.DOWN : WARN_MESSAGES.TEMP_ERROR;
+
 const withTimeout = async <T>(
   operation: Promise<T>,
   timeoutMs: number,
@@ -159,10 +167,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
     if (guild.enabled === false) {
       await updateServerState(serverId, {
         name: serverName,
-        warn: {
-          message: "Guild desabilitada",
-          timestamp: Date.now(),
-        },
+        warn: buildWarnState("Guild desabilitada"),
       });
       return;
     }
@@ -195,10 +200,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
               duration,
               timestamp: Date.now(),
             },
-            warn: {
-              message: WARN_MESSAGES.EMPTY_GUILD,
-              timestamp: Date.now(),
-            },
+            warn: buildWarnState(WARN_MESSAGES.EMPTY_GUILD),
           });
           return;
         }
@@ -253,14 +255,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
         console.warn(`⚠️ [${serverId}] Erro ao sincronizar guild: ${errorMsg}`);
         await updateServerState(serverId, {
           name: serverName,
-          warn: {
-            message: isAntiBot
-              ? WARN_MESSAGES.PROTECTED
-              : isDown
-                ? WARN_MESSAGES.DOWN
-                : WARN_MESSAGES.TEMP_ERROR,
-            timestamp: Date.now(),
-          },
+          warn: buildWarnState(classifyCheckFailure(isAntiBot, isDown)),
         });
         return;
       }
@@ -269,10 +264,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
     if (Object.keys(characters).length === 0) {
       await updateServerState(serverId, {
         name: serverName,
-        warn: {
-          message: "Nenhum personagem para monitorar",
-          timestamp: Date.now(),
-        },
+        warn: buildWarnState("Nenhum personagem para monitorar"),
       });
       return;
     }
@@ -514,20 +506,14 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
           await syncScheduleForWorkingStatus(serverId, false, settings);
           await updateServerState(serverId, {
             name: serverName,
-            warn: {
-              message: WARN_MESSAGES.DOWN,
-              timestamp: Date.now(),
-            },
+            warn: buildWarnState(WARN_MESSAGES.DOWN),
           });
         } else if (allErrorsAreAntiBot) {
           await updateServerWorkingStatus(serverId, true);
           await syncScheduleForWorkingStatus(serverId, true, settings);
           await updateServerState(serverId, {
             name: serverName,
-            warn: {
-              message: WARN_MESSAGES.PROTECTED,
-              timestamp: Date.now(),
-            },
+            warn: buildWarnState(WARN_MESSAGES.PROTECTED),
           });
         } else {
           await updateServerWorkingStatus(serverId, true);
@@ -557,14 +543,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
       await clearProcessingState(serverId);
       await updateServerState(serverId, {
         name: serverName,
-        warn: {
-          message: isAntiBot
-            ? WARN_MESSAGES.PROTECTED
-            : isDown
-            ? WARN_MESSAGES.DOWN
-            : WARN_MESSAGES.TEMP_ERROR,
-          timestamp: Date.now(),
-        },
+        warn: buildWarnState(classifyCheckFailure(isAntiBot, isDown)),
       });
       return;
     }
@@ -581,14 +560,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
     }
     await updateServerState(serverId, {
       name: serverConfig?.serverName || serverId,
-      warn: {
-        message: isAntiBot
-          ? WARN_MESSAGES.PROTECTED
-          : isDown
-            ? WARN_MESSAGES.DOWN
-            : WARN_MESSAGES.TEMP_ERROR,
-        timestamp: Date.now(),
-      },
+      warn: buildWarnState(classifyCheckFailure(isAntiBot, isDown)),
     });
     throw error;
   } finally {

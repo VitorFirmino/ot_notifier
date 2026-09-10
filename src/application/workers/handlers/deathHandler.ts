@@ -1,6 +1,6 @@
 import type { CharacterInfo, DeathInfo } from "@shared/types/index";
 import { sendDeathWebhook } from "@infrastructure/webhooks/webhook";
-import { recordEvent } from "@infrastructure/events/eventLog";
+import { recordCharacterEvent } from "@infrastructure/events/eventLog";
 
 interface DeathParams {
   webhookUrl: string;
@@ -27,9 +27,7 @@ export const handleDeath = async (params: DeathParams): Promise<Partial<Characte
     console.error(error);
   }
 
-  await recordEvent({
-    id: `evt-${Date.now()}-${name}`,
-    timestamp: new Date().toISOString(),
+  await recordCharacterEvent({
     serverId,
     serverName,
     type: "death",
