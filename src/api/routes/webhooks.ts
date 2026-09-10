@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { assertPublicHttpUrl, UnsafeUrlError } from "../../shared/utils/urlSafety.js";
-import { sendTestWebhook } from "../../infrastructure/webhooks/webhook.js";
-import { parseOrReply } from "../validation.js";
-import { testWebhookBodySchema } from "../schemas.js";
+import { assertPublicHttpUrl, UnsafeUrlError } from "@shared/utils/urlSafety";
+import { sendTestWebhook } from "@infrastructure/webhooks/webhook";
+import { parseOrReply } from "../validation";
+import { testWebhookBodySchema } from "../schemas";
 
 export const registerWebhookRoutes = (app: FastifyInstance): void => {
   app.post<{ Body: { webhookUrl?: string } }>("/api/test-webhook", async (request, reply) => {

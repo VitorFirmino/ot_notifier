@@ -6,16 +6,16 @@ import { fromNodeHeaders } from "better-auth/node";
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { FastifyAdapter } from "@bull-board/fastify";
-import { getServerCheckQueue } from "../infrastructure/queue/serverQueueManager.js";
-import { getAuthEnv } from "../shared/utils/authEnv.js";
-import { registerAuthProxyRoute } from "./routes/authProxy.js";
-import { registerServerRoutes } from "./routes/servers.js";
-import { registerWebhookRoutes } from "./routes/webhooks.js";
-import { registerEventRoutes } from "./routes/events.js";
-import { registerStatsRoutes } from "./routes/stats.js";
-import { registerDiscoverRoutes } from "./routes/discover.js";
-import { registerProxyImageRoutes } from "./routes/proxyImage.js";
-import { registerCharacterRoutes } from "./routes/character.js";
+import { getServerCheckQueue } from "@infrastructure/queue/serverQueueManager";
+import { getAuthEnv } from "@shared/utils/authEnv";
+import { registerAuthProxyRoute } from "./routes/authProxy";
+import { registerServerRoutes } from "./routes/servers";
+import { registerWebhookRoutes } from "./routes/webhooks";
+import { registerEventRoutes } from "./routes/events";
+import { registerStatsRoutes } from "./routes/stats";
+import { registerDiscoverRoutes } from "./routes/discover";
+import { registerProxyImageRoutes } from "./routes/proxyImage";
+import { registerCharacterRoutes } from "./routes/character";
 
 dotenv.config({ quiet: true });
 
@@ -29,7 +29,7 @@ declare module "fastify" {
 }
 
 export const buildFastifyServer = async () => {
-  const { auth } = await import("../infrastructure/auth/auth.js");
+  const { auth } = await import("@infrastructure/auth/auth");
 
   const app = Fastify({
     logger: false,
@@ -101,7 +101,7 @@ export const buildFastifyServer = async () => {
 
 export const startApiServer = async () => {
   try {
-    const { AppDataSource } = await import("../infrastructure/database/dataSource.js");
+    const { AppDataSource } = await import("@infrastructure/database/dataSource");
     await AppDataSource.initialize();
     console.log("🐘 [TypeORM] Conectado ao PostgreSQL.");
 

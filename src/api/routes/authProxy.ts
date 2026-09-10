@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { fromNodeHeaders } from "better-auth/node";
-import type { auth } from "../../infrastructure/auth/auth.js";
+import type { auth } from "@infrastructure/auth/auth";
 
 export const registerAuthProxyRoute = (app: FastifyInstance, authInstance: typeof auth): void => {
   app.route({
