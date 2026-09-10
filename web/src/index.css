@@ -103,6 +103,15 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
 @layer components {
   .dashboard-layout {
     display: flex;
@@ -178,8 +187,14 @@ h1, h2, h3, h4, h5, h6 {
     animation: drift 24s ease-in-out infinite;
   }
 
+  .animate-breathe {
+    animation: breathe 4s ease-in-out infinite;
+    will-change: transform;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .animate-drift {
+    .animate-drift,
+    .animate-breathe {
       animation: none;
     }
   }

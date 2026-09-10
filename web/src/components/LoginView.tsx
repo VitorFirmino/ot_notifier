@@ -66,11 +66,13 @@ export const LoginView: React.FC = () => {
       </div>
 
       <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-6">
-        <img
-          src={logo}
-          alt="OT Notifier"
-          className="h-20 w-20 rounded-2xl object-cover shadow-[0_0_44px_-6px_var(--primary)]"
-        />
+        <div className="animate-breathe">
+          <img
+            src={logo}
+            alt="OT Notifier"
+            className="h-20 w-20 rounded-2xl object-cover shadow-[0_0_44px_-6px_var(--primary)] transition-transform duration-300 ease-out hover:scale-110"
+          />
+        </div>
 
         <Card className="w-full py-0" style={{ background: "color-mix(in oklab, var(--card) 58%, transparent)" }}>
           <CardContent className="space-y-5 p-8">
