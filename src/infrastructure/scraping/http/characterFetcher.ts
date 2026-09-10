@@ -7,7 +7,7 @@ import {
   logAxiosError,
 } from "./axiosClient";
 import { parseCharacterFromHtml } from "../parsers/characterParser";
-import { extractServerIdFromUrl } from "../utils/urlUtils";
+import { extractServerIdFromUrl } from "@shared/utils/serverIdentity";
 import { detectServerFatalPage } from "../utils/pageHealthDetector";
 import { markServerAsCloudflare } from "../utils/cloudflareDetector";
 import { playwrightManager } from "../playwrightManager";

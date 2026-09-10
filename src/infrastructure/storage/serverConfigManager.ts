@@ -3,6 +3,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import * as lockfile from "proper-lockfile";
 import type { CharacterInfo, GuildConfig, ServerConfig } from "@shared/types/index";
+import { assertSafeServerId } from "@shared/utils/serverIdSafety";
+import { extractServerIdFromUrl, normalizeServerId } from "@shared/utils/serverIdentity";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,14 +32,6 @@ const cache = new Map<string, ConfigCache>();
 const ensureConfigDir = (): void => {
   if (!existsSync(CONFIG_DIR)) {
     mkdirSync(CONFIG_DIR, { recursive: true });
-  }
-};
-
-const SAFE_SERVER_ID_PATTERN = /^[a-z0-9_-]+$/i;
-
-const assertSafeServerId = (serverId: string): void => {
-  if (!SAFE_SERVER_ID_PATTERN.test(serverId)) {
-    throw new Error(`serverId inválido: ${serverId}`);
   }
 };
 
@@ -75,41 +69,7 @@ const getFileModifiedTime = (filePath: string): number => {
   }
 };
 
-const toSafeSlug = (value: string): string =>
-  value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-
-const normalizeServerId = (value: string): string =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9_]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-
-export const extractServerIdFromUrl = (url: string): string => {
-  try {
-    const urlObj = new URL(url);
-    const hostname = urlObj.hostname.toLowerCase();
-
-    if (hostname.includes("otdbo.com.br")) {
-      const guildName = urlObj.searchParams.get("GuildName") || urlObj.searchParams.get("guildname");
-      if (guildName) {
-        const guildSlug = toSafeSlug(guildName.replace(/\+/g, " "));
-        if (guildSlug) {
-          return `otdbo_${guildSlug}`;
-        }
-      }
-    }
-
-    const cleanHostname = hostname.replace(/^www\./, "");
-    return toSafeSlug(cleanHostname) || cleanHostname;
-  } catch (err: unknown) {
-    return "unknown";
-  }
-};
+export { extractServerIdFromUrl };
 
 export const loadServerConfig = (serverId: string): ServerConfig | null => {
   let configPath: string;
