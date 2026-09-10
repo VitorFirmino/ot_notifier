@@ -24,6 +24,8 @@ import {
   useUpdateServer,
 } from "@hooks/useServerMutations";
 import { useQueryClient } from "@tanstack/react-query";
+import { authClient } from "@lib/authClient";
+import { LoginView } from "@components/LoginView";
 
 type TabId = "dashboard" | "servers" | "characters" | "feed" | "settings";
 
@@ -66,6 +68,20 @@ const computeStats = (servers: ServerConfig[], events: ActivityEvent[]): SystemS
 };
 
 export default function App() {
+  const { data: session, isPending: isSessionLoading } = authClient.useSession();
+
+  if (isSessionLoading) {
+    return null;
+  }
+
+  if (!session) {
+    return <LoginView />;
+  }
+
+  return <AuthenticatedApp />;
+}
+
+function AuthenticatedApp() {
   const location = useLocation();
   const navigate = useNavigate();
   const activeTab = getTabFromPath(location.pathname);

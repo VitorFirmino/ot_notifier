@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Webhook, Bot, ShieldCheck, Save, BellRing, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { Card, CardContent } from "@components/ui/card";
 import { Button } from "@components/ui/button";
@@ -8,16 +11,18 @@ import { Switch } from "@components/ui/switch";
 import { Alert, AlertDescription } from "@components/ui/alert";
 import { api } from "@services/api";
 
+const settingsSchema = z.object({
+  discordWebhook: z.union([z.literal(""), z.url("Informe uma URL válida.")]),
+  telegramToken: z.string(),
+  telegramChatId: z.string(),
+  scrapingInterval: z.number().min(15, "O intervalo mínimo é 15 segundos.").max(600, "O intervalo máximo é 600 segundos."),
+});
+
+type SettingsFormValues = z.infer<typeof settingsSchema>;
+
 export const GlobalSettingsView: React.FC = () => {
-  const [discordWebhook, setDiscordWebhook] = useState(
-    localStorage.getItem("ot_discord_webhook") || ""
-  );
-  const [telegramToken, setTelegramToken] = useState(localStorage.getItem("ot_telegram_token") || "");
-  const [telegramChatId, setTelegramChatId] = useState(localStorage.getItem("ot_telegram_chat_id") || "");
   const [enableDiscord, setEnableDiscord] = useState(true);
   const [enableTelegram, setEnableTelegram] = useState(false);
-
-  const [scrapingInterval, setScrapingInterval] = useState(60);
   const [useAntiBot, setUseAntiBot] = useState(true);
   const [humanizePointer, setHumanizePointer] = useState(true);
 
@@ -25,11 +30,26 @@ export const GlobalSettingsView: React.FC = () => {
   const [testingWebhook, setTestingWebhook] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
 
-  const handleSave = (event: React.FormEvent) => {
-    event.preventDefault();
-    localStorage.setItem("ot_discord_webhook", discordWebhook);
-    localStorage.setItem("ot_telegram_token", telegramToken);
-    localStorage.setItem("ot_telegram_chat_id", telegramChatId);
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<SettingsFormValues>({
+    resolver: zodResolver(settingsSchema),
+    defaultValues: {
+      discordWebhook: localStorage.getItem("ot_discord_webhook") || "",
+      telegramToken: localStorage.getItem("ot_telegram_token") || "",
+      telegramChatId: localStorage.getItem("ot_telegram_chat_id") || "",
+      scrapingInterval: 60,
+    },
+  });
+  const discordWebhook = watch("discordWebhook");
+
+  const onSave = (values: SettingsFormValues) => {
+    localStorage.setItem("ot_discord_webhook", values.discordWebhook);
+    localStorage.setItem("ot_telegram_token", values.telegramToken);
+    localStorage.setItem("ot_telegram_chat_id", values.telegramChatId);
 
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
@@ -42,8 +62,7 @@ export const GlobalSettingsView: React.FC = () => {
       await api.testWebhookUrl(discordWebhook);
       setTestResult("✅ Mensagem de teste enviada! Confira o canal Discord.");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erro ao enviar notificação de teste.";
-      setTestResult(`❌ ${message}`);
+      setTestResult("❌ Não foi possível enviar a mensagem de teste. Verifique a URL do webhook.");
     } finally {
       setTestingWebhook(false);
     }
@@ -67,7 +86,7 @@ export const GlobalSettingsView: React.FC = () => {
             </div>
           </div>
 
-          <Button onClick={handleSave}>
+          <Button onClick={handleSubmit(onSave)}>
             <Save className="h-4 w-4" />
             {savedSuccess ? "Salvo!" : "Salvar alterações"}
           </Button>
@@ -81,7 +100,7 @@ export const GlobalSettingsView: React.FC = () => {
         </Alert>
       )}
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <form onSubmit={handleSubmit(onSave)} className="space-y-6">
         <Card className="py-0">
           <CardContent className="space-y-5 p-6">
             <div className="flex items-center gap-2 border-b border-border pb-3 text-sm font-medium text-primary">
@@ -100,11 +119,14 @@ export const GlobalSettingsView: React.FC = () => {
                 </div>
                 <Input
                   type="url"
-                  value={discordWebhook}
-                  onChange={(event) => setDiscordWebhook(event.target.value)}
                   placeholder="https://discord.com/api/webhooks/..."
                   className="font-mono text-xs"
+                  aria-invalid={!!errors.discordWebhook}
+                  {...register("discordWebhook")}
                 />
+                {errors.discordWebhook && (
+                  <p className="text-[11px] text-destructive">{errors.discordWebhook.message}</p>
+                )}
                 <Button
                   type="button"
                   variant="outline"
@@ -128,17 +150,15 @@ export const GlobalSettingsView: React.FC = () => {
                 <div className="space-y-2">
                   <Input
                     type="text"
-                    value={telegramToken}
-                    onChange={(event) => setTelegramToken(event.target.value)}
                     placeholder="Bot API Token (ex: 123456:ABC-DEF1234...)"
                     className="font-mono text-xs"
+                    {...register("telegramToken")}
                   />
                   <Input
                     type="text"
-                    value={telegramChatId}
-                    onChange={(event) => setTelegramChatId(event.target.value)}
                     placeholder="Chat ID ou @canal"
                     className="font-mono text-xs"
+                    {...register("telegramChatId")}
                   />
                 </div>
               </div>
@@ -190,9 +210,12 @@ export const GlobalSettingsView: React.FC = () => {
                   type="number"
                   min={15}
                   max={600}
-                  value={scrapingInterval}
-                  onChange={(event) => setScrapingInterval(Number(event.target.value))}
+                  aria-invalid={!!errors.scrapingInterval}
+                  {...register("scrapingInterval", { valueAsNumber: true })}
                 />
+                {errors.scrapingInterval && (
+                  <p className="text-[11px] text-destructive">{errors.scrapingInterval.message}</p>
+                )}
               </div>
             </div>
           </CardContent>

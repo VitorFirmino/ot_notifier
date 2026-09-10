@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { useForm, type UseFormRegister, type FieldErrors } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { Server, Save, Compass, Loader2, Image as ImageIcon, ShieldCheck } from "lucide-react";
 import {
@@ -16,6 +19,26 @@ import { Skeleton } from "@components/ui/skeleton";
 import type { ServerConfig, GuildDiscovered } from "@types";
 import { api, getProxiedImageUrl } from "@services/api";
 
+const urlOrEmpty = (message: string) => z.union([z.literal(""), z.url(message)]);
+
+const serverFormSchema = z.object({
+  serverName: z.string().min(1, "Informe o nome do servidor."),
+  guildUrl: z.url("Informe uma URL válida."),
+  logoUrl: urlOrEmpty("Informe uma URL válida."),
+  webhookUrl: urlOrEmpty("Informe uma URL válida."),
+  checkInterval: z.number().min(30, "O intervalo mínimo é 30 segundos."),
+  concurrency: z.number().min(1, "A concorrência mínima é 1.").max(10, "A concorrência máxima é 10."),
+  requestDelay: z.number().min(100, "O delay mínimo é 100ms."),
+});
+
+type ServerFormValues = z.infer<typeof serverFormSchema>;
+
+const discoverySchema = z.object({
+  discoveryUrl: z.string().min(1, "Informe a URL do servidor."),
+});
+
+type DiscoveryFormValues = z.infer<typeof discoverySchema>;
+
 interface ServerModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -30,17 +53,39 @@ export const ServerModal: React.FC<ServerModalProps> = ({
   initialServer,
 }) => {
   const [activeTab, setActiveTab] = useState<"manual" | "auto">("auto");
-  const [serverName, setServerName] = useState("");
   const [serverId, setServerId] = useState("");
-  const [guildUrl, setGuildUrl] = useState("");
-  const [logoUrl, setLogoUrl] = useState("");
-  const [webhookUrl, setWebhookUrl] = useState("");
-  const [checkInterval, setCheckInterval] = useState(120);
-  const [concurrency, setConcurrency] = useState(3);
-  const [requestDelay, setRequestDelay] = useState(1000);
-
-  const [discoveryUrl, setDiscoveryUrl] = useState("https://www.otdbo.com.br/?subtopic=guilds");
   const [selectedDiscoveredGuild, setSelectedDiscoveredGuild] = useState<GuildDiscovered | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<ServerFormValues>({
+    resolver: zodResolver(serverFormSchema),
+    defaultValues: {
+      serverName: "",
+      guildUrl: "",
+      logoUrl: "",
+      webhookUrl: "",
+      checkInterval: 120,
+      concurrency: 3,
+      requestDelay: 1000,
+    },
+  });
+  const logoUrl = watch("logoUrl");
+
+  const {
+    register: registerDiscovery,
+    handleSubmit: handleSubmitDiscovery,
+    reset: resetDiscoveryForm,
+    formState: { errors: discoveryFormErrors },
+  } = useForm<DiscoveryFormValues>({
+    resolver: zodResolver(discoverySchema),
+    defaultValues: { discoveryUrl: "https://www.otdbo.com.br/?subtopic=guilds" },
+  });
 
   const discoverMutation = useMutation({
     mutationFn: (url: string) => api.discoverGuilds(url),
@@ -48,9 +93,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
   const isDiscovering = discoverMutation.isPending;
   const discoveredGuilds = discoverMutation.data?.guilds ?? [];
   const discoveryError = discoverMutation.isError
-    ? discoverMutation.error instanceof Error
-      ? discoverMutation.error.message
-      : "Erro ao efetuar scraping no servidor AAC."
+    ? "Erro ao efetuar scraping no servidor AAC."
     : discoverMutation.isSuccess && discoveredGuilds.length === 0
       ? "Nenhuma guilda encontrada nesta URL. Verifique se o endereço está correto."
       : null;
@@ -58,40 +101,43 @@ export const ServerModal: React.FC<ServerModalProps> = ({
   useEffect(() => {
     if (initialServer) {
       setActiveTab("manual");
-      setServerName(initialServer.serverName);
       setServerId(initialServer.serverId);
-      setGuildUrl(initialServer.guild.url);
-      setLogoUrl(initialServer.guild.logoUrl || "");
-      setWebhookUrl(initialServer.guild.webhookUrl || "");
-      setCheckInterval((initialServer.settings?.checkInterval || 120000) / 1000);
-      setConcurrency(initialServer.settings?.concurrency || 3);
-      setRequestDelay(initialServer.settings?.requestDelay || 1000);
+      reset({
+        serverName: initialServer.serverName,
+        guildUrl: initialServer.guild.url,
+        logoUrl: initialServer.guild.logoUrl || "",
+        webhookUrl: initialServer.guild.webhookUrl || "",
+        checkInterval: (initialServer.settings?.checkInterval || 120000) / 1000,
+        concurrency: initialServer.settings?.concurrency || 3,
+        requestDelay: initialServer.settings?.requestDelay || 1000,
+      });
     } else {
       setActiveTab("auto");
-      setServerName("");
       setServerId("");
-      setGuildUrl("");
-      setLogoUrl("");
-      setWebhookUrl("");
-      setCheckInterval(120);
-      setConcurrency(3);
-      setRequestDelay(1000);
+      reset({
+        serverName: "",
+        guildUrl: "",
+        logoUrl: "",
+        webhookUrl: "",
+        checkInterval: 120,
+        concurrency: 3,
+        requestDelay: 1000,
+      });
       setSelectedDiscoveredGuild(null);
       discoverMutation.reset();
+      resetDiscoveryForm();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialServer, isOpen]);
 
-  const handleDiscover = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!discoveryUrl) return;
-    discoverMutation.mutate(discoveryUrl);
+  const handleDiscover = (values: DiscoveryFormValues) => {
+    discoverMutation.mutate(values.discoveryUrl);
   };
 
   const handleSelectDiscoveredGuild = (guild: GuildDiscovered) => {
-    setServerName(guild.name);
-    setGuildUrl(guild.url);
-    setLogoUrl(guild.logoUrl || "");
+    setValue("serverName", guild.name);
+    setValue("guildUrl", guild.url);
+    setValue("logoUrl", guild.logoUrl || "");
     setSelectedDiscoveredGuild(guild);
   };
 
@@ -99,30 +145,27 @@ export const ServerModal: React.FC<ServerModalProps> = ({
     setSelectedDiscoveredGuild(null);
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!serverName || !guildUrl) return;
-
+  const onSaveSubmit = (values: ServerFormValues) => {
     const generatedId =
       serverId ||
-      serverName
+      values.serverName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "_")
         .replace(/^_+|_+$/g, "");
 
     onSave({
       serverId: generatedId,
-      serverName,
+      serverName: values.serverName,
       guild: {
-        url: guildUrl,
-        logoUrl: logoUrl || undefined,
-        webhookUrl: webhookUrl || undefined,
+        url: values.guildUrl,
+        logoUrl: values.logoUrl || undefined,
+        webhookUrl: values.webhookUrl || undefined,
         enabled: initialServer ? initialServer.guild.enabled : true,
       },
       settings: {
-        checkInterval: checkInterval * 1000,
-        concurrency,
-        requestDelay,
+        checkInterval: values.checkInterval * 1000,
+        concurrency: values.concurrency,
+        requestDelay: values.requestDelay,
       },
     });
 
@@ -152,7 +195,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
 
             <TabsContent value="auto" className="space-y-4 pt-2">
               {selectedDiscoveredGuild ? (
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit(onSaveSubmit)} className="space-y-4">
                   <div className="glass-surface flex items-center gap-3 rounded-lg border border-border p-3">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-card">
                       {selectedDiscoveredGuild.logoUrl ? (
@@ -178,14 +221,18 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                     <Input
                       type="url"
                       placeholder="https://discord.com/api/webhooks/ID/TOKEN"
-                      value={webhookUrl}
-                      onChange={(event) => setWebhookUrl(event.target.value)}
+                      aria-invalid={!!errors.webhookUrl}
                       className="font-mono text-xs"
                       autoFocus
+                      {...register("webhookUrl")}
                     />
-                    <p className="text-[11px] text-muted-foreground">
-                      Opcional — pode deixar em branco e configurar depois em "Editar servidor".
-                    </p>
+                    {errors.webhookUrl ? (
+                      <p className="text-[11px] text-destructive">{errors.webhookUrl.message}</p>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">
+                        Opcional — pode deixar em branco e configurar depois em "Editar servidor".
+                      </p>
+                    )}
                   </div>
 
                   <DialogFooter>
@@ -199,16 +246,15 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                 </form>
               ) : (
                 <>
-                  <form onSubmit={handleDiscover} className="space-y-2">
+                  <form onSubmit={handleSubmitDiscovery(handleDiscover)} className="space-y-2">
                     <Label>URL do servidor (site do AAC)</Label>
                     <div className="flex gap-2">
                       <Input
                         type="text"
-                        required
                         placeholder="www.otdbo.com.br ou https://www.otdbo.com.br/?subtopic=guilds"
-                        value={discoveryUrl}
-                        onChange={(event) => setDiscoveryUrl(event.target.value)}
+                        aria-invalid={!!discoveryFormErrors.discoveryUrl}
                         className="flex-1 font-mono text-xs"
+                        {...registerDiscovery("discoveryUrl")}
                       />
                       <Button type="submit" disabled={isDiscovering}>
                         {isDiscovering ? (
@@ -222,10 +268,14 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                         )}
                       </Button>
                     </div>
-                    <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <ShieldCheck className="h-3.5 w-3.5 text-success" />
-                      Pode colar só o domínio — o scraper testa sozinho os padrões mais comuns de página de guildas (?subtopic=guilds, /guilds.php, /guilds, etc.).
-                    </p>
+                    {discoveryFormErrors.discoveryUrl ? (
+                      <p className="text-[11px] text-destructive">{discoveryFormErrors.discoveryUrl.message}</p>
+                    ) : (
+                      <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <ShieldCheck className="h-3.5 w-3.5 text-success" />
+                        Pode colar só o domínio — o scraper testa sozinho os padrões mais comuns de página de guildas (?subtopic=guilds, /guilds.php, /guilds, etc.).
+                      </p>
+                    )}
                   </form>
 
                   {discoveryError && (
@@ -280,42 +330,20 @@ export const ServerModal: React.FC<ServerModalProps> = ({
 
             <TabsContent value="manual" className="pt-2">
               <ServerFormFields
-                serverName={serverName}
-                setServerName={setServerName}
-                guildUrl={guildUrl}
-                setGuildUrl={setGuildUrl}
+                register={register}
+                errors={errors}
                 logoUrl={logoUrl}
-                setLogoUrl={setLogoUrl}
-                webhookUrl={webhookUrl}
-                setWebhookUrl={setWebhookUrl}
-                checkInterval={checkInterval}
-                setCheckInterval={setCheckInterval}
-                concurrency={concurrency}
-                setConcurrency={setConcurrency}
-                requestDelay={requestDelay}
-                setRequestDelay={setRequestDelay}
-                onSubmit={handleSubmit}
+                onSubmit={handleSubmit(onSaveSubmit)}
                 onCancel={onClose}
               />
             </TabsContent>
           </Tabs>
         ) : (
           <ServerFormFields
-            serverName={serverName}
-            setServerName={setServerName}
-            guildUrl={guildUrl}
-            setGuildUrl={setGuildUrl}
+            register={register}
+            errors={errors}
             logoUrl={logoUrl}
-            setLogoUrl={setLogoUrl}
-            webhookUrl={webhookUrl}
-            setWebhookUrl={setWebhookUrl}
-            checkInterval={checkInterval}
-            setCheckInterval={setCheckInterval}
-            concurrency={concurrency}
-            setConcurrency={setConcurrency}
-            requestDelay={requestDelay}
-            setRequestDelay={setRequestDelay}
-            onSubmit={handleSubmit}
+            onSubmit={handleSubmit(onSaveSubmit)}
             onCancel={onClose}
           />
         )}
@@ -335,39 +363,17 @@ const DiscoveredGuildSkeleton: React.FC = () => (
 );
 
 interface ServerFormFieldsProps {
-  serverName: string;
-  setServerName: (value: string) => void;
-  guildUrl: string;
-  setGuildUrl: (value: string) => void;
+  register: UseFormRegister<ServerFormValues>;
+  errors: FieldErrors<ServerFormValues>;
   logoUrl: string;
-  setLogoUrl: (value: string) => void;
-  webhookUrl: string;
-  setWebhookUrl: (value: string) => void;
-  checkInterval: number;
-  setCheckInterval: (value: number) => void;
-  concurrency: number;
-  setConcurrency: (value: number) => void;
-  requestDelay: number;
-  setRequestDelay: (value: number) => void;
   onSubmit: (event: React.FormEvent) => void;
   onCancel: () => void;
 }
 
 const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
-  serverName,
-  setServerName,
-  guildUrl,
-  setGuildUrl,
+  register,
+  errors,
   logoUrl,
-  setLogoUrl,
-  webhookUrl,
-  setWebhookUrl,
-  checkInterval,
-  setCheckInterval,
-  concurrency,
-  setConcurrency,
-  requestDelay,
-  setRequestDelay,
   onSubmit,
   onCancel,
 }) => (
@@ -376,23 +382,23 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
       <Label>Nome do servidor / guilda *</Label>
       <Input
         type="text"
-        required
         placeholder="Ex: OTDBO - Ta DEBOREST, NTOBrasil"
-        value={serverName}
-        onChange={(event) => setServerName(event.target.value)}
+        aria-invalid={!!errors.serverName}
+        {...register("serverName")}
       />
+      {errors.serverName && <p className="text-xs text-destructive">{errors.serverName.message}</p>}
     </div>
 
     <div className="space-y-1.5">
       <Label>URL da guilda (alvo do scraping) *</Label>
       <Input
         type="url"
-        required
         placeholder="https://www.otdbo.com.br/?subtopic=guilds&action=view&GuildName=..."
-        value={guildUrl}
-        onChange={(event) => setGuildUrl(event.target.value)}
         className="font-mono text-xs"
+        aria-invalid={!!errors.guildUrl}
+        {...register("guildUrl")}
       />
+      {errors.guildUrl && <p className="text-xs text-destructive">{errors.guildUrl.message}</p>}
     </div>
 
     <div className="space-y-1.5">
@@ -401,9 +407,9 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
         <Input
           type="url"
           placeholder="https://www.otdbo.com.br/guild_image.php?id=18"
-          value={logoUrl}
-          onChange={(event) => setLogoUrl(event.target.value)}
           className="flex-1 font-mono text-xs"
+          aria-invalid={!!errors.logoUrl}
+          {...register("logoUrl")}
         />
         {logoUrl && (
           <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-card">
@@ -411,6 +417,7 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
           </div>
         )}
       </div>
+      {errors.logoUrl && <p className="text-xs text-destructive">{errors.logoUrl.message}</p>}
     </div>
 
     <div className="space-y-1.5">
@@ -418,10 +425,11 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
       <Input
         type="url"
         placeholder="https://discord.com/api/webhooks/ID/TOKEN"
-        value={webhookUrl}
-        onChange={(event) => setWebhookUrl(event.target.value)}
         className="font-mono text-xs"
+        aria-invalid={!!errors.webhookUrl}
+        {...register("webhookUrl")}
       />
+      {errors.webhookUrl && <p className="text-xs text-destructive">{errors.webhookUrl.message}</p>}
     </div>
 
     <div className="grid grid-cols-3 gap-3">
@@ -430,9 +438,10 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
         <Input
           type="number"
           min="30"
-          value={checkInterval}
-          onChange={(event) => setCheckInterval(Number(event.target.value))}
+          aria-invalid={!!errors.checkInterval}
+          {...register("checkInterval", { valueAsNumber: true })}
         />
+        {errors.checkInterval && <p className="text-xs text-destructive">{errors.checkInterval.message}</p>}
       </div>
 
       <div className="space-y-1.5">
@@ -441,9 +450,10 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
           type="number"
           min="1"
           max="10"
-          value={concurrency}
-          onChange={(event) => setConcurrency(Number(event.target.value))}
+          aria-invalid={!!errors.concurrency}
+          {...register("concurrency", { valueAsNumber: true })}
         />
+        {errors.concurrency && <p className="text-xs text-destructive">{errors.concurrency.message}</p>}
       </div>
 
       <div className="space-y-1.5">
@@ -452,9 +462,10 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
           type="number"
           min="100"
           step="100"
-          value={requestDelay}
-          onChange={(event) => setRequestDelay(Number(event.target.value))}
+          aria-invalid={!!errors.requestDelay}
+          {...register("requestDelay", { valueAsNumber: true })}
         />
+        {errors.requestDelay && <p className="text-xs text-destructive">{errors.requestDelay.message}</p>}
       </div>
     </div>
 

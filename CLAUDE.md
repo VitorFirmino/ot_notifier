@@ -18,6 +18,7 @@ Root (`/`):
 - `pnpm test` — Vitest. Run a single file: `pnpm test src/path/to/file.test.ts`. Run a single test: `pnpm test -t "test name"`.
 - `pnpm type-check` — `tsc --noEmit`.
 - `pnpm lint` / `pnpm format` — ESLint / Prettier over `src/**/*.ts`.
+- `pnpm db:migration:run` / `pnpm db:auth:migrate` — fresh-clone DB setup needs BOTH, in that order: `db:migration:run` (TypeORM) creates app tables like `user_server_subscription`; `db:auth:migrate` (Better Auth CLI, `@better-auth/cli`) creates its own `user`/`session`/`account`/`verification` tables. They're two independent tools against the same Postgres database — neither's migration bookkeeping knows about the other.
 
 `web/` (separate app, own `node_modules`):
 - `pnpm --dir web dev` — Vite dev server (proxies `/api` to `http://localhost:3001`, i.e. `pnpm api` must be running).
