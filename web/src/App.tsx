@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate, matchPath } from "react-router-dom";
+import { ResetPasswordView } from "@components/ResetPasswordView";
 import { Sidebar } from "@components/Sidebar";
 import { TopBar } from "@components/TopBar";
 import { StatCards } from "@components/StatCards";
@@ -68,7 +69,12 @@ const computeStats = (servers: ServerConfig[], events: ActivityEvent[]): SystemS
 };
 
 export default function App() {
+  const location = useLocation();
   const { data: session, isPending: isSessionLoading } = authClient.useSession();
+
+  if (location.pathname === "/reset-password") {
+    return <ResetPasswordView />;
+  }
 
   if (isSessionLoading) {
     return null;

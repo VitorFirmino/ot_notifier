@@ -9,6 +9,10 @@ const authEnvSchema = z.object({
     .min(1, "BETTER_AUTH_SECRET não configurada — gere uma com `openssl rand -base64 32`."),
   BETTER_AUTH_URL: z.string().optional(),
   DASHBOARD_URL: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().optional(),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
 });
 
 export type AuthEnv = z.infer<typeof authEnvSchema>;

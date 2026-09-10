@@ -49,6 +49,7 @@
     "quick-lru": "^7.3.0",
     "rate-limiter-flexible": "^8.2.1",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.26.0",
     "tough-cookie": "^6.0.0",
     "tsx": "^4.20.6",
     "typeorm": "^1.1.1",
