@@ -2,9 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { loadServerConfig } from "@infrastructure/storage/serverConfigManager";
 import { fetchGuildPage } from "@infrastructure/scraping/http/guildFetcher";
 import { parseCharacterDetailsFromHtml } from "@infrastructure/scraping/parsers/characterParser";
-import { assertPublicHttpUrl, UnsafeUrlError } from "@shared/utils/urlSafety";
 import type { InspectCharacterParams } from "@shared/types/index";
-import { parseOrReply } from "../validation";
+import { assertPublicUrlOrReply, parseOrReply } from "../validation";
 import { inspectCharacterBodySchema } from "../schemas";
 
 export const registerCharacterRoutes = (app: FastifyInstance): void => {
@@ -32,12 +31,7 @@ export const registerCharacterRoutes = (app: FastifyInstance): void => {
       return reply.status(400).send({ error: "URL do personagem não pôde ser determinada" });
     }
 
-    try {
-      await assertPublicHttpUrl(targetUrl);
-    } catch (err: unknown) {
-      const message = err instanceof UnsafeUrlError ? err.message : "URL inválida.";
-      return reply.status(400).send({ error: message });
-    }
+    if (!(await assertPublicUrlOrReply(targetUrl, reply))) return;
 
     try {
       const html = await fetchGuildPage(targetUrl);

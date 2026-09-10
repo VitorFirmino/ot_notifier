@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { fetchImageProxied } from "@infrastructure/scraping/utils/imageProxy";
-import { assertPublicHttpUrl, UnsafeUrlError } from "@shared/utils/urlSafety";
-import { parseOrReply } from "../validation";
+import { assertPublicUrlOrReply, parseOrReply } from "../validation";
 import { proxyImageQuerySchema } from "../schemas";
 
 const ALLOWED_PROXIED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"];
@@ -12,12 +11,7 @@ export const registerProxyImageRoutes = (app: FastifyInstance): void => {
     if (!query) return;
     const rawUrl = query.url;
 
-    try {
-      await assertPublicHttpUrl(rawUrl);
-    } catch (err: unknown) {
-      const message = err instanceof UnsafeUrlError ? err.message : "URL inválida.";
-      return reply.status(400).send({ error: message });
-    }
+    if (!(await assertPublicUrlOrReply(rawUrl, reply))) return;
 
     try {
       const image = await fetchImageProxied(rawUrl);

@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { assertPublicHttpUrl, UnsafeUrlError } from "@shared/utils/urlSafety";
-import { sendTestWebhook } from "@infrastructure/webhooks/webhook";
-import { parseOrReply } from "../validation";
+import { sendTestWebhookOrReply } from "./webhookTestHelper";
+import { assertPublicUrlOrReply, parseOrReply } from "../validation";
 import { testWebhookBodySchema } from "../schemas";
 
 export const registerWebhookRoutes = (app: FastifyInstance): void => {
@@ -10,19 +9,8 @@ export const registerWebhookRoutes = (app: FastifyInstance): void => {
     if (!body) return;
     const webhookUrl = body.webhookUrl;
 
-    try {
-      await assertPublicHttpUrl(webhookUrl);
-    } catch (err: unknown) {
-      const message = err instanceof UnsafeUrlError ? err.message : "URL de webhook inválida.";
-      return reply.status(400).send({ error: message });
-    }
+    if (!(await assertPublicUrlOrReply(webhookUrl, reply, "URL de webhook inválida."))) return;
 
-    try {
-      await sendTestWebhook(webhookUrl);
-      return reply.status(200).send({ success: true });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erro desconhecido ao enviar webhook";
-      return reply.status(502).send({ error: `Falha ao enviar mensagem de teste: ${message}` });
-    }
+    await sendTestWebhookOrReply(webhookUrl, reply);
   });
 };
