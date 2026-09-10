@@ -119,6 +119,7 @@ export const buildFastifyServer = async () => {
     handler: async (request, reply) => {
       const url = new URL(request.url, `http://${request.headers.host}`);
       const headers = fromNodeHeaders(request.headers);
+      headers.set("x-forwarded-for", request.ip);
 
       const authRequest = new Request(url.toString(), {
         method: request.method,
