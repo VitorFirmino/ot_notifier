@@ -10,8 +10,6 @@ import {
   updateServerWorkingStatus,
 } from "@infrastructure/storage/serverConfigManager";
 import { getGuildMembers } from "@infrastructure/scraping/parsers/guildParser";
-import { assertPublicHttpUrl, UnsafeUrlError } from "@shared/utils/urlSafety";
-import { sendTestWebhook } from "@infrastructure/webhooks/webhook";
 import { getWebhookUrl } from "@application/workers/utils/webhookUtils";
 import { getAllServerStates } from "@shared/utils/serverStateManager";
 import {
@@ -25,12 +23,21 @@ import {
   clearVerifyingState,
 } from "@shared/utils/serverStateManager";
 import type { AddServerPayload, UpdateServerPayload, CharacterInfo } from "@shared/types/index";
-import { parseOrReply } from "../validation";
+import { assertPublicUrlOrReply, parseOrReply } from "../validation";
 import { addServerBodySchema, updateServerBodySchema } from "../schemas";
+import { sendTestWebhookOrReply } from "./webhookTestHelper";
 
 interface ServerParams {
   id: string;
 }
+
+const createBlankCharacter = (url: string): CharacterInfo => ({
+  url,
+  last_level: null,
+  up_streak: 0,
+  last_milestone: 0,
+  last_death: null,
+});
 
 export const registerServerRoutes = (app: FastifyInstance): void => {
   app.get("/api/servers", async (_request, reply) => {
@@ -58,12 +65,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
     if (!body) return;
     const { url, name, webhookUrl, logoUrl, kills, world } = body;
 
-    try {
-      await assertPublicHttpUrl(url);
-    } catch (err: unknown) {
-      const message = err instanceof UnsafeUrlError ? err.message : "URL inválida.";
-      return reply.status(400).send({ error: message });
-    }
+    if (!(await assertPublicUrlOrReply(url, reply))) return;
 
     const serverId = extractServerIdFromUrl(url);
 
@@ -126,13 +128,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
         const members = await getGuildMembers(url);
         const charsObj: Record<string, CharacterInfo> = {};
         members.forEach((member) => {
-          charsObj[member.name] = {
-            url: member.url,
-            last_level: null,
-            up_streak: 0,
-            last_milestone: 0,
-            last_death: null,
-          };
+          charsObj[member.name] = createBlankCharacter(member.url);
         });
         newConfig.characters = charsObj;
         await saveServerConfig(newConfig);
@@ -158,12 +154,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
       return reply.status(404).send({ error: "Servidor não encontrado" });
     }
 
-    try {
-      await assertPublicHttpUrl(config.guild.url);
-    } catch (err: unknown) {
-      const message = err instanceof UnsafeUrlError ? err.message : "URL inválida.";
-      return reply.status(400).send({ error: message });
-    }
+    if (!(await assertPublicUrlOrReply(config.guild.url, reply))) return;
 
     try {
       const members = await getGuildMembers(config.guild.url);
@@ -171,13 +162,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
 
       members.forEach((member) => {
         if (!updatedChars[member.name]) {
-          updatedChars[member.name] = {
-            url: member.url,
-            last_level: null,
-            up_streak: 0,
-            last_milestone: 0,
-            last_death: null,
-          };
+          updatedChars[member.name] = createBlankCharacter(member.url);
         }
       });
 
@@ -213,20 +198,9 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
       return reply.status(400).send({ error: "Nenhum webhook Discord configurado para este servidor." });
     }
 
-    try {
-      await assertPublicHttpUrl(webhookUrl);
-    } catch (err: unknown) {
-      const message = err instanceof UnsafeUrlError ? err.message : "URL de webhook inválida.";
-      return reply.status(400).send({ error: message });
-    }
+    if (!(await assertPublicUrlOrReply(webhookUrl, reply, "URL de webhook inválida."))) return;
 
-    try {
-      await sendTestWebhook(webhookUrl);
-      return reply.status(200).send({ success: true });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erro desconhecido ao enviar webhook";
-      return reply.status(502).send({ error: `Falha ao enviar mensagem de teste: ${message}` });
-    }
+    await sendTestWebhookOrReply(webhookUrl, reply);
   });
 
   app.put<{ Params: ServerParams; Body: UpdateServerPayload }>(
@@ -237,14 +211,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
       const body = parseOrReply(updateServerBodySchema, request.body ?? {}, reply);
       if (!body) return;
 
-      if (body.guild?.url) {
-        try {
-          await assertPublicHttpUrl(body.guild.url);
-        } catch (err: unknown) {
-          const message = err instanceof UnsafeUrlError ? err.message : "URL inválida.";
-          return reply.status(400).send({ error: message });
-        }
-      }
+      if (body.guild?.url && !(await assertPublicUrlOrReply(body.guild.url, reply))) return;
 
       const updateResult: { outcome: "not_found" | "forbidden" | "ok" } = { outcome: "not_found" };
       const updated = await updateServerConfig(serverId, (existing) => {

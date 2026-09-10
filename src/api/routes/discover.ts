@@ -1,8 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { discoverGuildRoute, normalizeBaseUrl } from "@infrastructure/scraping/utils/guildRouteDiscovery";
-import { assertPublicHttpUrl, UnsafeUrlError } from "@shared/utils/urlSafety";
 import type { DiscoverGuildsPayload } from "@shared/types/index";
-import { parseOrReply } from "../validation";
+import { assertPublicUrlOrReply, parseOrReply } from "../validation";
 import { discoverGuildsBodySchema } from "../schemas";
 
 export const registerDiscoverRoutes = (app: FastifyInstance): void => {
@@ -12,12 +11,7 @@ export const registerDiscoverRoutes = (app: FastifyInstance): void => {
 
     const targetUrl = normalizeBaseUrl(body.url);
 
-    try {
-      await assertPublicHttpUrl(targetUrl);
-    } catch (err: unknown) {
-      const message = err instanceof UnsafeUrlError ? err.message : "URL inválida.";
-      return reply.status(400).send({ error: message });
-    }
+    if (!(await assertPublicUrlOrReply(targetUrl, reply))) return;
 
     try {
       const { guilds, html } = await discoverGuildRoute(targetUrl);
