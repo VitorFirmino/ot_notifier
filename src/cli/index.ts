@@ -202,6 +202,28 @@ const listServers = (): void => {
   );
 };
 
+const requireServers = (): ServerEntry[] | null => {
+  const servers = loadServers();
+  if (servers.length === 0) {
+    warn("Nenhum servidor configurado.");
+    return null;
+  }
+  return servers;
+};
+
+const promptServerIndex = async (
+  servers: ServerEntry[],
+  question = "Número do servidor"
+): Promise<number | null> => {
+  const input = await ask(question);
+  const index = parseInt(input) - 1;
+  if (isNaN(index) || index < 0 || index >= servers.length) {
+    error("Número inválido.");
+    return null;
+  }
+  return index;
+};
+
 const addServer = async (): Promise<void> => {
   console.log(chalk.bold("\n  Adicionar novo servidor\n"));
 
@@ -270,23 +292,15 @@ const addServer = async (): Promise<void> => {
 };
 
 const configureWebhook = async (): Promise<void> => {
-  const servers = loadServers();
-  if (servers.length === 0) {
-    warn("Nenhum servidor configurado.");
-    return;
-  }
+  const servers = requireServers();
+  if (!servers) return;
 
   console.log(chalk.bold("\n  Configurar webhook\n"));
   listServers();
   console.log();
 
-  const input = await ask("Número do servidor");
-  const index = parseInt(input) - 1;
-
-  if (isNaN(index) || index < 0 || index >= servers.length) {
-    error("Número inválido.");
-    return;
-  }
+  const index = await promptServerIndex(servers);
+  if (index === null) return;
 
   const server = servers[index];
   const serverId = server.id || extractServerIdFromUrl(server.url);
@@ -332,11 +346,8 @@ const configureWebhook = async (): Promise<void> => {
 };
 
 const testWebhook = async (): Promise<void> => {
-  const servers = loadServers();
-  if (servers.length === 0) {
-    warn("Nenhum servidor configurado.");
-    return;
-  }
+  const servers = requireServers();
+  if (!servers) return;
 
   console.log(chalk.bold("\n  Testar webhook\n"));
   listServers();
@@ -395,23 +406,15 @@ const testWebhook = async (): Promise<void> => {
 };
 
 const toggleServer = async (): Promise<void> => {
-  const servers = loadServers();
-  if (servers.length === 0) {
-    warn("Nenhum servidor configurado.");
-    return;
-  }
+  const servers = requireServers();
+  if (!servers) return;
 
   console.log(chalk.bold("\n  Ativar/Desativar servidor\n"));
   listServers();
   console.log();
 
-  const input = await ask("Número do servidor");
-  const index = parseInt(input) - 1;
-
-  if (isNaN(index) || index < 0 || index >= servers.length) {
-    error("Número inválido.");
-    return;
-  }
+  const index = await promptServerIndex(servers);
+  if (index === null) return;
 
   const server = servers[index];
   const newState = !server.enabled;
@@ -430,11 +433,8 @@ const toggleServer = async (): Promise<void> => {
 };
 
 const removeServer = async (): Promise<void> => {
-  const servers = loadServers();
-  if (servers.length === 0) {
-    warn("Nenhum servidor configurado.");
-    return;
-  }
+  const servers = requireServers();
+  if (!servers) return;
 
   console.log(chalk.bold("\n  Remover servidor\n"));
   listServers();
@@ -470,23 +470,15 @@ const removeServer = async (): Promise<void> => {
 };
 
 const showDetails = async (): Promise<void> => {
-  const servers = loadServers();
-  if (servers.length === 0) {
-    warn("Nenhum servidor configurado.");
-    return;
-  }
+  const servers = requireServers();
+  if (!servers) return;
 
   console.log(chalk.bold("\n  Detalhes do servidor\n"));
   listServers();
   console.log();
 
-  const input = await ask("Número do servidor");
-  const index = parseInt(input) - 1;
-
-  if (isNaN(index) || index < 0 || index >= servers.length) {
-    error("Número inválido.");
-    return;
-  }
+  const index = await promptServerIndex(servers);
+  if (index === null) return;
 
   const server = servers[index];
   const serverId = server.id || extractServerIdFromUrl(server.url);
