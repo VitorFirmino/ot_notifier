@@ -15,6 +15,7 @@ const authEnvSchema = z.object({
   RESEND_FROM_EMAIL: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  ADMIN_EMAILS: z.string().optional(),
 });
 
 export type AuthEnv = z.infer<typeof authEnvSchema>;
