@@ -54,8 +54,26 @@ const saveServers = (servers: ServerEntry[]): void => {
   writeFileSync(SERVERS_JSON, JSON.stringify(servers, null, 2) + "\n", "utf-8");
 };
 
-const loadServerJson = (serverId: string): ServerJson | null => {
+const SAFE_SERVER_ID_PATTERN = /^[a-z0-9_-]+$/i;
+
+const getServerJsonPath = (serverId: string): string => {
+  if (!SAFE_SERVER_ID_PATTERN.test(serverId)) {
+    throw new Error(`serverId inválido: ${serverId}`);
+  }
   const path = resolve(DATA_DIR, `${serverId}.json`);
+  if (dirname(path) !== DATA_DIR) {
+    throw new Error(`serverId inválido: ${serverId}`);
+  }
+  return path;
+};
+
+const loadServerJson = (serverId: string): ServerJson | null => {
+  let path: string;
+  try {
+    path = getServerJsonPath(serverId);
+  } catch (err: unknown) {
+    return null;
+  }
   if (!existsSync(path)) return null;
   try {
     return JSON.parse(readFileSync(path, "utf-8")) as ServerJson;
@@ -66,7 +84,7 @@ const loadServerJson = (serverId: string): ServerJson | null => {
 
 const saveServerJson = (config: ServerJson): void => {
   mkdirSync(DATA_DIR, { recursive: true });
-  const path = resolve(DATA_DIR, `${config.serverId}.json`);
+  const path = getServerJsonPath(config.serverId);
   writeFileSync(path, JSON.stringify(config, null, 2) + "\n", "utf-8");
 };
 
