@@ -10,6 +10,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     setupFiles: ["dotenv/config"],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/.worktrees/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
