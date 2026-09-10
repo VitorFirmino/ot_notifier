@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -72,40 +73,65 @@ export const LoginView: React.FC = () => {
         />
 
         <Card className="w-full py-0" style={{ background: "color-mix(in oklab, var(--card) 58%, transparent)" }}>
-          <CardContent className="space-y-4 p-6">
-            <h1 className="font-heading text-lg font-semibold text-foreground">
+          <CardContent className="space-y-5 p-8">
+            <h1 className="font-heading text-3xl font-semibold text-foreground">
               {mode === "login" ? "Entrar" : "Criar conta"}
             </h1>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {mode === "signup" && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="name">Nome</Label>
-                  <Input id="name" aria-invalid={!!errors.name} {...register("name")} />
-                  {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-base">Nome:</Label>
+                  <Input
+                    id="name"
+                    placeholder="Como podemos te chamar"
+                    aria-invalid={!!errors.name}
+                    className="h-12 px-4 py-3 text-base transition-colors duration-200 hover:border-primary/40 md:text-base"
+                    {...register("name")}
+                  />
+                  {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
                 </div>
               )}
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" aria-invalid={!!errors.email} {...register("email")} />
-                {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-base">Email:</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="voce@email.com"
+                  aria-invalid={!!errors.email}
+                  className="h-12 px-4 py-3 text-base transition-colors duration-200 hover:border-primary/40 md:text-base"
+                  {...register("email")}
+                />
+                {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Senha</Label>
-                <Input id="password" type="password" aria-invalid={!!errors.password} {...register("password")} />
-                {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-base">Senha:</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Mínimo de 8 caracteres"
+                  aria-invalid={!!errors.password}
+                  className="h-12 px-4 py-3 text-base transition-colors duration-200 hover:border-primary/40 md:text-base"
+                  {...register("password")}
+                />
+                {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
               </div>
 
-              {apiError && <p className="text-xs text-destructive">{apiError}</p>}
+              {apiError && <p className="text-sm text-destructive">{apiError}</p>}
 
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                className="group h-12 w-full text-base transition-shadow duration-200 hover:shadow-[0_0_24px_-6px_var(--primary)]"
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? "Enviando..." : mode === "login" ? "Entrar" : "Criar conta"}
+                <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
               </Button>
             </form>
 
             <button
               type="button"
-              className="cursor-pointer text-xs text-primary hover:underline"
+              className="cursor-pointer text-sm text-primary hover:underline"
               onClick={() => setValue("mode", mode === "login" ? "signup" : "login")}
             >
               {mode === "login" ? "Não tem conta? Criar uma" : "Já tem conta? Entrar"}
