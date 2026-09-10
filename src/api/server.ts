@@ -10,6 +10,7 @@ import {
   getAllServerConfigs,
   saveServerConfig,
   loadServerConfig,
+  updateServerConfig,
   extractServerIdFromUrl,
   updateServerCharacters,
   deleteServerConfig,
@@ -37,7 +38,6 @@ import {
   triggerServerCheckNow,
 } from "../infrastructure/queue/serverQueueManager.js";
 import type {
-  ServerConfig,
   AddServerPayload,
   UpdateServerPayload,
   InspectCharacterParams,
@@ -301,42 +301,56 @@ export const buildFastifyServer = async () => {
     }
 
     const serverId = extractServerIdFromUrl(url);
-    const existingConfig = loadServerConfig(serverId);
 
-    if (existingConfig?.createdByUserId && existingConfig.createdByUserId !== request.userId) {
+    const addResult: { outcome: "forbidden" | "conflict" | "ok"; conflictMessage: string } = {
+      outcome: "ok",
+      conflictMessage: "",
+    };
+    const newConfig = await updateServerConfig(serverId, (existingConfig) => {
+      if (existingConfig?.createdByUserId && existingConfig.createdByUserId !== request.userId) {
+        addResult.outcome = "forbidden";
+        return null;
+      }
+
+      if (existingConfig?.guild.url) {
+        try {
+          if (new URL(existingConfig.guild.url).origin !== new URL(url).origin) {
+            addResult.outcome = "conflict";
+            addResult.conflictMessage = `O identificador "${serverId}" já está em uso por outro servidor (${existingConfig.serverName}). Use uma URL com um domínio diferente ou remova o servidor existente primeiro.`;
+            return null;
+          }
+        } catch (err: unknown) {
+          console.warn(`⚠️ [${serverId}] Falha ao comparar URLs de servidor existente:`, err);
+        }
+      }
+
+      return {
+        serverId,
+        serverName: name || existingConfig?.serverName || `Server ${serverId}`,
+        guild: {
+          url,
+          enabled: true,
+          webhookUrl: webhookUrl || existingConfig?.guild.webhookUrl,
+          logoUrl: logoUrl || existingConfig?.guild.logoUrl,
+          kills: kills || existingConfig?.guild.kills,
+          world: world || existingConfig?.guild.world,
+        },
+        characters: existingConfig?.characters || {},
+        createdByUserId: existingConfig?.createdByUserId ?? request.userId,
+        isWorking: true,
+        lastUpdate: new Date().toISOString(),
+      };
+    });
+
+    if (addResult.outcome === "forbidden") {
       return reply.status(403).send({ error: "Você não tem permissão para modificar este servidor." });
     }
-
-    if (existingConfig?.guild.url) {
-      try {
-        if (new URL(existingConfig.guild.url).origin !== new URL(url).origin) {
-          return reply.status(409).send({
-            error: `O identificador "${serverId}" já está em uso por outro servidor (${existingConfig.serverName}). Use uma URL com um domínio diferente ou remova o servidor existente primeiro.`,
-          });
-        }
-      } catch (err: unknown) {
-        console.warn(`⚠️ [${serverId}] Falha ao comparar URLs de servidor existente:`, err);
-      }
+    if (addResult.outcome === "conflict") {
+      return reply.status(409).send({ error: addResult.conflictMessage });
     }
-
-    const newConfig: ServerConfig = {
-      serverId,
-      serverName: name || existingConfig?.serverName || `Server ${serverId}`,
-      guild: {
-        url,
-        enabled: true,
-        webhookUrl: webhookUrl || existingConfig?.guild.webhookUrl,
-        logoUrl: logoUrl || existingConfig?.guild.logoUrl,
-        kills: kills || existingConfig?.guild.kills,
-        world: world || existingConfig?.guild.world,
-      },
-      characters: existingConfig?.characters || {},
-      createdByUserId: existingConfig?.createdByUserId ?? request.userId,
-      isWorking: true,
-      lastUpdate: new Date().toISOString(),
-    };
-
-    await saveServerConfig(newConfig);
+    if (!newConfig) {
+      return reply.status(500).send({ error: "Erro ao criar o servidor." });
+    }
 
     if (Object.keys(newConfig.characters).length === 0) {
       try {
@@ -450,13 +464,6 @@ export const buildFastifyServer = async () => {
     "/api/servers/:id",
     async (request, reply) => {
       const { id: serverId } = request.params;
-      const existing = loadServerConfig(serverId);
-      if (!existing) {
-        return reply.status(404).send({ error: "Servidor não encontrado" });
-      }
-      if (existing.createdByUserId && existing.createdByUserId !== request.userId) {
-        return reply.status(403).send({ error: "Você não tem permissão para editar este servidor." });
-      }
 
       const body = parseOrReply(updateServerBodySchema, request.body ?? {}, reply);
       if (!body) return;
@@ -470,20 +477,40 @@ export const buildFastifyServer = async () => {
         }
       }
 
-      const updated: ServerConfig = {
-        ...existing,
-        createdByUserId: existing.createdByUserId ?? request.userId,
-        serverName: body.serverName ?? existing.serverName,
-        guild: {
-          ...existing.guild,
-          ...body.guild,
-          enabled: body.guild?.enabled ?? body.enabled ?? existing.guild.enabled,
-          webhookUrl: body.guild?.webhookUrl ?? body.webhookUrl ?? existing.guild.webhookUrl,
-          logoUrl: body.guild?.logoUrl ?? body.logoUrl ?? existing.guild.logoUrl,
-        },
-      };
+      const updateResult: { outcome: "not_found" | "forbidden" | "ok" } = { outcome: "not_found" };
+      const updated = await updateServerConfig(serverId, (existing) => {
+        if (!existing) {
+          updateResult.outcome = "not_found";
+          return null;
+        }
+        if (existing.createdByUserId && existing.createdByUserId !== request.userId) {
+          updateResult.outcome = "forbidden";
+          return null;
+        }
+        updateResult.outcome = "ok";
+        return {
+          ...existing,
+          createdByUserId: existing.createdByUserId ?? request.userId,
+          serverName: body.serverName ?? existing.serverName,
+          guild: {
+            ...existing.guild,
+            ...body.guild,
+            enabled: body.guild?.enabled ?? body.enabled ?? existing.guild.enabled,
+            webhookUrl: body.guild?.webhookUrl ?? body.webhookUrl ?? existing.guild.webhookUrl,
+            logoUrl: body.guild?.logoUrl ?? body.logoUrl ?? existing.guild.logoUrl,
+          },
+        };
+      });
 
-      await saveServerConfig(updated);
+      if (updateResult.outcome === "not_found") {
+        return reply.status(404).send({ error: "Servidor não encontrado" });
+      }
+      if (updateResult.outcome === "forbidden") {
+        return reply.status(403).send({ error: "Você não tem permissão para editar este servidor." });
+      }
+      if (!updated) {
+        return reply.status(500).send({ error: "Erro ao atualizar o servidor." });
+      }
 
       if (updated.guild.enabled === false) {
         await removeServerSchedule(serverId);

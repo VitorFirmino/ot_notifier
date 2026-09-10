@@ -35,6 +35,7 @@ debug-bypass-*
 # Playwright
 playwright-report/
 test-results/
+.playwright-mcp/
 
 # TypeScript
 *.tsbuildinfo
@@ -54,6 +55,7 @@ docs/
 data/
 src/infrastructure/storage/data/
 src/infrastructure/storage/servers.json
+src/infrastructure/storage/.locks/
 
 # Throwaway debug scripts
 scratch/
