@@ -1,4 +1,4 @@
-import { writeFileSync, existsSync, readFileSync, mkdirSync, statSync } from "fs";
+import { writeFileSync, existsSync, readFileSync, mkdirSync, statSync, unlinkSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import * as lockfile from "proper-lockfile";
@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 
 const CONFIG_DIR = path.resolve(__dirname, "data");
 const SERVERS_JSON_PATH = path.resolve(__dirname, "servers.json");
+const LOCKS_DIR = path.resolve(__dirname, ".locks");
 
 type ConfigCache = {
   data: ServerConfig;
@@ -34,16 +35,36 @@ const ensureConfigDir = (): void => {
 
 const SAFE_SERVER_ID_PATTERN = /^[a-z0-9_-]+$/i;
 
-const getServerConfigPath = (serverId: string): string => {
-  ensureConfigDir();
+const assertSafeServerId = (serverId: string): void => {
   if (!SAFE_SERVER_ID_PATTERN.test(serverId)) {
     throw new Error(`serverId inválido: ${serverId}`);
   }
+};
+
+const getServerConfigPath = (serverId: string): string => {
+  ensureConfigDir();
+  assertSafeServerId(serverId);
   const configPath = path.resolve(CONFIG_DIR, `${serverId}.json`);
   if (path.dirname(configPath) !== CONFIG_DIR) {
     throw new Error(`serverId inválido: ${serverId}`);
   }
   return configPath;
+};
+
+const ensureLocksDir = (): void => {
+  if (!existsSync(LOCKS_DIR)) {
+    mkdirSync(LOCKS_DIR, { recursive: true });
+  }
+};
+
+const getLockFilePath = (serverId: string): string => {
+  ensureLocksDir();
+  assertSafeServerId(serverId);
+  const lockPath = path.resolve(LOCKS_DIR, `${serverId}.lock`);
+  if (path.dirname(lockPath) !== LOCKS_DIR) {
+    throw new Error(`serverId inválido: ${serverId}`);
+  }
+  return lockPath;
 };
 
 const getFileModifiedTime = (filePath: string): number => {
@@ -128,22 +149,42 @@ export const loadServerConfig = (serverId: string): ServerConfig | null => {
   }
 };
 
-export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
+const writeServerConfigUnlocked = (config: ServerConfig): ServerConfig => {
   const configPath = getServerConfigPath(config.serverId);
-
   const dataToSave = {
     ...config,
     lastUpdate: new Date().toISOString(),
   };
 
+  writeFileSync(configPath, JSON.stringify(dataToSave, null, 2), "utf-8");
+
+  cache.set(config.serverId, {
+    data: dataToSave,
+    timestamp: Date.now(),
+    fileModifiedTime: getFileModifiedTime(configPath),
+  });
+
+  addOrUpdateServerInServersJson({
+    id: config.serverId,
+    url: config.guild.url,
+    name: config.serverName,
+    enabled: config.guild.enabled !== false,
+    webhookUrl: config.guild.webhookUrl,
+  });
+
+  return dataToSave;
+};
+
+const withServerConfigLock = async <T>(serverId: string, callback: () => T | Promise<T>): Promise<T> => {
+  const lockPath = getLockFilePath(serverId);
+  if (!existsSync(lockPath)) {
+    writeFileSync(lockPath, "", "utf-8");
+  }
+
   let release: (() => Promise<void>) | null = null;
 
   try {
-    if (!existsSync(configPath)) {
-      writeFileSync(configPath, JSON.stringify(dataToSave, null, 2), "utf-8");
-    }
-
-    release = await lockfile.lock(configPath, {
+    release = await lockfile.lock(lockPath, {
       retries: {
         retries: 5,
         minTimeout: 100,
@@ -152,32 +193,42 @@ export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
       stale: 10000,
     });
 
-    writeFileSync(configPath, JSON.stringify(dataToSave, null, 2), "utf-8");
-
-    cache.set(config.serverId, {
-      data: dataToSave,
-      timestamp: Date.now(),
-      fileModifiedTime: getFileModifiedTime(configPath),
-    });
-
-    addOrUpdateServerInServersJson({
-      id: config.serverId,
-      url: config.guild.url,
-      name: config.serverName,
-      enabled: config.guild.enabled !== false,
-      webhookUrl: config.guild.webhookUrl,
-    });
-  } catch (err) {
-    console.error(`❌ Erro ao salvar ${config.serverId}.json com lock:`, err);
-    throw err;
+    return await callback();
   } finally {
     if (release) {
       try {
         await release();
-      } catch (err) {
-        console.error(`❌ Erro ao liberar lock de ${config.serverId}.json:`, err);
+      } catch (err: unknown) {
+        console.error(`❌ Erro ao liberar lock de ${serverId}:`, err);
       }
     }
+  }
+};
+
+export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
+  try {
+    await withServerConfigLock(config.serverId, () => {
+      writeServerConfigUnlocked(config);
+    });
+  } catch (err: unknown) {
+    console.error(`❌ Erro ao salvar ${config.serverId}.json com lock:`, err);
+    throw err;
+  }
+};
+
+export const updateServerConfig = async (
+  serverId: string,
+  mutate: (existing: ServerConfig | null) => ServerConfig | null
+): Promise<ServerConfig | null> => {
+  try {
+    return await withServerConfigLock(serverId, () => {
+      const existing = loadServerConfig(serverId);
+      const next = mutate(existing);
+      return next ? writeServerConfigUnlocked(next) : null;
+    });
+  } catch (err: unknown) {
+    console.error(`❌ Erro ao atualizar ${serverId}.json com lock:`, err);
+    throw err;
   }
 };
 
@@ -367,8 +418,7 @@ export const deleteServerConfig = async (serverId: string): Promise<boolean> => 
 
   if (existsSync(configPath)) {
     try {
-      const fs = await import("fs");
-      fs.unlinkSync(configPath);
+      unlinkSync(configPath);
     } catch (err: unknown) {
       console.error(`Erro ao apagar arquivo ${configPath}:`, err);
     }
