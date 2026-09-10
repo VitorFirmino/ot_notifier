@@ -24,6 +24,7 @@ const PORT = process.env.API_PORT ? parseInt(process.env.API_PORT, 10) : 3001;
 declare module "fastify" {
   interface FastifyRequest {
     userId?: string;
+    isAdmin?: boolean;
   }
 }
 
@@ -63,8 +64,9 @@ export const buildFastifyServer = async () => {
       return reply.status(401).send({ error: "Não autenticado." });
     }
     request.userId = session.user.id;
+    request.isAdmin = adminEmails.has(session.user.email.toLowerCase());
 
-    if (request.url.startsWith("/admin/queues") && !adminEmails.has(session.user.email.toLowerCase())) {
+    if (request.url.startsWith("/admin/queues") && !request.isAdmin) {
       return reply.status(403).send({ error: "Você não tem permissão para acessar o painel de filas." });
     }
   });

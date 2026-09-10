@@ -72,6 +72,10 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
       conflictMessage: "",
     };
     const newConfig = await updateServerConfig(serverId, (existingConfig) => {
+      if (existingConfig && !existingConfig.createdByUserId && !request.isAdmin) {
+        addResult.outcome = "forbidden";
+        return null;
+      }
       if (existingConfig?.createdByUserId && existingConfig.createdByUserId !== request.userId) {
         addResult.outcome = "forbidden";
         return null;
@@ -248,6 +252,10 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
           updateResult.outcome = "not_found";
           return null;
         }
+        if (!existing.createdByUserId && !request.isAdmin) {
+          updateResult.outcome = "forbidden";
+          return null;
+        }
         if (existing.createdByUserId && existing.createdByUserId !== request.userId) {
           updateResult.outcome = "forbidden";
           return null;
@@ -297,7 +305,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
     if (!existing) {
       return reply.status(404).send({ error: "Servidor não encontrado" });
     }
-    if (existing.createdByUserId !== request.userId) {
+    if (existing.createdByUserId !== request.userId && !request.isAdmin) {
       return reply.status(403).send({ error: "Você não tem permissão para remover este servidor." });
     }
 
