@@ -53,6 +53,7 @@ docs/
 # Runtime server state (contains live webhook URLs, per-character tracking data)
 data/
 src/infrastructure/storage/data/
+src/infrastructure/storage/servers.json
 
 # Throwaway debug scripts
 scratch/

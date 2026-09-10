@@ -5,3 +5,6 @@ allowBuilds:
   msgpackr-extract: true
 minimumReleaseAgeExclude:
   - playwright-core@1.63.0
+overrides:
+  drizzle-orm: '>=0.45.2'
+  lodash: '>=4.17.24'
