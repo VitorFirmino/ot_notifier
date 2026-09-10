@@ -7,10 +7,12 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  LogOut,
 } from "lucide-react";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import logo from "@assets/logo.png";
+import { authClient } from "@lib/authClient";
 
 export type NavTab = "dashboard" | "servers" | "characters" | "feed" | "settings";
 
@@ -28,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isLoadingServers = false,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { data: session } = authClient.useSession();
 
   const navItems = [
     { id: "dashboard" as NavTab, label: "Visão Geral", icon: LayoutDashboard },
@@ -100,6 +103,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
             );
           })}
         </nav>
+      </div>
+
+      <div className="mt-auto border-t border-border pt-3">
+        <div
+          className={`flex items-center gap-3 rounded-lg px-3 py-2 ${
+            isCollapsed ? "justify-center" : "justify-between"
+          }`}
+        >
+          {!isCollapsed && session?.user && (
+            <span className="truncate text-xs text-muted-foreground" title={session.user.email}>
+              {session.user.email}
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => authClient.signOut()}
+            aria-label="Sair"
+            title="Sair"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </aside>
   );
