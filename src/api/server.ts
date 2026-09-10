@@ -45,6 +45,7 @@ import type {
   CharacterInfo,
 } from "../shared/types/index.js";
 import { parseOrReply } from "./validation.js";
+import { getAuthEnv } from "../shared/utils/authEnv.js";
 import {
   testWebhookBodySchema,
   discoverGuildsBodySchema,
@@ -88,6 +89,14 @@ export const buildFastifyServer = async () => {
     contentSecurityPolicy: false,
   });
 
+  const { ADMIN_EMAILS } = getAuthEnv();
+  const adminEmails = new Set(
+    (ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean)
+  );
+
   app.addHook("onRequest", async (request, reply) => {
     if (request.method === "OPTIONS" || request.url.startsWith("/api/auth/")) {
       return;
@@ -98,6 +107,10 @@ export const buildFastifyServer = async () => {
       return reply.status(401).send({ error: "Não autenticado." });
     }
     request.userId = session.user.id;
+
+    if (request.url.startsWith("/admin/queues") && !adminEmails.has(session.user.email.toLowerCase())) {
+      return reply.status(403).send({ error: "Você não tem permissão para acessar o painel de filas." });
+    }
   });
 
   app.route({
