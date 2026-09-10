@@ -14,7 +14,17 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     sendResetPassword: async ({ user, url }) => {
-      await sendPasswordResetEmail({ to: user.email, resetUrl: url });
+      try {
+        await sendPasswordResetEmail({ to: user.email, resetUrl: url });
+      } catch (err: unknown) {
+        console.error("❌ Falha ao enviar email de recuperação de senha:", err);
+      }
+    },
+  },
+  account: {
+    accountLinking: {
+      enabled: true,
+      requireLocalEmailVerified: true,
     },
   },
   ...(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET

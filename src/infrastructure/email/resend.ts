@@ -6,12 +6,9 @@ export const sendPasswordResetEmail = async (params: {
   resetUrl: string;
 }): Promise<void> => {
   const { RESEND_API_KEY, RESEND_FROM_EMAIL } = getAuthEnv();
-  if (!RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY não configurada — não é possível enviar o email de recuperação de senha.");
-  }
 
   const resend = new Resend(RESEND_API_KEY);
-  await resend.emails.send({
+  const result = await resend.emails.send({
     from: RESEND_FROM_EMAIL ?? "OT Notifier <onboarding@resend.dev>",
     to: params.to,
     subject: "Recuperação de senha - OT Notifier",
@@ -21,4 +18,8 @@ export const sendPasswordResetEmail = async (params: {
       <p>Se você não pediu isso, pode ignorar este email.</p>
     `,
   });
+
+  if (result.error) {
+    throw new Error(`Falha ao enviar email via Resend: ${result.error.message}`);
+  }
 };
