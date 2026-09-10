@@ -32,9 +32,18 @@ const ensureConfigDir = (): void => {
   }
 };
 
+const SAFE_SERVER_ID_PATTERN = /^[a-z0-9_-]+$/i;
+
 const getServerConfigPath = (serverId: string): string => {
   ensureConfigDir();
-  return path.resolve(CONFIG_DIR, `${serverId}.json`);
+  if (!SAFE_SERVER_ID_PATTERN.test(serverId)) {
+    throw new Error(`serverId inválido: ${serverId}`);
+  }
+  const configPath = path.resolve(CONFIG_DIR, `${serverId}.json`);
+  if (path.dirname(configPath) !== CONFIG_DIR) {
+    throw new Error(`serverId inválido: ${serverId}`);
+  }
+  return configPath;
 };
 
 const getFileModifiedTime = (filePath: string): number => {
@@ -82,7 +91,12 @@ export const extractServerIdFromUrl = (url: string): string => {
 };
 
 export const loadServerConfig = (serverId: string): ServerConfig | null => {
-  const configPath = getServerConfigPath(serverId);
+  let configPath: string;
+  try {
+    configPath = getServerConfigPath(serverId);
+  } catch (err: unknown) {
+    return null;
+  }
 
   const cached = cache.get(serverId);
   if (cached) {
@@ -343,7 +357,12 @@ export const getServerStats = async () => {
 };
 
 export const deleteServerConfig = async (serverId: string): Promise<boolean> => {
-  const configPath = getServerConfigPath(serverId);
+  let configPath: string;
+  try {
+    configPath = getServerConfigPath(serverId);
+  } catch (err: unknown) {
+    return false;
+  }
   cache.delete(serverId);
 
   if (existsSync(configPath)) {
