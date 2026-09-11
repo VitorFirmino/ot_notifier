@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Webhook, Bot, ShieldCheck, Save, BellRing, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { Webhook, ShieldCheck, Save, BellRing, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { Card, CardContent } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -13,8 +13,6 @@ import { api } from "@services/api";
 
 const settingsSchema = z.object({
   discordWebhook: z.union([z.literal(""), z.url("Informe uma URL válida.")]),
-  telegramToken: z.string(),
-  telegramChatId: z.string(),
   scrapingInterval: z.number().min(15, "O intervalo mínimo é 15 segundos.").max(600, "O intervalo máximo é 600 segundos."),
 });
 
@@ -22,7 +20,6 @@ type SettingsFormValues = z.infer<typeof settingsSchema>;
 
 export const GlobalSettingsView: React.FC = () => {
   const [enableDiscord, setEnableDiscord] = useState(true);
-  const [enableTelegram, setEnableTelegram] = useState(false);
   const [useAntiBot, setUseAntiBot] = useState(true);
   const [humanizePointer, setHumanizePointer] = useState(true);
 
@@ -39,8 +36,6 @@ export const GlobalSettingsView: React.FC = () => {
     resolver: zodResolver(settingsSchema),
     defaultValues: {
       discordWebhook: localStorage.getItem("ot_discord_webhook") || "",
-      telegramToken: localStorage.getItem("ot_telegram_token") || "",
-      telegramChatId: localStorage.getItem("ot_telegram_chat_id") || "",
       scrapingInterval: 60,
     },
   });
@@ -48,8 +43,6 @@ export const GlobalSettingsView: React.FC = () => {
 
   const onSave = (values: SettingsFormValues) => {
     localStorage.setItem("ot_discord_webhook", values.discordWebhook);
-    localStorage.setItem("ot_telegram_token", values.telegramToken);
-    localStorage.setItem("ot_telegram_chat_id", values.telegramChatId);
 
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
@@ -108,60 +101,34 @@ export const GlobalSettingsView: React.FC = () => {
               <span>Notificações & Webhooks</span>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <div className="space-y-3 rounded-lg border border-border bg-secondary/30 p-4">
-                <div className="flex items-center justify-between">
-                  <Label className="flex items-center gap-2 text-xs">
-                    <Webhook className="h-4 w-4 text-primary" />
-                    Discord webhook URL
-                  </Label>
-                  <Switch checked={enableDiscord} onCheckedChange={setEnableDiscord} />
-                </div>
-                <Input
-                  type="url"
-                  placeholder="https://discord.com/api/webhooks/..."
-                  className="font-mono text-xs"
-                  aria-invalid={!!errors.discordWebhook}
-                  {...register("discordWebhook")}
-                />
-                {errors.discordWebhook && (
-                  <p className="text-[11px] text-destructive">{errors.discordWebhook.message}</p>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleTestDiscord}
-                  disabled={testingWebhook || !discordWebhook}
-                >
-                  <BellRing className={`h-3.5 w-3.5 ${testingWebhook ? "animate-bounce" : ""}`} />
-                  {testingWebhook ? "Testando..." : "Enviar teste Discord"}
-                </Button>
+            <div className="max-w-md space-y-3 rounded-lg border border-border bg-secondary/30 p-4">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2 text-xs">
+                  <Webhook className="h-4 w-4 text-primary" />
+                  Discord webhook URL
+                </Label>
+                <Switch checked={enableDiscord} onCheckedChange={setEnableDiscord} />
               </div>
-
-              <div className="space-y-3 rounded-lg border border-border bg-secondary/30 p-4">
-                <div className="flex items-center justify-between">
-                  <Label className="flex items-center gap-2 text-xs">
-                    <Bot className="h-4 w-4 text-primary" />
-                    Bot Telegram
-                  </Label>
-                  <Switch checked={enableTelegram} onCheckedChange={setEnableTelegram} />
-                </div>
-                <div className="space-y-2">
-                  <Input
-                    type="text"
-                    placeholder="Bot API Token (ex: 123456:ABC-DEF1234...)"
-                    className="font-mono text-xs"
-                    {...register("telegramToken")}
-                  />
-                  <Input
-                    type="text"
-                    placeholder="Chat ID ou @canal"
-                    className="font-mono text-xs"
-                    {...register("telegramChatId")}
-                  />
-                </div>
-              </div>
+              <Input
+                type="url"
+                placeholder="https://discord.com/api/webhooks/..."
+                className="font-mono text-xs"
+                aria-invalid={!!errors.discordWebhook}
+                {...register("discordWebhook")}
+              />
+              {errors.discordWebhook && (
+                <p className="text-[11px] text-destructive">{errors.discordWebhook.message}</p>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleTestDiscord}
+                disabled={testingWebhook || !discordWebhook}
+              >
+                <BellRing className={`h-3.5 w-3.5 ${testingWebhook ? "animate-bounce" : ""}`} />
+                {testingWebhook ? "Testando..." : "Enviar teste Discord"}
+              </Button>
             </div>
 
             {testResult && (
