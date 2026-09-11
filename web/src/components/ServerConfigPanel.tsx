@@ -99,8 +99,8 @@ export const ServerConfigPanel: React.FC<ServerConfigPanelProps> = ({
                         {server.hasCloudflare && (
                           <Badge
                             variant="secondary"
-                            className={`gap-1 ${getActionTintClassName("primary")}`}
-                            style={getActionTintStyle("primary")}
+                            className={`gap-1 ${getActionTintClassName("violet")}`}
+                            style={getActionTintStyle("violet")}
                             title="Proteção Anti-Bot Ativa"
                           >
                             <Shield className="h-3 w-3" /> Anti-Bot

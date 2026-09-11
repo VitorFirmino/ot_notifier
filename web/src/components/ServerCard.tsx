@@ -78,7 +78,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({
 
   const infoChips: { label: string; tint?: ActionTintColor }[] = [
     server.guild.webhookUrl && { label: "Webhook", tint: "discord" as const },
-    server.hasCloudflare && { label: "Anti-bot", tint: "primary" as const },
+    server.hasCloudflare && { label: "Anti-bot", tint: "violet" as const },
     server.guild.world && { label: `World: ${server.guild.world}` },
   ].filter(Boolean) as { label: string; tint?: ActionTintColor }[];
 

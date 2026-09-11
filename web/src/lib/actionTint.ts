@@ -1,10 +1,11 @@
-export type ActionTintColor = "primary" | "success" | "warning" | "discord";
+export type ActionTintColor = "primary" | "success" | "warning" | "discord" | "violet";
 
 const CSS_COLORS: Record<ActionTintColor, string> = {
   primary: "var(--primary)",
   success: "var(--success)",
   warning: "var(--warning)",
   discord: "#5865F2",
+  violet: "#a78bfa",
 };
 
 const CLASS_NAMES: Record<ActionTintColor, string> = {
@@ -12,6 +13,7 @@ const CLASS_NAMES: Record<ActionTintColor, string> = {
   success: "text-success hover:text-success",
   warning: "text-warning hover:text-warning",
   discord: "text-[#5865F2] hover:text-[#5865F2]",
+  violet: "text-[#a78bfa] hover:text-[#a78bfa]",
 };
 
 export const getActionTintStyle = (color: ActionTintColor): { background: string } => ({
