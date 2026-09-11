@@ -12,11 +12,14 @@ const hasValidDeathFields = ({
   deathText: string;
   hasLinks: boolean;
 }): boolean => {
-  const hasDeathVerb = /(eliminado|morreu|morto|killed|died)/i.test(deathText);
-  const hasLevel = /(nível|level)\s+\d+/i.test(deathText);
+  const hasDeathVerb =
+    /(eliminado|morreu|morto|faleceu|matou|matado|assassinado|died|killed|slain|frag(ged)?|murio|muri[oó]|asesinado)/i.test(
+      deathText
+    );
+  const hasLevel = /(n[ií]vel|level|lvl)[:\s]+\d+/i.test(deathText);
   const hasKillerPreposition = /\b(por|by)\b/i.test(deathText);
 
-  return hasDeathVerb && hasLevel && (hasKillerPreposition || hasLinks);
+  return hasLevel && (hasDeathVerb || hasKillerPreposition || hasLinks);
 };
 
 const extractKillers = ($: cheerio.CheerioAPI, deathCell: cheerio.Cheerio<AnyNode>): string[] =>
