@@ -258,11 +258,11 @@ h1, h2, h3, h4, h5, h6 {
   --popover-foreground: #e5e7eb;
   --primary: #22d3ee;
   --primary-foreground: #062a30;
-  --secondary: #1b212c;
+  --secondary: #2a3444;
   --secondary-foreground: #e5e7eb;
-  --muted: #1b212c;
+  --muted: #2a3444;
   --muted-foreground: #8b94a3;
-  --accent: #1b212c;
+  --accent: #2a3444;
   --accent-foreground: #e5e7eb;
   --success: #34d399;
   --warning: #fbbf24;
@@ -275,7 +275,7 @@ h1, h2, h3, h4, h5, h6 {
   --sidebar-foreground: #e5e7eb;
   --sidebar-primary: #22d3ee;
   --sidebar-primary-foreground: #062a30;
-  --sidebar-accent: #1b212c;
+  --sidebar-accent: #2a3444;
   --sidebar-accent-foreground: #e5e7eb;
   --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-ring: #22d3ee;

@@ -87,16 +87,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
                 title={isCollapsed ? item.label : undefined}
-                className={`flex cursor-pointer items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex cursor-pointer items-center rounded-lg border-l-2 px-3 py-2.5 text-sm font-medium transition-colors ${
                   isCollapsed ? "justify-center" : "justify-between"
                 } ${
                   isActive
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                    ? "border-primary bg-secondary text-foreground"
+                    : "border-transparent text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className="h-4 w-4" />
+                  <Icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
                   {!isCollapsed && <span>{item.label}</span>}
                 </div>
                 {!isCollapsed && item.badge && (
