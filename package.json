@@ -36,6 +36,7 @@
     "chalk": "^5.6.2",
     "cheerio": "^1.1.2",
     "cloakbrowser": "^0.5.10",
+    "domhandler": "^5.0.3",
     "dotenv": "^17.2.1",
     "fastify": "^5.12.1",
     "gradient-string": "^3.0.0",

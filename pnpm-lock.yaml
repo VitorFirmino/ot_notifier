@@ -54,6 +54,9 @@ importers:
       cloakbrowser:
         specifier: ^0.5.10
         version: 0.5.10(playwright-core@1.63.0)
+      domhandler:
+        specifier: ^5.0.3
+        version: 5.0.3
       dotenv:
         specifier: ^17.2.1
         version: 17.4.2
