@@ -18,6 +18,7 @@ import { Button } from "@components/ui/button";
 import { Separator } from "@components/ui/separator";
 import { ServerConfigCardSkeleton } from "./ServerCard";
 import { DiscordIcon } from "./icons/DiscordIcon";
+import { getActionTintClassName, getActionTintStyle } from "@lib/actionTint";
 import type { ServerConfig } from "@types";
 
 interface ServerConfigPanelProps {
@@ -157,7 +158,8 @@ export const ServerConfigPanel: React.FC<ServerConfigPanelProps> = ({
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="flex-1"
+                    className={`flex-1 ${getActionTintClassName("primary")}`}
+                    style={getActionTintStyle("primary")}
                     disabled={isTesting}
                     onClick={() => onTestScrape(server.serverId)}
                   >
@@ -169,6 +171,8 @@ export const ServerConfigPanel: React.FC<ServerConfigPanelProps> = ({
                     <Button
                       variant="secondary"
                       size="icon-sm"
+                      className={getActionTintClassName(isEnabled ? "warning" : "success")}
+                      style={getActionTintStyle(isEnabled ? "warning" : "success")}
                       aria-label={isEnabled ? "Pausar servidor" : "Ativar servidor"}
                       onClick={() => onToggleStatus(server.serverId)}
                     >

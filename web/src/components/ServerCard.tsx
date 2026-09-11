@@ -21,6 +21,7 @@ import { getSiteHostname } from "@lib/hostname";
 import { formatDuration } from "@lib/eta";
 import { useSmoothedRemainingMs } from "@hooks/useSmoothedRemainingMs";
 import { DiscordIcon } from "./icons/DiscordIcon";
+import { getActionTintClassName, getActionTintStyle } from "@lib/actionTint";
 import type { ServerConfig } from "@types";
 
 interface ServerCardProps {
@@ -182,7 +183,8 @@ export const ServerCard: React.FC<ServerCardProps> = ({
             <Button
               variant="secondary"
               size="sm"
-              className={!isEnabled ? "bg-success/10 text-success hover:bg-success/20" : ""}
+              className={getActionTintClassName(isEnabled ? "warning" : "success")}
+              style={getActionTintStyle(isEnabled ? "warning" : "success")}
               onClick={() => onToggleStatus(server.serverId)}
             >
               {isEnabled ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
@@ -191,6 +193,8 @@ export const ServerCard: React.FC<ServerCardProps> = ({
             <Button
               variant="secondary"
               size="sm"
+              className={getActionTintClassName("primary")}
+              style={getActionTintStyle("primary")}
               disabled={isTestingScrape}
               onClick={() => onTestScrape(server.serverId)}
             >
