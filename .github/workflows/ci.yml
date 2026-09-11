@@ -49,7 +49,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
 
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-workspace
 
       - run: pnpm lint
 
@@ -78,6 +78,6 @@ jobs:
           cache-dependency-path: web/pnpm-lock.yaml
 
       - working-directory: web
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-workspace
       - working-directory: web
         run: pnpm audit --audit-level=high --prod
