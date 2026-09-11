@@ -40,6 +40,7 @@
     "gradient-string": "^3.0.0",
     "ioredis": "^6.0.0",
     "log-update": "^7.2.0",
+    "mailchecker": "^6.0.21",
     "p-limit": "^7.2.0",
     "patchright": "^1.62.3",
     "pg": "^8.23.0",

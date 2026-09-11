@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
+import { isValid as isNotDisposableEmail } from "mailchecker";
 import { getAuthEnv } from "@shared/utils/authEnv";
 import { sendPasswordResetEmail } from "@infrastructure/email/resend";
 
@@ -25,6 +26,14 @@ export const auth = betterAuth({
     accountLinking: {
       enabled: true,
       requireLocalEmailVerified: true,
+    },
+  },
+  user: {
+    validateUserInfo: async ({ user, source }) => {
+      if (source.action !== "create-user") return;
+      if (!user.email || !isNotDisposableEmail(user.email)) {
+        return { error: "invalid_email", errorDescription: "Não foi possível criar a conta." };
+      }
     },
   },
   ...(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET
