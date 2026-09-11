@@ -268,6 +268,12 @@ function AuthenticatedApp() {
 
   return (
     <div className="dashboard-layout">
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <div className="animate-drift absolute -top-24 left-72 h-[36rem] w-[36rem] rounded-full bg-primary/20 blur-3xl" />
+        <div className="animate-drift absolute top-1/4 -right-40 h-[32rem] w-[32rem] rounded-full bg-warning/15 blur-3xl [animation-delay:-8s]" />
+        <div className="animate-drift absolute -bottom-32 left-1/3 h-[32rem] w-[32rem] rounded-full bg-success/15 blur-3xl [animation-delay:-16s]" />
+      </div>
+
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 animate-fade-in bg-slate-900 border border-white/15 backdrop-blur-xl px-4 py-3 rounded-lg text-white font-medium text-xs shadow-2xl flex items-center gap-2">
           {toastMessage.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
