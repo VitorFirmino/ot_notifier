@@ -23,6 +23,47 @@ services:
       - cloakbrowser_data:/root/.cloakbrowser
       - ./src/infrastructure/storage/servers.json:/app/src/infrastructure/storage/servers.json
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ot_notifier_api
+    restart: unless-stopped
+    command: ["npm", "run", "api"]
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ot_notifier}
+      DASHBOARD_URL: http://localhost:8080
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - storage_data:/app/src/infrastructure/storage/data
+      - states_data:/app/data
+      - cloakbrowser_data:/root/.cloakbrowser
+      - ./src/infrastructure/storage/servers.json:/app/src/infrastructure/storage/servers.json
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001', () => process.exit(0)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: ot_notifier_web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      - api
+
   redis:
     image: redis:7-alpine
     container_name: ot_notifier_redis
