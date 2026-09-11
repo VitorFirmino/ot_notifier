@@ -14,6 +14,24 @@ jobs:
   backend:
     name: Backend (type-check, lint, test)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ot_notifier
+          POSTGRES_PASSWORD: ot_notifier
+          POSTGRES_DB: ot_notifier
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://ot_notifier:ot_notifier@localhost:5432/ot_notifier
+      BETTER_AUTH_SECRET: ci-test-secret-do-not-use-in-production
+      RESEND_API_KEY: ci-dummy-resend-key
     steps:
       - uses: actions/checkout@v4
 
@@ -29,6 +47,10 @@ jobs:
       - run: pnpm type-check
 
       - run: pnpm lint
+
+      - run: pnpm db:auth:migrate
+
+      - run: pnpm db:migration:run
 
       - run: pnpm test run
 
