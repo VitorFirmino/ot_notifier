@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search,
@@ -143,9 +143,11 @@ const CharacterResultCard: React.FC<{ char: FoundCharacter; onSelect: (char: Fou
 
 export const CharacterSearch: React.FC<CharacterSearchProps> = ({ servers, isLoading, initialSearch }) => {
   const [searchTerm, setSearchTerm] = useState(initialSearch ?? "");
-  useEffect(() => {
+  const [prevInitialSearch, setPrevInitialSearch] = useState(initialSearch);
+  if (initialSearch !== prevInitialSearch) {
+    setPrevInitialSearch(initialSearch);
     if (initialSearch !== undefined) setSearchTerm(initialSearch);
-  }, [initialSearch]);
+  }
   const [selectedCharacter, setSelectedCharacter] = useState<FoundCharacter | null>(null);
   const [deathsExpanded, setDeathsExpanded] = useState(false);
   const [expandedSectionIds, setExpandedSectionIds] = useState<Set<string>>(new Set());

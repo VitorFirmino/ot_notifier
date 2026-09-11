@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Webhook, Bot, ShieldCheck, Save, BellRing, CheckCircle2, AlertCircle, Clock } from "lucide-react";
@@ -33,7 +33,7 @@ export const GlobalSettingsView: React.FC = () => {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors },
   } = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
@@ -44,7 +44,7 @@ export const GlobalSettingsView: React.FC = () => {
       scrapingInterval: 60,
     },
   });
-  const discordWebhook = watch("discordWebhook");
+  const discordWebhook = useWatch({ control, name: "discordWebhook" });
 
   const onSave = (values: SettingsFormValues) => {
     localStorage.setItem("ot_discord_webhook", values.discordWebhook);

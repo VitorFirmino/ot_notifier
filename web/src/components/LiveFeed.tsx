@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -93,9 +93,11 @@ const EventRowSkeleton: React.FC = () => (
 export const LiveFeed: React.FC<LiveFeedProps> = ({ events, servers, isLoading, initialSearch }) => {
   const [filterType, setFilterType] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>(initialSearch ?? "");
-  useEffect(() => {
+  const [prevInitialSearch, setPrevInitialSearch] = useState(initialSearch);
+  if (initialSearch !== prevInitialSearch) {
+    setPrevInitialSearch(initialSearch);
     if (initialSearch !== undefined) setSearchQuery(initialSearch);
-  }, [initialSearch]);
+  }
 
   const hostnameByServerId = new Map(servers.map((server) => [server.serverId, getSiteHostname(server.guild.url)]));
 

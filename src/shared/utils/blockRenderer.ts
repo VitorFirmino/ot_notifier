@@ -191,10 +191,12 @@ export const renderFinishedBlock = (states: ServerStates): string => {
 
   const configs = getAllServerConfigsSync();
   const lines: string[] = finishedStates.map(([serverId, state]) => {
+    const finished = state.finished;
+    if (!finished) return "";
+
     const config = configs.find((serverConfig) => serverConfig.serverId === serverId);
     const rawName = config?.serverName || serverId;
     const name = truncateWithEllipsis(rawName, 22).padEnd(22);
-    const finished = state.finished!;
 
     const onlineText = chalk.cyan.bold(String(finished.online).padStart(3));
     const changesText = finished.changes > 0 ? chalk.green.bold(`${finished.changes} mudança${finished.changes !== 1 ? "s" : ""}`) : chalk.gray("sem mudanças");
