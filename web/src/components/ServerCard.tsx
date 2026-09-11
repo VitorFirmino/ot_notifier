@@ -21,7 +21,7 @@ import { getSiteHostname } from "@lib/hostname";
 import { formatDuration } from "@lib/eta";
 import { useSmoothedRemainingMs } from "@hooks/useSmoothedRemainingMs";
 import { DiscordIcon } from "./icons/DiscordIcon";
-import { getActionTintClassName, getActionTintStyle } from "@lib/actionTint";
+import { getActionTintClassName, getActionTintStyle, type ActionTintColor } from "@lib/actionTint";
 import type { ServerConfig } from "@types";
 
 interface ServerCardProps {
@@ -76,11 +76,11 @@ export const ServerCard: React.FC<ServerCardProps> = ({
   const remainingMs = useSmoothedRemainingMs(initialSyncProgress);
   const siteHostname = getSiteHostname(server.guild.url);
 
-  const infoChips = [
-    server.guild.webhookUrl && "Webhook",
-    server.hasCloudflare && "Anti-bot",
-    server.guild.world && `World: ${server.guild.world}`,
-  ].filter(Boolean) as string[];
+  const infoChips: { label: string; tint?: ActionTintColor }[] = [
+    server.guild.webhookUrl && { label: "Webhook", tint: "discord" as const },
+    server.hasCloudflare && { label: "Anti-bot", tint: "primary" as const },
+    server.guild.world && { label: `World: ${server.guild.world}` },
+  ].filter(Boolean) as { label: string; tint?: ActionTintColor }[];
 
   const dimmedClasses = !isEnabled
     ? "opacity-50 grayscale-[45%] border-warning/50"
@@ -169,8 +169,13 @@ export const ServerCard: React.FC<ServerCardProps> = ({
         {infoChips.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {infoChips.map((chip) => (
-              <Badge key={chip} variant="secondary" className="text-muted-foreground">
-                {chip}
+              <Badge
+                key={chip.label}
+                variant="secondary"
+                className={chip.tint ? getActionTintClassName(chip.tint) : "text-muted-foreground"}
+                style={chip.tint ? getActionTintStyle(chip.tint) : undefined}
+              >
+                {chip.label}
               </Badge>
             ))}
           </div>

@@ -97,7 +97,12 @@ export const ServerConfigPanel: React.FC<ServerConfigPanelProps> = ({
                           {!isEnabled ? "Pausado" : isWorking ? "Ativo" : "Inativo"}
                         </Badge>
                         {server.hasCloudflare && (
-                          <Badge variant="secondary" className="gap-1 text-muted-foreground" title="Proteção Anti-Bot Ativa">
+                          <Badge
+                            variant="secondary"
+                            className={`gap-1 ${getActionTintClassName("primary")}`}
+                            style={getActionTintStyle("primary")}
+                            title="Proteção Anti-Bot Ativa"
+                          >
                             <Shield className="h-3 w-3" /> Anti-Bot
                           </Badge>
                         )}
@@ -146,20 +151,21 @@ export const ServerConfigPanel: React.FC<ServerConfigPanelProps> = ({
                     </div>
                   </div>
 
-                  <Badge
-                    variant={server.guild.webhookUrl ? "secondary" : "outline"}
-                    className={`w-full justify-center gap-1.5 py-1.5 ${
-                      server.guild.webhookUrl ? "text-[#5865F2]" : "text-muted-foreground"
+                  <div
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border p-2 text-xs font-medium ${
+                      server.guild.webhookUrl
+                        ? `border-[#5865F2]/30 ${getActionTintClassName("discord")}`
+                        : "border-border text-muted-foreground"
                     }`}
                     style={
                       server.guild.webhookUrl
-                        ? { background: "linear-gradient(165deg, color-mix(in oklab, #5865F2 18%, var(--secondary)) 0%, var(--secondary) 100%)" }
-                        : undefined
+                        ? getActionTintStyle("discord")
+                        : { background: "color-mix(in oklab, var(--secondary) 40%, transparent)" }
                     }
                   >
                     <DiscordIcon className="h-3.5 w-3.5" />
                     {server.guild.webhookUrl ? "Discord Webhook Conectado" : "Webhook Global (.env) em uso"}
-                  </Badge>
+                  </div>
                 </div>
 
                 <Separator />
