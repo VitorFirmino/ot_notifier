@@ -5,11 +5,12 @@ WORKDIR /app
 RUN corepack enable
 
 COPY package.json ./
+COPY pnpm-workspace.yaml* ./
 COPY pnpm-lock.yaml* yarn.lock* package-lock.json* ./
 
 RUN \
   if [ -f pnpm-lock.yaml ]; then \
-    corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile --prod; \
+    pnpm install --frozen-lockfile --prod; \
   elif [ -f yarn.lock ]; then \
     corepack prepare yarn@stable --activate && yarn install --immutable --production; \
   else \

@@ -103,3 +103,18 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-workspace
       - working-directory: web
         run: pnpm audit --audit-level=high --prod
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
