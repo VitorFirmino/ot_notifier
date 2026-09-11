@@ -46,7 +46,7 @@ const loadServers = (): ServerEntry[] => {
   if (!existsSync(SERVERS_JSON)) return [];
   try {
     return JSON.parse(readFileSync(SERVERS_JSON, "utf-8")) as ServerEntry[];
-  } catch (err: unknown) {
+  } catch {
     return [];
   }
 };
@@ -69,13 +69,13 @@ const loadServerJson = (serverId: string): ServerJson | null => {
   let path: string;
   try {
     path = getServerJsonPath(serverId);
-  } catch (err: unknown) {
+  } catch {
     return null;
   }
   if (!existsSync(path)) return null;
   try {
     return JSON.parse(readFileSync(path, "utf-8")) as ServerJson;
-  } catch (err: unknown) {
+  } catch {
     return null;
   }
 };
@@ -118,7 +118,7 @@ const isValidUrl = (url: string): boolean => {
   try {
     new URL(url);
     return url.startsWith("http");
-  } catch (err: unknown) {
+  } catch {
     return false;
   }
 };

@@ -4,7 +4,7 @@ export const normalizeUrl = (url: string): string => {
     urlObj.hash = "";
     urlObj.pathname = urlObj.pathname.replace(/\/{2,}/g, "/");
     return urlObj.toString();
-  } catch (err: unknown) {
+  } catch {
     return url;
   }
 };

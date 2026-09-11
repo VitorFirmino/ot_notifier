@@ -64,7 +64,7 @@ const getLockFilePath = (serverId: string): string => {
 const getFileModifiedTime = (filePath: string): number => {
   try {
     return statSync(filePath).mtimeMs;
-  } catch (err: unknown) {
+  } catch {
     return 0;
   }
 };
@@ -75,7 +75,7 @@ export const loadServerConfig = (serverId: string): ServerConfig | null => {
   let configPath: string;
   try {
     configPath = getServerConfigPath(serverId);
-  } catch (err: unknown) {
+  } catch {
     return null;
   }
 
@@ -371,7 +371,7 @@ export const deleteServerConfig = async (serverId: string): Promise<boolean> => 
   let configPath: string;
   try {
     configPath = getServerConfigPath(serverId);
-  } catch (err: unknown) {
+  } catch {
     return false;
   }
   cache.delete(serverId);

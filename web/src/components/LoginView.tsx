@@ -71,7 +71,7 @@ export const LoginView: React.FC = () => {
       if (result.error) {
         setApiError("Não foi possível autenticar. Verifique seus dados e tente novamente.");
       }
-    } catch (err: unknown) {
+    } catch {
       setApiError("Não foi possível conectar à API. Verifique se o backend está rodando.");
     }
   };
@@ -84,7 +84,7 @@ export const LoginView: React.FC = () => {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       setForgotPasswordSent(true);
-    } catch (err: unknown) {
+    } catch {
       setApiError("Não foi possível conectar à API. Verifique se o backend está rodando.");
     }
   };

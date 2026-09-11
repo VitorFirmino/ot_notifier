@@ -52,7 +52,7 @@ export const fetchOnlineCharacterNames = async (
   let origin: string;
   try {
     origin = new URL(guildUrl).origin;
-  } catch (err: unknown) {
+  } catch {
     return null;
   }
 

@@ -56,7 +56,7 @@ describe("BullMQ Queue Manager", () => {
   it("should reschedule a down server on the retry cadence instead of removing its job", async () => {
     await scheduleServerRetry("server1");
 
-    const queueInstance = new (Queue as unknown as new () => any)();
+    const queueInstance = new (Queue as unknown as new () => Queue)();
     expect(queueInstance.upsertJobScheduler).toHaveBeenCalledWith(
       "check-server:server1",
       { every: DOWN_RETRY_INTERVAL_MS },

@@ -318,7 +318,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
 
       try {
         webhookUrl = getWebhookUrl(serverConfig);
-      } catch (err: unknown) {
+      } catch {
         webhookUrl = "";
       }
     }

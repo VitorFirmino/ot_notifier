@@ -61,7 +61,7 @@ export const GlobalSettingsView: React.FC = () => {
     try {
       await api.testWebhookUrl(discordWebhook);
       setTestResult("✅ Mensagem de teste enviada! Confira o canal Discord.");
-    } catch (err: unknown) {
+    } catch {
       setTestResult("❌ Não foi possível enviar a mensagem de teste. Verifique a URL do webhook.");
     } finally {
       setTestingWebhook(false);

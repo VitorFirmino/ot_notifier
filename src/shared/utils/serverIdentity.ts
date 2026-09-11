@@ -29,7 +29,7 @@ export const extractServerIdFromUrl = (url: string): string => {
 
     const cleanHostname = hostname.replace(/^www\./, "");
     return toSafeSlug(cleanHostname) || cleanHostname;
-  } catch (err: unknown) {
+  } catch {
     return "unknown";
   }
 };

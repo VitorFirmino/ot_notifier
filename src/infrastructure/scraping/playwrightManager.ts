@@ -35,7 +35,7 @@ class PlaywrightManager {
 
     try {
       const patchrightMod = await import("patchright");
-      const patchrightChromium = (patchrightMod as any).chromium;
+      const patchrightChromium = patchrightMod.chromium;
       if (typeof patchrightChromium?.launch !== "function") {
         throw new Error("patchright module present but chromium.launch is missing");
       }
@@ -50,7 +50,7 @@ class PlaywrightManager {
       let launchCloak: ((opts: { headless: boolean; humanize: boolean; args: string[] }) => Promise<unknown>) | null = null;
       try {
         const cloakMod = await import("cloakbrowser");
-        launchCloak = (cloakMod as any).launch || (cloakMod as any).default?.launch;
+        launchCloak = cloakMod.launch;
       } catch (cloakLoadErr: unknown) {
         console.debug(`[${serverId}] CloakBrowser module não disponível:`, cloakLoadErr);
       }

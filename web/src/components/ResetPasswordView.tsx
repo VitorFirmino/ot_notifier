@@ -47,7 +47,7 @@ export const ResetPasswordView: React.FC = () => {
         return;
       }
       setIsDone(true);
-    } catch (err: unknown) {
+    } catch {
       setApiError("Não foi possível conectar à API. Verifique se o backend está rodando.");
     }
   };

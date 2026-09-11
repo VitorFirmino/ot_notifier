@@ -45,10 +45,4 @@ export const createLogger = (_serverId: string): Logger => ({
   verification: noop,
 });
 
-export const logger = {
-  info: noop,
-  success: noop,
-  error: noop,
-  warn: noop,
-  log: noop,
-} as any;
+export const logger: Logger = createLogger("global");

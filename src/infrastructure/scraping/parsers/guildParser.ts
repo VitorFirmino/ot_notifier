@@ -77,7 +77,7 @@ const collapseDuplicateSlashes = (url: string): string => {
     const parsed = new URL(url);
     parsed.pathname = parsed.pathname.replace(/\/{2,}/g, "/");
     return parsed.toString();
-  } catch (err: unknown) {
+  } catch {
     return url;
   }
 };
@@ -96,7 +96,7 @@ export const discoverGuildsFromList = (html: string, baseUrl: string): GuildDisc
     if (rawUrl && !rawUrl.startsWith("http")) {
       try {
         fullUrl = new URL(rawUrl, baseUrl).toString();
-      } catch (err: unknown) {
+      } catch {
         fullUrl = rawUrl;
       }
     }
@@ -111,7 +111,7 @@ export const discoverGuildsFromList = (html: string, baseUrl: string): GuildDisc
     if (logoSrc) {
       try {
         fullLogo = logoSrc.startsWith("http") ? logoSrc : new URL(logoSrc, baseUrl).toString();
-      } catch (err: unknown) {
+      } catch {
         fullLogo = logoSrc;
       }
       fullLogo = collapseDuplicateSlashes(fullLogo);
@@ -137,7 +137,7 @@ export const discoverGuildsFromList = (html: string, baseUrl: string): GuildDisc
       try {
         const urlObj = new URL(href.startsWith("http") ? href : new URL(href, baseUrl).toString());
         rawName = decodeURIComponent(urlObj.searchParams.get("GuildName") || "").replace(/\+/g, " ");
-      } catch (err: unknown) {
+      } catch {
         rawName = "";
       }
     }
@@ -160,7 +160,7 @@ export const discoverGuildsFromList = (html: string, baseUrl: string): GuildDisc
     const inputGuildName = $tr.find("input[name='GuildName']").attr("value") || $tr.find("input[name='guild']").attr("value");
     const formAction = $form.attr("action") || "";
 
-    let guildName = inputGuildName || $tr.find("b").first().text().trim();
+    const guildName = inputGuildName || $tr.find("b").first().text().trim();
 
     if (guildName && (logoSrc || formAction)) {
       let targetUrl = formAction;
@@ -187,7 +187,7 @@ export const discoverGuildsFromList = (html: string, baseUrl: string): GuildDisc
     let decodedName = "";
     try {
       decodedName = decodeURIComponent(match[1].replace(/\+/g, " ")).trim();
-    } catch (err: unknown) {
+    } catch {
       decodedName = match[1].replace(/\+/g, " ").trim();
     }
     if (!decodedName) return;
@@ -214,7 +214,7 @@ export const discoverGuildsFromList = (html: string, baseUrl: string): GuildDisc
     let decodedName = "";
     try {
       decodedName = decodeURIComponent(match[1].replace(/\+/g, " ")).trim();
-    } catch (err: unknown) {
+    } catch {
       decodedName = match[1].replace(/\+/g, " ").trim();
     }
     if (!decodedName) return;

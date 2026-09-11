@@ -3,7 +3,7 @@ const normalizeText = (value: string): string => value.replace(/\s+/g, " ").trim
 const safeDecode = (value: string): string => {
   try {
     return decodeURIComponent(value.replace(/\+/g, " "));
-  } catch (err: unknown) {
+  } catch {
     return value.replace(/\+/g, " ");
   }
 };
@@ -21,7 +21,7 @@ const getSearchParamCaseInsensitive = (url: URL, key: string): string | null => 
 const getResolvedUrl = (href: string, baseUrl: string): URL | null => {
   try {
     return new URL(href, baseUrl);
-  } catch (err: unknown) {
+  } catch {
     return null;
   }
 };

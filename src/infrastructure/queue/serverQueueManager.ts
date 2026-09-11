@@ -1,4 +1,4 @@
-import { Queue } from "bullmq";
+import { Queue, type ConnectionOptions } from "bullmq";
 import { getRedisOptions } from "./redisConnection";
 import type { ServerConfig } from "@shared/types/index";
 
@@ -14,7 +14,7 @@ let serverCheckQueueInstance: Queue | null = null;
 export const getServerCheckQueue = (): Queue => {
   if (!serverCheckQueueInstance) {
     serverCheckQueueInstance = new Queue(QUEUE_NAME, {
-      connection: getRedisOptions() as any,
+      connection: getRedisOptions() as unknown as ConnectionOptions,
       defaultJobOptions: {
         attempts: 3,
         backoff: {
@@ -37,24 +37,11 @@ export const addOrUpdateServerSchedule = async (
   const schedulerId = `check-server:${serverId}`;
 
   try {
-    if (typeof (queue as any).upsertJobScheduler === "function") {
-      await (queue as any).upsertJobScheduler(
-        schedulerId,
-        { every: Math.max(10000, intervalMs) },
-        { name: schedulerId, data: { serverId } }
-      );
-    } else {
-      await queue.add(
-        schedulerId,
-        { serverId },
-        {
-          jobId: schedulerId,
-          repeat: {
-            every: Math.max(10000, intervalMs),
-          },
-        } as any
-      );
-    }
+    await queue.upsertJobScheduler(
+      schedulerId,
+      { every: Math.max(10000, intervalMs) },
+      { name: schedulerId, data: { serverId } }
+    );
 
     console.log(`⏰ [BullMQ] Job repetível agendado para ${serverId} a cada ${intervalMs / 1000}s`);
   } catch (err: unknown) {
@@ -71,16 +58,7 @@ export const removeServerSchedule = async (serverId: string): Promise<void> => {
   const schedulerId = `check-server:${serverId}`;
 
   try {
-    if (typeof (queue as any).removeJobScheduler === "function") {
-      await (queue as any).removeJobScheduler(schedulerId);
-    } else if (typeof (queue as any).getRepeatableJobs === "function") {
-      const repeatableJobs = await (queue as any).getRepeatableJobs();
-      for (const job of repeatableJobs) {
-        if (job.name === schedulerId || job.id === schedulerId) {
-          await (queue as any).removeRepeatableByKey(job.key);
-        }
-      }
-    }
+    await queue.removeJobScheduler(schedulerId);
     console.log(`🗑️ [BullMQ] Agendamento removido para ${serverId}`);
   } catch (err: unknown) {
     console.warn(`⚠️ [BullMQ] Erro ao remover agendamento de ${serverId}:`, err);

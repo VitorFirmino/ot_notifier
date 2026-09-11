@@ -1,4 +1,4 @@
-import { Worker, type Job } from "bullmq";
+import { Worker, type Job, type ConnectionOptions } from "bullmq";
 import { QUEUE_NAME } from "@infrastructure/queue/serverQueueManager";
 import { getRedisOptions } from "@infrastructure/queue/redisConnection";
 import { processServerCheck } from "./handlers/serverCheckHandler";
@@ -35,7 +35,7 @@ export const startServerQueueWorker = (): Worker => {
       }
     },
     {
-      connection: getRedisOptions() as any,
+      connection: getRedisOptions() as unknown as ConnectionOptions,
       concurrency: Math.max(1, concurrency),
     }
   );

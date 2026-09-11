@@ -77,7 +77,7 @@ export const buildFastifyServer = async () => {
     const serverAdapter = new FastifyAdapter();
     createBullBoard({
       queues: [new BullMQAdapter(getServerCheckQueue())],
-      serverAdapter: serverAdapter as any,
+      serverAdapter,
     });
     serverAdapter.setBasePath("/admin/queues");
     app.register(serverAdapter.registerPlugin(), {

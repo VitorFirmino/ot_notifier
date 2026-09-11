@@ -63,11 +63,11 @@ export const saveBrowserCookiesToJar = async (
           path: cookie.path || "/",
         });
         await jar.setCookie(cookieObj, targetUrl);
-      } catch (err: unknown) {
+      } catch {
         continue;
       }
     }
-  } catch (err: unknown) {
+  } catch {
     return;
   }
 };
@@ -101,11 +101,11 @@ const loadCookiesIntoJar = async (
           cookie.path = "/";
           await jar.setCookie(cookie, `https://${domain}`);
         }
-      } catch (err: unknown) {
+      } catch {
         continue;
       }
     }
-  } catch (err: unknown) {
+  } catch {
     return;
   }
 };

@@ -357,7 +357,7 @@ export const parseCharacterFromHtml = (
   let lastDeath: DeathInfo | null = null;
   try {
     lastDeath = extractDeathInfo($);
-  } catch (err: unknown) {
+  } catch {
     lastDeath = null;
   }
 
@@ -436,7 +436,7 @@ export const parseCharacterDetailsFromHtml = (
   let deaths: DeathInfo[] = [];
   try {
     deaths = extractAllDeaths($);
-  } catch (err: unknown) {
+  } catch {
     deaths = [];
   }
 

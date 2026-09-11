@@ -14,7 +14,7 @@ const getServerColorFn = (serverId: string): ((text: string) => string) => {
     hash = (hash << 5) - hash + serverId.charCodeAt(charIndex);
     hash = hash & hash;
   }
-  const colorMap: Record<string, any> = {
+  const colorMap: Record<string, (text: string) => string> = {
     cyan: chalk.cyan, green: chalk.green, yellow: chalk.yellow,
     magenta: chalk.magenta, blue: chalk.blue, red: chalk.red,
     white: chalk.white, gray: chalk.gray,
@@ -287,6 +287,10 @@ export const clearRender = (): void => {
 };
 
 export const coloredLabel = (color: string, text: string): string => {
-  const colorMap: any = { blue: chalk.bgBlue.black, green: chalk.bgGreen.black, yellow: chalk.bgYellow.black };
-  return (colorMap[color] || chalk.bgWhite.black)(` ${text} `);
+  const colorMap: Record<string, (text: string) => string> = {
+    blue: chalk.bgBlue.black,
+    green: chalk.bgGreen.black,
+    yellow: chalk.bgYellow.black,
+  };
+  return (colorMap[color] ?? chalk.bgWhite.black)(` ${text} `);
 };
