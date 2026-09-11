@@ -7,7 +7,18 @@ const authEnvSchema = z.object({
   BETTER_AUTH_SECRET: z
     .string({ error: "BETTER_AUTH_SECRET não configurada — gere uma com `openssl rand -base64 32`." })
     .min(1, "BETTER_AUTH_SECRET não configurada — gere uma com `openssl rand -base64 32`."),
-  BETTER_AUTH_URL: z.string().optional(),
+  BETTER_AUTH_URL: z
+    .string()
+    .optional()
+    .refine((value) => {
+      if (!value) return true;
+      try {
+        const { protocol, hostname } = new URL(value);
+        return protocol === "https:" || hostname === "localhost" || hostname === "127.0.0.1";
+      } catch {
+        return false;
+      }
+    }, "BETTER_AUTH_URL inválida ou insegura — use https:// em produção (http:// só é permitido para localhost), senão o cookie de sessão não recebe a flag Secure."),
   DASHBOARD_URL: z.string().optional(),
   RESEND_API_KEY: z
     .string({ error: "RESEND_API_KEY não configurada — necessária para o envio do email de recuperação de senha." })
