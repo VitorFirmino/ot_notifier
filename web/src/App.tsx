@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, useNavigate, matchPath } from "react-router-dom";
+import { useLocation, useNavigate, matchPath, Navigate } from "react-router-dom";
 import { ResetPasswordView } from "@components/ResetPasswordView";
 import { Sidebar } from "@components/Sidebar";
 import { TopBar } from "@components/TopBar";
@@ -81,7 +81,14 @@ export default function App() {
   }
 
   if (!session) {
+    if (location.pathname !== "/login") {
+      return <Navigate to="/login" replace />;
+    }
     return <LoginView />;
+  }
+
+  if (location.pathname === "/login") {
+    return <Navigate to="/" replace />;
   }
 
   return <AuthenticatedApp />;
