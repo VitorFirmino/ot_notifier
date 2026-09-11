@@ -146,8 +146,18 @@ export const ServerConfigPanel: React.FC<ServerConfigPanelProps> = ({
                     </div>
                   </div>
 
-                  <Badge variant={server.guild.webhookUrl ? "secondary" : "outline"} className="w-full justify-center py-1 text-muted-foreground">
-                    <DiscordIcon className="h-3 w-3" />
+                  <Badge
+                    variant={server.guild.webhookUrl ? "secondary" : "outline"}
+                    className={`w-full justify-center gap-1.5 py-1.5 ${
+                      server.guild.webhookUrl ? "text-[#5865F2]" : "text-muted-foreground"
+                    }`}
+                    style={
+                      server.guild.webhookUrl
+                        ? { background: "linear-gradient(165deg, color-mix(in oklab, #5865F2 18%, var(--secondary)) 0%, var(--secondary) 100%)" }
+                        : undefined
+                    }
+                  >
+                    <DiscordIcon className="h-3.5 w-3.5" />
                     {server.guild.webhookUrl ? "Discord Webhook Conectado" : "Webhook Global (.env) em uso"}
                   </Badge>
                 </div>
