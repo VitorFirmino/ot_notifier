@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
+import { ThemeToggle } from "@components/ThemeToggle";
 import logo from "@assets/logo.png";
 import { authClient } from "@lib/authClient";
 
@@ -120,15 +121,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {session.user.email}
             </span>
           )}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => authClient.signOut({})}
-            aria-label="Sair"
-            title="Sair"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => authClient.signOut({})}
+              aria-label="Sair"
+              title="Sair"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </aside>

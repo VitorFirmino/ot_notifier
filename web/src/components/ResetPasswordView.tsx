@@ -10,6 +10,7 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { authClient } from "@lib/authClient";
 import logo from "@assets/logo.png";
+import { ThemeToggle } from "@components/ThemeToggle";
 
 const resetPasswordSchema = z.object({
   newPassword: z.string().min(8, "A senha deve ter pelo menos 8 caracteres."),
@@ -53,6 +54,10 @@ export const ResetPasswordView: React.FC = () => {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
+      <div className="absolute right-6 top-6 z-20">
+        <ThemeToggle />
+      </div>
+
       <div className="pointer-events-none absolute inset-0">
         <div className="animate-drift absolute -top-32 -left-24 h-96 w-96 rounded-full bg-primary/20 blur-3xl" />
         <div className="animate-drift absolute top-1/3 -right-32 h-[28rem] w-[28rem] rounded-full bg-warning/15 blur-3xl [animation-delay:-8s]" />
