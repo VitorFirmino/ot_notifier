@@ -12,3 +12,6 @@ coverage
 .gitignore
 playwright-report
 test-results
+web
+.claude
+.vscode

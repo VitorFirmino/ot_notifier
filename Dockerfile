@@ -22,7 +22,10 @@ FROM node:22-slim AS runtime
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    xvfb \
+    xauth \
     chromium \
+    procps \
     ca-certificates \
     fonts-liberation \
     libasound2 \
@@ -56,6 +59,7 @@ COPY . .
 
 VOLUME ["/app/src/infrastructure/storage/data", "/app/data"]
 
-EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD pgrep -f orchestrator.ts > /dev/null || exit 1
 
 CMD ["npm", "run", "start"]

@@ -71,7 +71,11 @@ class PlaywrightManager {
       console.warn(`[${serverId}] CloakBrowser indisponível, tentando Playwright Chromium padrão: ${msg}`);
     }
 
-    browser = await chromium.launch({ headless: true, args: launchArgs });
+    browser = await chromium.launch({
+      headless: true,
+      args: launchArgs,
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+    });
     context = await browser.newContext(contextOptions);
 
     return { browser, context };
