@@ -33,7 +33,13 @@ export const TopBar: React.FC<TopBarProps> = ({
   const title = TAB_TITLES[activeTab];
 
   return (
-    <header className="sticky top-0 z-20 flex shrink-0 flex-col gap-4 border-b border-border bg-background/95 px-6 py-4 backdrop-blur-md md:flex-row md:items-center md:justify-between">
+    <header
+      className="sticky top-0 z-20 flex shrink-0 flex-col gap-4 border-b border-border px-6 py-4 md:flex-row md:items-center md:justify-between"
+      style={{
+        background:
+          "linear-gradient(90deg, color-mix(in oklab, var(--background) 85%, var(--primary) 15%) 0%, var(--background) 30%, var(--background) 70%, color-mix(in oklab, var(--background) 88%, var(--warning) 12%) 100%)",
+      }}
+    >
       <div className="shrink-0">
         <h1 className="font-heading text-xl font-semibold text-foreground md:text-2xl">{title.main}</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">{title.sub}</p>

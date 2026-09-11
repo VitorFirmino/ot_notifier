@@ -42,9 +42,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`flex h-full shrink-0 flex-col border-r border-border bg-sidebar p-4 transition-all duration-300 ${
+      className={`relative z-10 flex h-full shrink-0 flex-col border-r border-border p-4 transition-all duration-300 ${
         isCollapsed ? "w-20" : "w-64"
       }`}
+      style={{
+        background:
+          "linear-gradient(180deg, color-mix(in oklab, var(--sidebar) 82%, var(--primary) 18%) 0%, var(--sidebar) 45%)",
+      }}
     >
       <div>
         <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
@@ -119,7 +123,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => authClient.signOut()}
+            onClick={() => authClient.signOut({})}
             aria-label="Sair"
             title="Sair"
           >
