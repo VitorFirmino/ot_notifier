@@ -12,7 +12,7 @@ const hasValidDeathFields = ({
   deathText: string;
   hasLinks: boolean;
 }): boolean => {
-  const hasDeathVerb = /(eliminado|killed|died)/i.test(deathText);
+  const hasDeathVerb = /(eliminado|morreu|morto|killed|died)/i.test(deathText);
   const hasLevel = /(nível|level)\s+\d+/i.test(deathText);
   const hasKillerPreposition = /\b(por|by)\b/i.test(deathText);
 
