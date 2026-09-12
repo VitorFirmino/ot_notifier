@@ -377,7 +377,7 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
       <Label>Nome do servidor / guilda *</Label>
       <Input
         type="text"
-        placeholder="Ex: OTDBO - Ta DEBOREST, NTOBrasil"
+        placeholder="Ex: Meu Servidor OT"
         aria-invalid={!!errors.serverName}
         {...register("serverName")}
       />
