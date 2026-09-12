@@ -291,13 +291,13 @@ describe("ServerConfigManager", () => {
         enabled: true,
       };
 
-      invalidateCache("mygame_example_com");
+      invalidateCache("mygame_example_com_1");
       mockedExistsSync.mockReturnValue(false);
       mockedLockfile.lock.mockResolvedValue(async () => {});
 
       const config = createServerConfig(guildConfig);
 
-      expect(config.serverId).toBe("mygame_example_com");
+      expect(config.serverId).toBe("mygame_example_com_1");
       expect(config.guild).toEqual(guildConfig);
       expect(config.characters).toEqual({});
     });
@@ -382,20 +382,20 @@ describe("ServerConfigManager", () => {
     it("should build serverId from the full hostname, not just the serverN label", () => {
       const url = "https://server1.example.com/guilds/view/1";
       const serverId = extractServerIdFromUrl(url);
-      expect(serverId).toBe("server1_example_com");
+      expect(serverId).toBe("server1_example_com_1");
       expect(extractServerIdFromUrl("https://server1.otherhost.com/guilds/view/1")).not.toBe(serverId);
     });
 
     it("should extract serverId from subdomain", () => {
       const url = "https://mygame.example.com/guilds/view/1";
       const serverId = extractServerIdFromUrl(url);
-      expect(serverId).toBe("mygame_example_com");
+      expect(serverId).toBe("mygame_example_com_1");
     });
 
     it("should remove www. from hostname", () => {
       const url = "https://www.mygame.example.com/guilds/view/1";
       const serverId = extractServerIdFromUrl(url);
-      expect(serverId).toBe("mygame_example_com");
+      expect(serverId).toBe("mygame_example_com_1");
     });
 
     it("should include OTDBO guild name in serverId", () => {
@@ -408,6 +408,27 @@ describe("ServerConfigManager", () => {
       const url = "invalid-url";
       const serverId = extractServerIdFromUrl(url);
       expect(serverId).toBe("unknown");
+    });
+
+    it("should derive different serverIds for two different guilds on the same domain (numeric path)", () => {
+      const guildA = extractServerIdFromUrl("https://server1.mygame.com/index.php/guilds/view/3857");
+      const guildB = extractServerIdFromUrl("https://server1.mygame.com/index.php/guilds/view/9012");
+      expect(guildA).not.toBe(guildB);
+      expect(guildA).toBe("server1_mygame_com_3857");
+      expect(guildB).toBe("server1_mygame_com_9012");
+    });
+
+    it("should derive different serverIds for two different guilds on the same domain (GuildName query param, non-otdbo host)", () => {
+      const guildA = extractServerIdFromUrl("https://www.mygame.com/?subtopic=guilds&action=view&GuildName=Red+Sky");
+      const guildB = extractServerIdFromUrl("https://www.mygame.com/?subtopic=guilds&action=view&GuildName=Blue+Moon");
+      expect(guildA).not.toBe(guildB);
+      expect(guildA).toBe("mygame_com_red_sky");
+      expect(guildB).toBe("mygame_com_blue_moon");
+    });
+
+    it("should fall back to hostname alone when no guild identifier is present in the URL", () => {
+      const serverId = extractServerIdFromUrl("https://www.mygame.com/");
+      expect(serverId).toBe("mygame_com");
     });
   });
 

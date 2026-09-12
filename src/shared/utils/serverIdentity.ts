@@ -12,6 +12,25 @@ export const normalizeServerId = (value: string): string =>
     .replace(/[^a-z0-9_]+/g, "_")
     .replace(/^_+|_+$/g, "");
 
+const GUILD_NAME_QUERY_KEYS = ["GuildName", "guildname", "guild_name", "guild"];
+
+const extractGuildToken = (urlObj: URL): string | null => {
+  for (const key of GUILD_NAME_QUERY_KEYS) {
+    const value = urlObj.searchParams.get(key);
+    if (value) {
+      const slug = toSafeSlug(value.replace(/\+/g, " "));
+      if (slug) return slug;
+    }
+  }
+
+  const pathGuildMatch = urlObj.pathname.match(/guilds?\/(?:view\/)?(\d+)/i);
+  if (pathGuildMatch) {
+    return pathGuildMatch[1];
+  }
+
+  return null;
+};
+
 export const extractServerIdFromUrl = (url: string): string => {
   try {
     const urlObj = new URL(url);
@@ -28,7 +47,14 @@ export const extractServerIdFromUrl = (url: string): string => {
     }
 
     const cleanHostname = hostname.replace(/^www\./, "");
-    return toSafeSlug(cleanHostname) || cleanHostname;
+    const hostSlug = toSafeSlug(cleanHostname) || cleanHostname;
+
+    const guildToken = extractGuildToken(urlObj);
+    if (guildToken) {
+      return `${hostSlug}_${guildToken}`;
+    }
+
+    return hostSlug;
   } catch {
     return "unknown";
   }
