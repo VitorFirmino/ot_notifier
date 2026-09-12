@@ -71,12 +71,17 @@ const computeStats = (servers: ServerConfig[], events: ActivityEvent[]): SystemS
 export default function App() {
   const location = useLocation();
   const { data: session, isPending: isSessionLoading } = authClient.useSession();
+  const [hasResolvedSessionOnce, setHasResolvedSessionOnce] = useState(false);
+
+  if (!isSessionLoading && !hasResolvedSessionOnce) {
+    setHasResolvedSessionOnce(true);
+  }
 
   if (location.pathname === "/reset-password") {
     return <ResetPasswordView />;
   }
 
-  if (isSessionLoading) {
+  if (isSessionLoading && !hasResolvedSessionOnce) {
     return null;
   }
 

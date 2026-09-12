@@ -42,6 +42,7 @@ export const LoginView: React.FC = () => {
   const [view, setView] = useState<"credentials" | "forgot">("credentials");
   const [apiError, setApiError] = useState<string | null>(null);
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
+  const [verificationSent, setVerificationSent] = useState<string | null>(null);
 
   const {
     register,
@@ -69,14 +70,29 @@ export const LoginView: React.FC = () => {
 
   const onSubmit = async (values: LoginFormValues) => {
     setApiError(null);
+    setVerificationSent(null);
     try {
       const result =
         values.mode === "login"
           ? await authClient.signIn.email({ email: values.email, password: values.password })
-          : await authClient.signUp.email({ email: values.email, password: values.password, name: values.name });
+          : await authClient.signUp.email({
+              email: values.email,
+              password: values.password,
+              name: values.name,
+              callbackURL: window.location.origin,
+            });
 
       if (result.error) {
-        setApiError("Não foi possível autenticar. Verifique seus dados e tente novamente.");
+        if (result.error.code === "EMAIL_NOT_VERIFIED") {
+          setVerificationSent(values.email);
+        } else {
+          setApiError("Não foi possível autenticar. Verifique seus dados e tente novamente.");
+        }
+        return;
+      }
+
+      if (values.mode === "signup" && !result.data?.token) {
+        setVerificationSent(values.email);
       }
     } catch {
       setApiError("Não foi possível conectar à API. Verifique se o backend está rodando.");
@@ -168,6 +184,43 @@ export const LoginView: React.FC = () => {
                     setView("credentials");
                     setForgotPasswordSent(false);
                   }}
+                >
+                  Voltar para o login
+                </button>
+              </>
+            ) : verificationSent ? (
+              <>
+                <h1 className="font-heading text-3xl font-semibold text-foreground">Confirme seu email</h1>
+                <p className="text-sm text-muted-foreground">
+                  Enviamos um link de confirmação para <span className="font-medium text-foreground">{verificationSent}</span>.
+                  Verifique sua caixa de entrada (e o spam) e clique no link para ativar sua conta.
+                </p>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-12 w-full text-base"
+                  onClick={async () => {
+                    setApiError(null);
+                    try {
+                      await authClient.sendVerificationEmail({
+                        email: verificationSent,
+                        callbackURL: window.location.origin,
+                      });
+                    } catch {
+                      setApiError("Não foi possível conectar à API. Verifique se o backend está rodando.");
+                    }
+                  }}
+                >
+                  Reenviar email de confirmação
+                </Button>
+
+                {apiError && <p className="text-sm text-destructive">{apiError}</p>}
+
+                <button
+                  type="button"
+                  className="cursor-pointer text-sm text-primary hover:underline"
+                  onClick={() => setVerificationSent(null)}
                 >
                   Voltar para o login
                 </button>

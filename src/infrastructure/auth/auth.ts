@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { Pool } from "pg";
 import { isValid as isNotDisposableEmail } from "mailchecker";
 import { getAuthEnv } from "@shared/utils/authEnv";
-import { sendPasswordResetEmail } from "@infrastructure/email/resend";
+import { sendPasswordResetEmail, sendVerificationEmail } from "@infrastructure/email/resend";
 
 const { DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, DASHBOARD_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } =
   getAuthEnv();
@@ -14,11 +14,24 @@ export const auth = betterAuth({
   trustedOrigins: [DASHBOARD_URL ?? "http://localhost:5173"],
   emailAndPassword: {
     enabled: true,
+    requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
       try {
         await sendPasswordResetEmail({ to: user.email, resetUrl: url });
       } catch (err: unknown) {
         console.error("❌ Falha ao enviar email de recuperação de senha:", err);
+      }
+    },
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    sendOnSignIn: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      try {
+        await sendVerificationEmail({ to: user.email, verifyUrl: url });
+      } catch (err: unknown) {
+        console.error("❌ Falha ao enviar email de verificação:", err);
       }
     },
   },

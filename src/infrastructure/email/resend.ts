@@ -23,3 +23,26 @@ export const sendPasswordResetEmail = async (params: {
     throw new Error(`Falha ao enviar email via Resend: ${result.error.message}`);
   }
 };
+
+export const sendVerificationEmail = async (params: {
+  to: string;
+  verifyUrl: string;
+}): Promise<void> => {
+  const { RESEND_API_KEY, RESEND_FROM_EMAIL } = getAuthEnv();
+
+  const resend = new Resend(RESEND_API_KEY);
+  const result = await resend.emails.send({
+    from: RESEND_FROM_EMAIL ?? "OT Notifier <onboarding@resend.dev>",
+    to: params.to,
+    subject: "Confirme seu email - OT Notifier",
+    html: `
+      <p>Confirme seu email para ativar sua conta no OT Notifier.</p>
+      <p><a href="${params.verifyUrl}">Clique aqui para confirmar seu email</a></p>
+      <p>Se você não criou essa conta, pode ignorar este email.</p>
+    `,
+  });
+
+  if (result.error) {
+    throw new Error(`Falha ao enviar email via Resend: ${result.error.message}`);
+  }
+};
