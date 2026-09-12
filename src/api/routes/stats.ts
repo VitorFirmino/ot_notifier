@@ -2,8 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { getAllServerConfigs } from "@infrastructure/storage/serverConfigManager";
 
 export const registerStatsRoutes = (app: FastifyInstance): void => {
-  app.get("/api/stats", async (_request, reply) => {
-    const configs = await getAllServerConfigs();
+  app.get("/api/stats", async (request, reply) => {
+    const allConfigs = await getAllServerConfigs();
+    const configs = request.isAdmin
+      ? allConfigs
+      : allConfigs.filter((config) => config.createdByUserId === request.userId);
     const activeCount = configs.filter(
       (config) => config.guild.enabled !== false && config.isWorking !== false
     ).length;

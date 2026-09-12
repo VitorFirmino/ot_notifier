@@ -40,8 +40,11 @@ const createBlankCharacter = (url: string): CharacterInfo => ({
 });
 
 export const registerServerRoutes = (app: FastifyInstance): void => {
-  app.get("/api/servers", async (_request, reply) => {
-    const configs = await getAllServerConfigs();
+  app.get("/api/servers", async (request, reply) => {
+    const allConfigs = await getAllServerConfigs();
+    const configs = request.isAdmin
+      ? allConfigs
+      : allConfigs.filter((config) => config.createdByUserId === request.userId);
     const states = getAllServerStates();
 
     const configsWithLiveState = configs.map((config) => {
@@ -153,6 +156,9 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
     if (!config) {
       return reply.status(404).send({ error: "Servidor não encontrado" });
     }
+    if (config.createdByUserId !== request.userId && !request.isAdmin) {
+      return reply.status(403).send({ error: "Você não tem permissão para sincronizar este servidor." });
+    }
 
     if (!(await assertPublicUrlOrReply(config.guild.url, reply))) return;
 
@@ -191,6 +197,9 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
 
     if (!config) {
       return reply.status(404).send({ error: "Servidor não encontrado" });
+    }
+    if (config.createdByUserId !== request.userId && !request.isAdmin) {
+      return reply.status(403).send({ error: "Você não tem permissão para testar o webhook deste servidor." });
     }
 
     const webhookUrl = getWebhookUrl(config);

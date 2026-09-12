@@ -14,6 +14,7 @@ import { Button } from "@components/ui/button";
 import { ThemeToggle } from "@components/ThemeToggle";
 import logo from "@assets/logo.png";
 import { authClient } from "@lib/authClient";
+import { queryClient } from "@lib/queryClient";
 
 export type NavTab = "dashboard" | "servers" | "characters" | "feed" | "settings";
 
@@ -32,6 +33,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { data: session } = authClient.useSession();
+
+  const handleSignOut = async () => {
+    await authClient.signOut({});
+    queryClient.clear();
+    localStorage.removeItem("ot_discord_webhook");
+  };
 
   const navItems = [
     { id: "dashboard" as NavTab, label: "Visão Geral", icon: LayoutDashboard },
@@ -126,7 +133,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={() => authClient.signOut({})}
+              onClick={handleSignOut}
               aria-label="Sair"
               title="Sair"
             >
