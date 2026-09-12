@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowRight } from "lucide-react";
@@ -11,10 +11,17 @@ import { Label } from "@components/ui/label";
 import { authClient } from "@lib/authClient";
 import logo from "@assets/logo.png";
 import { ThemeToggle } from "@components/ThemeToggle";
+import { PasswordStrengthMeter } from "@components/PasswordStrengthMeter";
 
-const resetPasswordSchema = z.object({
-  newPassword: z.string().min(8, "A senha deve ter pelo menos 8 caracteres."),
-});
+const resetPasswordSchema = z
+  .object({
+    newPassword: z.string().min(8, "A senha deve ter pelo menos 8 caracteres."),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "As senhas não coincidem.",
+    path: ["confirmPassword"],
+  });
 
 type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
@@ -28,11 +35,13 @@ export const ResetPasswordView: React.FC = () => {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordSchema),
-    defaultValues: { newPassword: "" },
+    defaultValues: { newPassword: "", confirmPassword: "" },
   });
+  const newPassword = useWatch({ control, name: "newPassword" });
 
   const onSubmit = async (values: ResetPasswordFormValues) => {
     setApiError(null);
@@ -108,6 +117,24 @@ export const ResetPasswordView: React.FC = () => {
                     {...register("newPassword")}
                   />
                   {errors.newPassword && <p className="text-sm text-destructive">{errors.newPassword.message}</p>}
+                  <PasswordStrengthMeter password={newPassword} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-base">
+                    Repetir senha:
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Digite a senha novamente"
+                    aria-invalid={!!errors.confirmPassword}
+                    className="h-12 px-4 py-3 text-base transition-colors duration-200 hover:border-primary/40 md:text-base"
+                    {...register("confirmPassword")}
+                  />
+                  {errors.confirmPassword && (
+                    <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+                  )}
                 </div>
 
                 {apiError && <p className="text-sm text-destructive">{apiError}</p>}

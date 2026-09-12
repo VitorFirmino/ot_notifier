@@ -11,6 +11,7 @@ import { authClient } from "@lib/authClient";
 import logo from "@assets/logo.png";
 import { GoogleIcon } from "@components/icons/GoogleIcon";
 import { ThemeToggle } from "@components/ThemeToggle";
+import { PasswordStrengthMeter } from "@components/PasswordStrengthMeter";
 
 const loginSchema = z
   .object({
@@ -18,10 +19,15 @@ const loginSchema = z
     name: z.string(),
     email: z.email("Informe um email válido."),
     password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres."),
+    confirmPassword: z.string(),
   })
   .refine((data) => data.mode === "login" || data.name.trim().length > 0, {
     message: "Informe seu nome.",
     path: ["name"],
+  })
+  .refine((data) => data.mode === "login" || data.password === data.confirmPassword, {
+    message: "As senhas não coincidem.",
+    path: ["confirmPassword"],
   });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -46,7 +52,7 @@ export const LoginView: React.FC = () => {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     shouldUnregister: false,
-    defaultValues: { mode: "login", name: "", email: "", password: "" },
+    defaultValues: { mode: "login", name: "", email: "", password: "", confirmPassword: "" },
   });
 
   const {
@@ -59,6 +65,7 @@ export const LoginView: React.FC = () => {
   });
 
   const mode = useWatch({ control, name: "mode" });
+  const password = useWatch({ control, name: "password" });
 
   const onSubmit = async (values: LoginFormValues) => {
     setApiError(null);
@@ -219,7 +226,24 @@ export const LoginView: React.FC = () => {
                       {...register("password")}
                     />
                     {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+                    {mode === "signup" && <PasswordStrengthMeter password={password} />}
                   </div>
+                  {mode === "signup" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword" className="text-base">Repetir senha:</Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        placeholder="Digite a senha novamente"
+                        aria-invalid={!!errors.confirmPassword}
+                        className="h-12 px-4 py-3 text-base transition-colors duration-200 hover:border-primary/40 md:text-base"
+                        {...register("confirmPassword")}
+                      />
+                      {errors.confirmPassword && (
+                        <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+                      )}
+                    </div>
+                  )}
 
                   {apiError && <p className="text-sm text-destructive">{apiError}</p>}
 
