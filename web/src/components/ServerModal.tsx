@@ -3,7 +3,7 @@ import { useForm, type UseFormRegister, type FieldErrors } from "react-hook-form
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
-import { Server, Save, Compass, Loader2, Image as ImageIcon, ShieldCheck } from "lucide-react";
+import { Server, Save, Compass, Loader2, Image as ImageIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -84,7 +84,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
     formState: { errors: discoveryFormErrors },
   } = useForm<DiscoveryFormValues>({
     resolver: zodResolver(discoverySchema),
-    defaultValues: { discoveryUrl: "https://www.otdbo.com.br/?subtopic=guilds" },
+    defaultValues: { discoveryUrl: "" },
   });
 
   const discoverMutation = useMutation({
@@ -251,7 +251,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                     <div className="flex gap-2">
                       <Input
                         type="text"
-                        placeholder="www.otdbo.com.br ou https://www.otdbo.com.br/?subtopic=guilds"
+                        placeholder="www.exemplo.com"
                         aria-invalid={!!discoveryFormErrors.discoveryUrl}
                         className="flex-1 font-mono text-xs"
                         {...registerDiscovery("discoveryUrl")}
@@ -268,13 +268,8 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                         )}
                       </Button>
                     </div>
-                    {discoveryFormErrors.discoveryUrl ? (
+                    {discoveryFormErrors.discoveryUrl && (
                       <p className="text-[11px] text-destructive">{discoveryFormErrors.discoveryUrl.message}</p>
-                    ) : (
-                      <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                        <ShieldCheck className="h-3.5 w-3.5 text-success" />
-                        Pode colar só o domínio — o scraper testa sozinho os padrões mais comuns de página de guildas (?subtopic=guilds, /guilds.php, /guilds, etc.).
-                      </p>
                     )}
                   </form>
 
@@ -393,7 +388,7 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
       <Label>URL da guilda (alvo do scraping) *</Label>
       <Input
         type="url"
-        placeholder="https://www.otdbo.com.br/?subtopic=guilds&action=view&GuildName=..."
+        placeholder="https://www.exemplo.com/?subtopic=guilds&action=view&GuildName=..."
         className="font-mono text-xs"
         aria-invalid={!!errors.guildUrl}
         {...register("guildUrl")}
@@ -406,7 +401,7 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
       <div className="flex items-center gap-2">
         <Input
           type="url"
-          placeholder="https://www.otdbo.com.br/guild_image.php?id=18"
+          placeholder="https://www.exemplo.com/guild_image.php?id=18"
           className="flex-1 font-mono text-xs"
           aria-invalid={!!errors.logoUrl}
           {...register("logoUrl")}
