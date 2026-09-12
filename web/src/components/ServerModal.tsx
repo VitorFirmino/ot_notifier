@@ -247,7 +247,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
               ) : (
                 <>
                   <form onSubmit={handleSubmitDiscovery(handleDiscover)} className="space-y-2">
-                    <Label>URL do servidor (site do AAC)</Label>
+                    <Label>URL do servidor</Label>
                     <div className="flex gap-2">
                       <Input
                         type="text"
