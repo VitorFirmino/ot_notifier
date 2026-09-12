@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Webhook, ShieldCheck, Save, BellRing, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { Webhook, ShieldCheck, Save, BellRing, CheckCircle2, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -13,15 +13,12 @@ import { api } from "@services/api";
 
 const settingsSchema = z.object({
   discordWebhook: z.union([z.literal(""), z.url("Informe uma URL válida.")]),
-  scrapingInterval: z.number().min(15, "O intervalo mínimo é 15 segundos.").max(600, "O intervalo máximo é 600 segundos."),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
 
 export const GlobalSettingsView: React.FC = () => {
   const [enableDiscord, setEnableDiscord] = useState(true);
-  const [useAntiBot, setUseAntiBot] = useState(true);
-  const [humanizePointer, setHumanizePointer] = useState(true);
 
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [testingWebhook, setTestingWebhook] = useState(false);
@@ -36,7 +33,6 @@ export const GlobalSettingsView: React.FC = () => {
     resolver: zodResolver(settingsSchema),
     defaultValues: {
       discordWebhook: localStorage.getItem("ot_discord_webhook") || "",
-      scrapingInterval: 60,
     },
   });
   const discordWebhook = useWatch({ control, name: "discordWebhook" });
@@ -74,7 +70,7 @@ export const GlobalSettingsView: React.FC = () => {
                 Configurações Globais & Integrações
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Gerencie notificações de mortes, entradas em guilds e modo de proteção anti-bot.
+                Gerencie o webhook do Discord usado para notificações de mortes e entradas em guilds.
               </p>
             </div>
           </div>
@@ -137,54 +133,6 @@ export const GlobalSettingsView: React.FC = () => {
                 <AlertDescription>{testResult}</AlertDescription>
               </Alert>
             )}
-          </CardContent>
-        </Card>
-
-        <Card className="py-0">
-          <CardContent className="space-y-5 p-6">
-            <div className="flex items-center gap-2 border-b border-border pb-3 text-sm font-medium text-primary">
-              <ShieldCheck className="h-4 w-4" />
-              <span>Sistema anti-bot & conexão de dados</span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="space-y-2 rounded-lg border border-border bg-secondary/30 p-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Modo anti-bot</Label>
-                  <Switch checked={useAntiBot} onCheckedChange={setUseAntiBot} />
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Garante que a captura de dados funcione continuamente em sites com proteções de acesso.
-                </p>
-              </div>
-
-              <div className="space-y-2 rounded-lg border border-border bg-secondary/30 p-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Navegação fluida</Label>
-                  <Switch checked={humanizePointer} onCheckedChange={setHumanizePointer} />
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Simula interações naturais durante a requisição de informações.
-                </p>
-              </div>
-
-              <div className="space-y-2 rounded-lg border border-border bg-secondary/30 p-4">
-                <Label className="flex items-center gap-1.5 text-xs">
-                  <Clock className="h-3.5 w-3.5" />
-                  Intervalo (segundos)
-                </Label>
-                <Input
-                  type="number"
-                  min={15}
-                  max={600}
-                  aria-invalid={!!errors.scrapingInterval}
-                  {...register("scrapingInterval", { valueAsNumber: true })}
-                />
-                {errors.scrapingInterval && (
-                  <p className="text-[11px] text-destructive">{errors.scrapingInterval.message}</p>
-                )}
-              </div>
-            </div>
           </CardContent>
         </Card>
       </form>

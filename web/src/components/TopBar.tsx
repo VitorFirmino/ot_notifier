@@ -18,7 +18,7 @@ const TAB_TITLES: Record<TopBarProps["activeTab"], { main: string; sub: string }
   servers: { main: "Gerenciador de Servidores", sub: "Monitoramento de saúde, latência e configurações de captura" },
   characters: { main: "Busca de Personagens", sub: "Pesquisa avançada de jogadores em servidores OT" },
   feed: { main: "Histórico de Alertas", sub: "Feed ao vivo de mortes, níveis, entradas e saídas de guilds" },
-  settings: { main: "Configurações Globais", sub: "Integração com Webhook Discord e parâmetros Anti-Bot" },
+  settings: { main: "Configurações Globais", sub: "Integração com Webhook Discord" },
 };
 
 export const TopBar: React.FC<TopBarProps> = ({
