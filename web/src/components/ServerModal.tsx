@@ -93,7 +93,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
   const isDiscovering = discoverMutation.isPending;
   const discoveredGuilds = discoverMutation.data?.guilds ?? [];
   const discoveryError = discoverMutation.isError
-    ? "Erro ao efetuar scraping no servidor AAC."
+    ? "Erro ao buscar guildas neste servidor."
     : discoverMutation.isSuccess && discoveredGuilds.length === 0
       ? "Nenhuma guilda encontrada nesta URL. Verifique se o endereço está correto."
       : null;
@@ -263,7 +263,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                           </>
                         ) : (
                           <>
-                            <Compass className="h-4 w-4" /> Efetuar scraping
+                            <Compass className="h-4 w-4" /> Buscar guildas
                           </>
                         )}
                       </Button>
