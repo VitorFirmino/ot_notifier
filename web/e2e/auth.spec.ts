@@ -1,9 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { createPool, uniqueTestEmail, markEmailVerified, deleteTestUser } from "./helpers/db";
+import { TEST_PASSWORD, loginAsExistingUser } from "./helpers/auth";
 
 test.describe("Signup, email verification, login, logout", () => {
   const email = uniqueTestEmail("e2e-auth");
-  const password = "Str0ng!Pass2026";
   const pool = createPool();
 
   test.afterAll(async () => {
@@ -17,8 +17,8 @@ test.describe("Signup, email verification, login, logout", () => {
     await page.getByRole("button", { name: "Não tem conta? Criar uma" }).click();
     await page.getByLabel("Nome:").fill("E2E Auth Test");
     await page.getByLabel("Email:").fill(email);
-    await page.getByLabel("Senha:", { exact: true }).fill(password);
-    await page.getByLabel("Repetir senha:").fill(password);
+    await page.getByLabel("Senha:", { exact: true }).fill(TEST_PASSWORD);
+    await page.getByLabel("Repetir senha:").fill(TEST_PASSWORD);
     await page.getByRole("button", { name: "Criar conta" }).click();
 
     await expect(page.getByRole("heading", { name: "Confirme seu email" })).toBeVisible();
@@ -26,18 +26,14 @@ test.describe("Signup, email verification, login, logout", () => {
 
     await page.getByRole("button", { name: "Voltar para o login" }).click();
     await page.getByLabel("Email:").fill(email);
-    await page.getByLabel("Senha:", { exact: true }).fill(password);
+    await page.getByLabel("Senha:", { exact: true }).fill(TEST_PASSWORD);
     await page.getByRole("button", { name: "Entrar", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Confirme seu email" })).toBeVisible();
 
     await markEmailVerified(pool, email);
 
     await page.getByRole("button", { name: "Voltar para o login" }).click();
-    await page.getByLabel("Email:").fill(email);
-    await page.getByLabel("Senha:", { exact: true }).fill(password);
-    await page.getByRole("button", { name: "Entrar", exact: true }).click();
-
-    await expect(page.getByRole("heading", { name: "Dashboard Principal" })).toBeVisible();
+    await loginAsExistingUser(page, email, TEST_PASSWORD);
     await expect(page.getByText(email)).toBeVisible();
 
     await page.getByRole("button", { name: "Sair" }).click();

@@ -55,11 +55,11 @@ export const auth = betterAuth({
   rateLimit: {
     enabled: true,
     window: 60,
-    max: 20,
+    max: process.env.E2E_TEST_MODE === "true" ? 1000 : 20,
     customRules: {
-      "/sign-in/email": { window: 60, max: process.env.E2E_TEST_MODE === "true" ? 100 : 5 },
-      "/sign-up/email": { window: 60, max: process.env.E2E_TEST_MODE === "true" ? 100 : 3 },
-      "/request-password-reset": { window: 60, max: process.env.E2E_TEST_MODE === "true" ? 100 : 3 },
+      "/sign-in/email": { window: 60, max: process.env.E2E_TEST_MODE === "true" ? 500 : 5 },
+      "/sign-up/email": { window: 60, max: process.env.E2E_TEST_MODE === "true" ? 500 : 3 },
+      "/request-password-reset": { window: 60, max: process.env.E2E_TEST_MODE === "true" ? 500 : 3 },
     },
   },
 });
