@@ -217,8 +217,9 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label>Discord webhook URL (notificações ao vivo)</Label>
+                    <Label htmlFor="discovered-webhookUrl">Discord webhook URL (notificações ao vivo)</Label>
                     <Input
+                      id="discovered-webhookUrl"
                       type="url"
                       placeholder="https://discord.com/api/webhooks/ID/TOKEN"
                       aria-invalid={!!errors.webhookUrl}
@@ -247,9 +248,10 @@ export const ServerModal: React.FC<ServerModalProps> = ({
               ) : (
                 <>
                   <form onSubmit={handleSubmitDiscovery(handleDiscover)} className="space-y-2">
-                    <Label>URL do servidor</Label>
+                    <Label htmlFor="discoveryUrl">URL do servidor</Label>
                     <div className="flex gap-2">
                       <Input
+                        id="discoveryUrl"
                         type="text"
                         placeholder="www.exemplo.com"
                         aria-invalid={!!discoveryFormErrors.discoveryUrl}
@@ -374,8 +376,9 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
 }) => (
   <form onSubmit={onSubmit} className="space-y-4">
     <div className="space-y-1.5">
-      <Label>Nome do servidor / guilda *</Label>
+      <Label htmlFor="serverName">Nome do servidor / guilda *</Label>
       <Input
+        id="serverName"
         type="text"
         placeholder="Ex: Meu Servidor OT"
         aria-invalid={!!errors.serverName}
@@ -385,8 +388,9 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
     </div>
 
     <div className="space-y-1.5">
-      <Label>URL da guilda (alvo do scraping) *</Label>
+      <Label htmlFor="guildUrl">URL da guilda (alvo do scraping) *</Label>
       <Input
+        id="guildUrl"
         type="url"
         placeholder="https://www.exemplo.com/?subtopic=guilds&action=view&GuildName=..."
         className="font-mono text-xs"
@@ -397,9 +401,10 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
     </div>
 
     <div className="space-y-1.5">
-      <Label>URL da imagem / emblema da guilda (opcional)</Label>
+      <Label htmlFor="logoUrl">URL da imagem / emblema da guilda (opcional)</Label>
       <div className="flex items-center gap-2">
         <Input
+          id="logoUrl"
           type="url"
           placeholder="https://www.exemplo.com/guild_image.php?id=18"
           className="flex-1 font-mono text-xs"
@@ -416,8 +421,9 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
     </div>
 
     <div className="space-y-1.5">
-      <Label>Discord webhook URL (notificações ao vivo)</Label>
+      <Label htmlFor="webhookUrl">Discord webhook URL (notificações ao vivo)</Label>
       <Input
+        id="webhookUrl"
         type="url"
         placeholder="https://discord.com/api/webhooks/ID/TOKEN"
         className="font-mono text-xs"
@@ -429,8 +435,9 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
 
     <div className="grid grid-cols-3 gap-3">
       <div className="space-y-1.5">
-        <Label className="text-xs">Intervalo (s)</Label>
+        <Label htmlFor="checkInterval" className="text-xs">Intervalo (s)</Label>
         <Input
+          id="checkInterval"
           type="number"
           min="30"
           aria-invalid={!!errors.checkInterval}
@@ -440,8 +447,9 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-xs">Concorrência</Label>
+        <Label htmlFor="concurrency" className="text-xs">Concorrência</Label>
         <Input
+          id="concurrency"
           type="number"
           min="1"
           max="10"
@@ -452,8 +460,9 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-xs">Delay (ms)</Label>
+        <Label htmlFor="requestDelay" className="text-xs">Delay (ms)</Label>
         <Input
+          id="requestDelay"
           type="number"
           min="100"
           step="100"
