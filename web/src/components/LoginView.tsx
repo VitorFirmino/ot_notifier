@@ -220,7 +220,10 @@ export const LoginView: React.FC = () => {
                 <button
                   type="button"
                   className="cursor-pointer text-sm text-primary hover:underline"
-                  onClick={() => setVerificationSent(null)}
+                  onClick={() => {
+                    setVerificationSent(null);
+                    setValue("mode", "login");
+                  }}
                 >
                   Voltar para o login
                 </button>
