@@ -37,7 +37,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const handleSignOut = async () => {
     await authClient.signOut({});
     queryClient.clear();
-    localStorage.removeItem("ot_discord_webhook");
   };
 
   const navItems = [
