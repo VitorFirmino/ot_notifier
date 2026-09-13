@@ -248,6 +248,10 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
             webhookUrl: body.guild?.webhookUrl ?? body.webhookUrl ?? existing.guild.webhookUrl,
             logoUrl: body.guild?.logoUrl ?? body.logoUrl ?? existing.guild.logoUrl,
           },
+          settings: {
+            ...existing.settings,
+            ...body.settings,
+          },
         };
       });
 
