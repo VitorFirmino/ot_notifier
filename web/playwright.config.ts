@@ -30,6 +30,7 @@ export default defineConfig({
         API_PORT: String(API_PORT),
         DASHBOARD_URL: `http://localhost:${WEB_PORT}`,
         E2E_TEST_MODE: "true",
+        ADMIN_EMAILS: "e2e-admin@example.com",
       },
     },
     {

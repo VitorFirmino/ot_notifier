@@ -41,6 +41,12 @@ export const addServerManually = async (
   await page.getByRole("tab", { name: "Cadastro manual" }).click();
   await page.getByLabel("Nome do servidor / guilda *").fill(name);
   await page.getByLabel("URL da guilda (alvo do scraping) *").fill(url);
+
+  const addResponsePromise = page.waitForResponse(
+    (response) => response.url().includes("/api/servers") && response.request().method() === "POST",
+    { timeout: 15000 }
+  );
   await page.getByRole("button", { name: "Salvar" }).click();
+  await addResponsePromise;
   await expect(page.getByRole("dialog")).toBeHidden();
 };
