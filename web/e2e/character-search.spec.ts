@@ -56,5 +56,8 @@ test.describe("Searching for a character", () => {
     await expect(page.getByText(/Nível:\s*300/)).toBeVisible();
     await expect(page.getByText("Online", { exact: true })).toBeVisible();
     await expect(page.getByText("Other Character", { exact: true })).not.toBeVisible();
+
+    await searchInput.fill("no such character exists");
+    await expect(page.getByText("Nenhum personagem encontrado no banco de dados monitorado.")).toBeVisible();
   });
 });
