@@ -1,15 +1,12 @@
-import { test, expect } from "@playwright/test";
-import { createPool, uniqueTestEmail, deleteTestUser } from "./helpers/db";
+import { test, expect } from "./helpers/fixtures";
+import { uniqueTestEmail, deleteTestUser } from "./helpers/db";
 import { TEST_PASSWORD, signUpVerifyAndLogin, loginAsExistingUser } from "./helpers/auth";
-
-const pool = createPool();
 
 test.describe("Authentication error paths", () => {
   const email = uniqueTestEmail("e2e-autherr");
 
-  test.afterAll(async () => {
+  test.afterAll(async ({ pool }) => {
     await deleteTestUser(pool, email);
-    await pool.end();
   });
 
   test("signup form blocks mismatched and too-short passwords before hitting the API", async ({ page }) => {
@@ -30,6 +27,7 @@ test.describe("Authentication error paths", () => {
 
   test("signing up again with a registered email neither errors nor touches the existing account", async ({
     page,
+    pool,
   }) => {
     await signUpVerifyAndLogin(page, pool, email, "E2E Auth Errors");
     await page.getByRole("button", { name: "Sair" }).click();

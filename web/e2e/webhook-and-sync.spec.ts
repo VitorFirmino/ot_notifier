@@ -1,23 +1,20 @@
-import { test, expect } from "@playwright/test";
-import { createPool, uniqueTestEmail, deleteTestUser } from "./helpers/db";
+import { test, expect } from "./helpers/fixtures";
+import { uniqueTestEmail, deleteTestUser } from "./helpers/db";
 import { signUpVerifyAndLogin, addServerManually } from "./helpers/auth";
-
-const pool = createPool();
 
 test.describe("Testing webhook and syncing a server from the dashboard", () => {
   const email = uniqueTestEmail("e2e-webhook");
   let serverId: string | undefined;
 
-  test.afterAll(async () => {
+  test.afterAll(async ({ pool }) => {
     if (serverId) {
       const { deleteServerConfig } = await import("../../src/infrastructure/storage/serverConfigManager");
       await deleteServerConfig(serverId).catch(() => {});
     }
     await deleteTestUser(pool, email);
-    await pool.end();
   });
 
-  test("webhook test surfaces the backend error, sync now surfaces success", async ({ page }) => {
+  test("webhook test surfaces the backend error, sync now surfaces success", async ({ page, pool }) => {
     await signUpVerifyAndLogin(page, pool, email, "E2E Webhook Test");
 
     await addServerManually(page, {

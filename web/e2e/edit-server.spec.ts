@@ -1,23 +1,20 @@
-import { test, expect } from "@playwright/test";
-import { createPool, uniqueTestEmail, deleteTestUser } from "./helpers/db";
+import { test, expect } from "./helpers/fixtures";
+import { uniqueTestEmail, deleteTestUser } from "./helpers/db";
 import { signUpVerifyAndLogin, addServerManually } from "./helpers/auth";
-
-const pool = createPool();
 
 test.describe("Editing an existing server", () => {
   const email = uniqueTestEmail("e2e-edit");
   let serverId: string | undefined;
 
-  test.afterAll(async () => {
+  test.afterAll(async ({ pool }) => {
     if (serverId) {
       const { deleteServerConfig } = await import("../../src/infrastructure/storage/serverConfigManager");
       await deleteServerConfig(serverId).catch(() => {});
     }
     await deleteTestUser(pool, email);
-    await pool.end();
   });
 
-  test("changes to name and check interval are saved and reflected on the card", async ({ page }) => {
+  test("changes to name and check interval are saved and reflected on the card", async ({ page, pool }) => {
     await signUpVerifyAndLogin(page, pool, email, "E2E Edit Test");
 
     await addServerManually(page, {

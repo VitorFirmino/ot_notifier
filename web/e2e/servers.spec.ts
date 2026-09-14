@@ -1,14 +1,12 @@
-import { test, expect } from "@playwright/test";
-import { createPool, uniqueTestEmail, deleteTestUser } from "./helpers/db";
+import { test, expect } from "./helpers/fixtures";
+import { uniqueTestEmail, deleteTestUser } from "./helpers/db";
 import { TEST_PASSWORD, signUpVerifyAndLogin, loginAsExistingUser, addServerManually } from "./helpers/auth";
-
-const pool = createPool();
 
 test.describe("Adding two guilds on the same OT server", () => {
   const email = uniqueTestEmail("e2e-servers");
   const createdServerIds: string[] = [];
 
-  test.afterAll(async ({ browser }) => {
+  test.afterAll(async ({ browser, pool }) => {
     if (createdServerIds.length > 0) {
       const context = await browser.newContext();
       const page = await context.newPage();
@@ -21,11 +19,11 @@ test.describe("Adding two guilds on the same OT server", () => {
       await context.close();
     }
     await deleteTestUser(pool, email);
-    await pool.end();
   });
 
   test("both guilds appear as separate cards instead of the second overwriting the first", async ({
     page,
+    pool,
   }) => {
     await signUpVerifyAndLogin(page, pool, email, "E2E Servers Test");
 

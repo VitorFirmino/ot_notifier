@@ -1,22 +1,20 @@
-import { test, expect } from "@playwright/test";
-import { createPool, uniqueTestEmail, deleteTestUser } from "./helpers/db";
+import { test, expect } from "./helpers/fixtures";
+import { uniqueTestEmail, deleteTestUser } from "./helpers/db";
 import { signUpVerifyAndLogin, addServerManually } from "./helpers/auth";
 
 test.describe("Dashboard behavior when the API becomes unreachable", () => {
-  const pool = createPool();
   const email = uniqueTestEmail("e2e-offline");
   let serverId: string | undefined;
 
-  test.afterAll(async () => {
+  test.afterAll(async ({ pool }) => {
     if (serverId) {
       const { deleteServerConfig } = await import("../../src/infrastructure/storage/serverConfigManager");
       await deleteServerConfig(serverId).catch(() => {});
     }
     await deleteTestUser(pool, email);
-    await pool.end();
   });
 
-  test("a failed servers refetch shows the offline banner instead of crashing", async ({ page }) => {
+  test("a failed servers refetch shows the offline banner instead of crashing", async ({ page, pool }) => {
     await signUpVerifyAndLogin(page, pool, email, "E2E Offline Test");
 
     await addServerManually(page, {

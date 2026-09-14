@@ -1,17 +1,15 @@
-import { test, expect } from "@playwright/test";
-import { createPool, uniqueTestEmail, markEmailVerified, deleteTestUser } from "./helpers/db";
+import { test, expect } from "./helpers/fixtures";
+import { uniqueTestEmail, markEmailVerified, deleteTestUser } from "./helpers/db";
 import { TEST_PASSWORD, loginAsExistingUser } from "./helpers/auth";
 
 test.describe("Signup, email verification, login, logout", () => {
   const email = uniqueTestEmail("e2e-auth");
-  const pool = createPool();
 
-  test.afterAll(async () => {
+  test.afterAll(async ({ pool }) => {
     await deleteTestUser(pool, email);
-    await pool.end();
   });
 
-  test("blocks access until the email is verified, then lets the same account in", async ({ page }) => {
+  test("blocks access until the email is verified, then lets the same account in", async ({ page, pool }) => {
     await page.goto("/login");
 
     await page.getByRole("button", { name: "Não tem conta? Criar uma" }).click();

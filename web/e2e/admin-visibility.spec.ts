@@ -1,25 +1,23 @@
-import { test, expect } from "@playwright/test";
-import { createPool, deleteTestUser, markEmailVerified, uniqueTestEmail } from "./helpers/db";
+import { test, expect } from "./helpers/fixtures";
+import { deleteTestUser, markEmailVerified, uniqueTestEmail } from "./helpers/db";
 import { TEST_PASSWORD, signUpVerifyAndLogin, loginAsExistingUser } from "./helpers/auth";
 
-const pool = createPool();
 const adminEmail = "e2e-admin@example.com";
 
 test.describe("Admin sees every user's servers", () => {
   const ownerEmail = uniqueTestEmail("e2e-admin-owner");
   let serverId: string | undefined;
 
-  test.afterAll(async () => {
+  test.afterAll(async ({ pool }) => {
     if (serverId) {
       const { deleteServerConfig } = await import("../../src/infrastructure/storage/serverConfigManager");
       await deleteServerConfig(serverId).catch(() => {});
     }
     await deleteTestUser(pool, ownerEmail);
     await deleteTestUser(pool, adminEmail);
-    await pool.end();
   });
 
-  test("the admin dashboard lists a server created by a regular user", async ({ browser }) => {
+  test("the admin dashboard lists a server created by a regular user", async ({ browser, pool }) => {
     const ownerContext = await browser.newContext();
     const ownerPage = await ownerContext.newPage();
     await signUpVerifyAndLogin(ownerPage, pool, ownerEmail, "E2E Admin Owner");

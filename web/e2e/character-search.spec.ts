@@ -1,23 +1,20 @@
-import { test, expect } from "@playwright/test";
-import { createPool, uniqueTestEmail, deleteTestUser } from "./helpers/db";
+import { test, expect } from "./helpers/fixtures";
+import { uniqueTestEmail, deleteTestUser } from "./helpers/db";
 import { signUpVerifyAndLogin, addServerManually } from "./helpers/auth";
-
-const pool = createPool();
 
 test.describe("Searching for a character", () => {
   const email = uniqueTestEmail("e2e-charsearch");
   let serverId: string | undefined;
 
-  test.afterAll(async () => {
+  test.afterAll(async ({ pool }) => {
     if (serverId) {
       const { deleteServerConfig } = await import("../../src/infrastructure/storage/serverConfigManager");
       await deleteServerConfig(serverId).catch(() => {});
     }
     await deleteTestUser(pool, email);
-    await pool.end();
   });
 
-  test("typing a name filters to the matching character across all servers", async ({ page }) => {
+  test("typing a name filters to the matching character across all servers", async ({ page, pool }) => {
     await signUpVerifyAndLogin(page, pool, email, "E2E Character Search Test");
 
     await addServerManually(page, {

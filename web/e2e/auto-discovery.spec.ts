@@ -1,23 +1,20 @@
-import { test, expect } from "@playwright/test";
-import { createPool, uniqueTestEmail, deleteTestUser } from "./helpers/db";
+import { test, expect } from "./helpers/fixtures";
+import { uniqueTestEmail, deleteTestUser } from "./helpers/db";
 import { signUpVerifyAndLogin, loginAsExistingUser, TEST_PASSWORD } from "./helpers/auth";
-
-const pool = createPool();
 
 test.describe("Auto-discovery tab", () => {
   const email = uniqueTestEmail("e2e-discovery");
   let serverId: string | undefined;
 
-  test.afterAll(async () => {
+  test.afterAll(async ({ pool }) => {
     if (serverId) {
       const { deleteServerConfig } = await import("../../src/infrastructure/storage/serverConfigManager");
       await deleteServerConfig(serverId).catch(() => {});
     }
     await deleteTestUser(pool, email);
-    await pool.end();
   });
 
-  test("no guilds found on the target site surfaces the empty-state message", async ({ page }) => {
+  test("no guilds found on the target site surfaces the empty-state message", async ({ page, pool }) => {
     await signUpVerifyAndLogin(page, pool, email, "E2E Discovery Test");
 
     await page.getByRole("button", { name: "Novo Servidor" }).click();

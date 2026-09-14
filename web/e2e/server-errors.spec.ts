@@ -1,17 +1,15 @@
-import { test, expect } from "@playwright/test";
-import { createPool, uniqueTestEmail, deleteTestUser } from "./helpers/db";
+import { test, expect } from "./helpers/fixtures";
+import { uniqueTestEmail, deleteTestUser } from "./helpers/db";
 import { signUpVerifyAndLogin, addServerManually } from "./helpers/auth";
 
 test.describe("Adding a server: client-side validation errors", () => {
-  const pool = createPool();
   const email = uniqueTestEmail("e2e-servererr");
 
-  test.afterAll(async () => {
+  test.afterAll(async ({ pool }) => {
     await deleteTestUser(pool, email);
-    await pool.end();
   });
 
-  test("an invalid URL and a blank name are rejected before any request is sent", async ({ page }) => {
+  test("an invalid URL and a blank name are rejected before any request is sent", async ({ page, pool }) => {
     await signUpVerifyAndLogin(page, pool, email, "E2E Server Errors");
 
     let addRequestCount = 0;
@@ -38,23 +36,22 @@ test.describe("Adding a server: client-side validation errors", () => {
 });
 
 test.describe("A second account cannot claim a guild another account already owns", () => {
-  const pool = createPool();
   const ownerEmail = uniqueTestEmail("e2e-claimowner");
   const intruderEmail = uniqueTestEmail("e2e-claimintruder");
   let serverId: string | undefined;
 
-  test.afterAll(async () => {
+  test.afterAll(async ({ pool }) => {
     if (serverId) {
       const { deleteServerConfig } = await import("../../src/infrastructure/storage/serverConfigManager");
       await deleteServerConfig(serverId).catch(() => {});
     }
     await deleteTestUser(pool, ownerEmail);
     await deleteTestUser(pool, intruderEmail);
-    await pool.end();
   });
 
   test("adding the exact same guild URL as an existing server fails with a permission error", async ({
     browser,
+    pool,
   }) => {
     const guildUrl = "https://example.com/?subtopic=guilds&action=view&GuildName=Claimed+Guild";
 

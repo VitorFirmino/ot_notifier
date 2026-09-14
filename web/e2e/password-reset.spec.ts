@@ -1,19 +1,19 @@
-import { test, expect } from "@playwright/test";
-import { createPool, uniqueTestEmail, markEmailVerified, deleteTestUser, getPasswordResetToken } from "./helpers/db";
+import { test, expect } from "./helpers/fixtures";
+import { uniqueTestEmail, markEmailVerified, deleteTestUser, getPasswordResetToken } from "./helpers/db";
 import { TEST_PASSWORD, loginAsExistingUser } from "./helpers/auth";
-
-const pool = createPool();
 
 test.describe("Forgot password", () => {
   const email = uniqueTestEmail("e2e-reset");
   const newPassword = "EvenStr0nger!Pass2026";
 
-  test.afterAll(async () => {
+  test.afterAll(async ({ pool }) => {
     await deleteTestUser(pool, email);
-    await pool.end();
   });
 
-  test("requesting a reset link and using it changes the password that actually logs in", async ({ page }) => {
+  test("requesting a reset link and using it changes the password that actually logs in", async ({
+    page,
+    pool,
+  }) => {
     await page.goto("/login");
     await page.getByRole("button", { name: "Não tem conta? Criar uma" }).click();
     await page.getByLabel("Nome:").fill("E2E Reset Test");

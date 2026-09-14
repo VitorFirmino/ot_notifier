@@ -1,15 +1,13 @@
-import { test, expect } from "@playwright/test";
-import { createPool, uniqueTestEmail, deleteTestUser } from "./helpers/db";
+import { test, expect } from "./helpers/fixtures";
+import { uniqueTestEmail, deleteTestUser } from "./helpers/db";
 import { signUpVerifyAndLogin, addServerManually } from "./helpers/auth";
-
-const pool = createPool();
 
 test.describe("A server added by one account is invisible to another", () => {
   const ownerEmail = uniqueTestEmail("e2e-owner");
   const intruderEmail = uniqueTestEmail("e2e-intruder");
   let ownedServerId: string | undefined;
 
-  test.afterAll(async () => {
+  test.afterAll(async ({ pool }) => {
     if (ownedServerId) {
       const { deleteServerConfig } = await import(
         "../../src/infrastructure/storage/serverConfigManager"
@@ -18,10 +16,9 @@ test.describe("A server added by one account is invisible to another", () => {
     }
     await deleteTestUser(pool, ownerEmail);
     await deleteTestUser(pool, intruderEmail);
-    await pool.end();
   });
 
-  test("the intruder's dashboard never shows the owner's server", async ({ browser }) => {
+  test("the intruder's dashboard never shows the owner's server", async ({ browser, pool }) => {
     const ownerContext = await browser.newContext();
     const ownerPage = await ownerContext.newPage();
     await signUpVerifyAndLogin(ownerPage, pool, ownerEmail, "E2E Owner");

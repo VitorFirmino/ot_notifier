@@ -1,13 +1,12 @@
-import { test, expect } from "@playwright/test";
-import { createPool, uniqueTestEmail, deleteTestUser } from "./helpers/db";
+import { test, expect } from "./helpers/fixtures";
+import { uniqueTestEmail, deleteTestUser } from "./helpers/db";
 import { signUpVerifyAndLogin, addServerManually } from "./helpers/auth";
 
 test.describe("Filtering the server list from the top bar", () => {
-  const pool = createPool();
   const email = uniqueTestEmail("e2e-filter");
   const createdServerIds: string[] = [];
 
-  test.afterAll(async ({ browser }) => {
+  test.afterAll(async ({ browser, pool }) => {
     if (createdServerIds.length > 0) {
       const context = await browser.newContext();
       const page = await context.newPage();
@@ -20,10 +19,9 @@ test.describe("Filtering the server list from the top bar", () => {
       await context.close();
     }
     await deleteTestUser(pool, email);
-    await pool.end();
   });
 
-  test("typing a server name hides the other cards", async ({ page }) => {
+  test("typing a server name hides the other cards", async ({ page, pool }) => {
     await signUpVerifyAndLogin(page, pool, email, "E2E Filter Test");
 
     await addServerManually(page, {

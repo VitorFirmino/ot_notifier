@@ -1,17 +1,15 @@
-import { test, expect } from "@playwright/test";
-import { createPool, uniqueTestEmail, deleteTestUser } from "./helpers/db";
+import { test, expect } from "./helpers/fixtures";
+import { uniqueTestEmail, deleteTestUser } from "./helpers/db";
 import { signUpVerifyAndLogin } from "./helpers/auth";
 
 test.describe("Testing a webhook from the global settings screen", () => {
-  const pool = createPool();
   const email = uniqueTestEmail("e2e-globalsettings");
 
-  test.afterAll(async () => {
+  test.afterAll(async ({ pool }) => {
     await deleteTestUser(pool, email);
-    await pool.end();
   });
 
-  test("a webhook URL that rejects the test message shows the failure alert", async ({ page }) => {
+  test("a webhook URL that rejects the test message shows the failure alert", async ({ page, pool }) => {
     await signUpVerifyAndLogin(page, pool, email, "E2E Global Settings Test");
 
     await page.getByRole("button", { name: "Configurações" }).click();
