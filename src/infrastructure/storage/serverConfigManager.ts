@@ -9,9 +9,11 @@ import { extractServerIdFromUrl, normalizeServerId } from "@shared/utils/serverI
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const CONFIG_DIR = path.resolve(__dirname, "data");
-const SERVERS_JSON_PATH = path.resolve(__dirname, "servers.json");
-const LOCKS_DIR = path.resolve(__dirname, ".locks");
+const STORAGE_ROOT = process.env.SERVER_STORAGE_DIR ? path.resolve(process.env.SERVER_STORAGE_DIR) : __dirname;
+
+const CONFIG_DIR = path.resolve(STORAGE_ROOT, "data");
+const SERVERS_JSON_PATH = path.resolve(STORAGE_ROOT, "servers.json");
+const LOCKS_DIR = path.resolve(STORAGE_ROOT, ".locks");
 
 type ConfigCache = {
   data: ServerConfig;

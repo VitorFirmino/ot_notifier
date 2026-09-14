@@ -1,12 +1,15 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { join } from "path";
+import { join, resolve } from "path";
 import type { ServerState, ServerStates } from "../types/serverState";
 import lockfile from "proper-lockfile";
 
-const STATE_FILE = join(process.cwd(), "data", ".server-states.json");
+const STATE_DIR = process.env.SERVER_STORAGE_DIR
+  ? resolve(process.env.SERVER_STORAGE_DIR, "runtime-state")
+  : join(process.cwd(), "data");
+const STATE_FILE = join(STATE_DIR, ".server-states.json");
 
 try {
-  mkdirSync(join(process.cwd(), "data"), { recursive: true });
+  mkdirSync(STATE_DIR, { recursive: true });
 } catch (err: unknown) {
   if ((err as { code?: string })?.code !== "EEXIST") {
     console.warn("Failed to create data directory:", err);

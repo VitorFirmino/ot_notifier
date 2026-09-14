@@ -1,7 +1,12 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 
 const WEB_PORT = 5175;
 const API_PORT = 3055;
+
+const E2E_STORAGE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".e2e-storage");
+process.env.SERVER_STORAGE_DIR = E2E_STORAGE_DIR;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -31,6 +36,7 @@ export default defineConfig({
         DASHBOARD_URL: `http://localhost:${WEB_PORT}`,
         E2E_TEST_MODE: "true",
         ADMIN_EMAILS: "e2e-admin@example.com",
+        SERVER_STORAGE_DIR: E2E_STORAGE_DIR,
       },
     },
     {
