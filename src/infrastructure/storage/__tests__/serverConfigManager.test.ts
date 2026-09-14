@@ -287,6 +287,29 @@ describe("ServerConfigManager", () => {
       expect(configs).toHaveLength(2);
     });
 
+    it("should coalesce truly concurrent calls into a single disk scan", async () => {
+      invalidateCache();
+      mockedExistsSync.mockReturnValue(true);
+      mockedStatSync.mockReturnValue({ mtimeMs: 1000 } as ReturnType<typeof statSync>);
+      mockedReadFileSync.mockImplementation((filePath) => {
+        if (typeof filePath === "string" && filePath.includes("servers.json")) {
+          return JSON.stringify([{ id: "server1", url: mockConfig.guild.url, name: mockConfig.serverName }]);
+        }
+        return JSON.stringify({ ...mockConfig, serverId: "server1" });
+      });
+
+      const [first, second] = await Promise.all([getAllServerConfigs(), getAllServerConfigs()]);
+      const readCountAfterConcurrentCalls = mockedReadFileSync.mock.calls.length;
+
+      expect(readCountAfterConcurrentCalls).toBe(2);
+
+      await getAllServerConfigs();
+      const readCountAfterSubsequentCall = mockedReadFileSync.mock.calls.length;
+
+      expect(first).toEqual(second);
+      expect(readCountAfterSubsequentCall).toBe(readCountAfterConcurrentCalls + 1);
+    });
+
   });
 
   describe("createServerConfig", () => {

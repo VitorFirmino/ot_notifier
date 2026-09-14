@@ -301,18 +301,34 @@ const recoverMissingConfigsFromPostgres = async (
   }
 };
 
+let inFlightAllConfigs: Promise<ServerConfig[]> | null = null;
+
 export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
-  ensureConfigDir();
+  if (inFlightAllConfigs) {
+    return inFlightAllConfigs;
+  }
 
-  const servers = loadServersJson();
+  inFlightAllConfigs = (async () => {
+    try {
+      ensureConfigDir();
 
-  const configs = await Promise.all(servers.map((server) => syncServerFromServersJson(server)));
+      const servers = loadServersJson();
 
-  const validConfigs = configs.filter((config): config is ServerConfig => config !== null);
+      const configs = await Promise.all(servers.map((server) => syncServerFromServersJson(server)));
 
-  const recovered = await recoverMissingConfigsFromPostgres(new Set(validConfigs.map((config) => config.serverId)));
+      const validConfigs = configs.filter((config): config is ServerConfig => config !== null);
 
-  return [...validConfigs, ...recovered];
+      const recovered = await recoverMissingConfigsFromPostgres(
+        new Set(validConfigs.map((config) => config.serverId))
+      );
+
+      return [...validConfigs, ...recovered];
+    } finally {
+      inFlightAllConfigs = null;
+    }
+  })();
+
+  return inFlightAllConfigs;
 };
 
 export const getAllServerConfigsSync = (): ServerConfig[] => {
