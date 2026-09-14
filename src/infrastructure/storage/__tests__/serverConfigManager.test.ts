@@ -29,6 +29,12 @@ vi.mock("proper-lockfile", () => ({
   lock: vi.fn(),
 }));
 
+vi.mock("../serverConfigPostgres", () => ({
+  upsertServerConfigToPostgres: vi.fn().mockResolvedValue(undefined),
+  deleteServerConfigFromPostgres: vi.fn().mockResolvedValue(undefined),
+  getAllServerConfigsFromPostgres: vi.fn().mockResolvedValue([]),
+}));
+
 const mockedReadFileSync = vi.mocked(readFileSync);
 const mockedWriteFileSync = vi.mocked(writeFileSync);
 const mockedExistsSync = vi.mocked(existsSync);

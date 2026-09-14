@@ -5,6 +5,11 @@ import * as lockfile from "proper-lockfile";
 import type { CharacterInfo, GuildConfig, ServerConfig } from "@shared/types/index";
 import { assertSafeServerId } from "@shared/utils/serverIdSafety";
 import { extractServerIdFromUrl, normalizeServerId } from "@shared/utils/serverIdentity";
+import {
+  upsertServerConfigToPostgres,
+  deleteServerConfigFromPostgres,
+  getAllServerConfigsFromPostgres,
+} from "./serverConfigPostgres";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -111,7 +116,7 @@ export const loadServerConfig = (serverId: string): ServerConfig | null => {
   }
 };
 
-const writeServerConfigUnlocked = (config: ServerConfig): ServerConfig => {
+const writeServerConfigUnlocked = async (config: ServerConfig): Promise<ServerConfig> => {
   const configPath = getServerConfigPath(config.serverId);
   const dataToSave = {
     ...config,
@@ -133,6 +138,12 @@ const writeServerConfigUnlocked = (config: ServerConfig): ServerConfig => {
     enabled: config.guild.enabled !== false,
     webhookUrl: config.guild.webhookUrl,
   });
+
+  try {
+    await upsertServerConfigToPostgres(dataToSave);
+  } catch (err: unknown) {
+    console.warn(`⚠️ [${config.serverId}] Falha ao gravar no Postgres, mantendo apenas o arquivo local:`, err);
+  }
 
   return dataToSave;
 };
@@ -169,8 +180,8 @@ const withServerConfigLock = async <T>(serverId: string, callback: () => T | Pro
 
 export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
   try {
-    await withServerConfigLock(config.serverId, () => {
-      writeServerConfigUnlocked(config);
+    await withServerConfigLock(config.serverId, async () => {
+      await writeServerConfigUnlocked(config);
     });
   } catch (err: unknown) {
     console.error(`❌ Erro ao salvar ${config.serverId}.json com lock:`, err);
@@ -183,10 +194,10 @@ export const updateServerConfig = async (
   mutate: (existing: ServerConfig | null) => ServerConfig | null
 ): Promise<ServerConfig | null> => {
   try {
-    return await withServerConfigLock(serverId, () => {
+    return await withServerConfigLock(serverId, async () => {
       const existing = loadServerConfig(serverId);
       const next = mutate(existing);
-      return next ? writeServerConfigUnlocked(next) : null;
+      return next ? await writeServerConfigUnlocked(next) : null;
     });
   } catch (err: unknown) {
     console.error(`❌ Erro ao atualizar ${serverId}.json com lock:`, err);
@@ -265,6 +276,31 @@ const syncServerFromServersJson = async (
   return loadServerConfig(serverId);
 };
 
+const recoverMissingConfigsFromPostgres = async (
+  knownServerIds: Set<string>
+): Promise<ServerConfig[]> => {
+  try {
+    const postgresConfigs = await getAllServerConfigsFromPostgres();
+    const missing = postgresConfigs.filter((config) => !knownServerIds.has(config.serverId));
+
+    for (const config of missing) {
+      writeFileSync(getServerConfigPath(config.serverId), JSON.stringify(config, null, 2), "utf-8");
+      addOrUpdateServerInServersJson({
+        id: config.serverId,
+        url: config.guild.url,
+        name: config.serverName,
+        enabled: config.guild.enabled !== false,
+        webhookUrl: config.guild.webhookUrl,
+      });
+    }
+
+    return missing;
+  } catch (err: unknown) {
+    console.warn("⚠️ Não foi possível checar o Postgres para recuperar servidores ausentes localmente:", err);
+    return [];
+  }
+};
+
 export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
   ensureConfigDir();
 
@@ -273,7 +309,10 @@ export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
   const configs = await Promise.all(servers.map((server) => syncServerFromServersJson(server)));
 
   const validConfigs = configs.filter((config): config is ServerConfig => config !== null);
-  return validConfigs;
+
+  const recovered = await recoverMissingConfigsFromPostgres(new Set(validConfigs.map((config) => config.serverId)));
+
+  return [...validConfigs, ...recovered];
 };
 
 export const getAllServerConfigsSync = (): ServerConfig[] => {
@@ -398,6 +437,12 @@ export const deleteServerConfig = async (serverId: string): Promise<boolean> => 
     } catch (err: unknown) {
       console.error("Erro ao atualizar servers.json na exclusão:", err);
     }
+  }
+
+  try {
+    await deleteServerConfigFromPostgres(serverId);
+  } catch (err: unknown) {
+    console.warn(`⚠️ [${serverId}] Falha ao remover do Postgres:`, err);
   }
 
   return true;
