@@ -49,6 +49,11 @@ test.describe("A server added by one account is invisible to another", () => {
     const intruderServers = (await (await intruderPage.request.get("/api/servers")).json()) as unknown[];
     expect(intruderServers).toHaveLength(0);
 
+    const deleteResponse = await intruderPage.request.delete(`/api/servers/${ownedServerId}`);
+    expect(deleteResponse.status()).toBe(403);
+    await ownerPage.reload();
+    await expect(ownerPage.getByRole("heading", { name: "Owner Only Guild" })).toBeVisible();
+
     await ownerContext.close();
     await intruderContext.close();
   });
