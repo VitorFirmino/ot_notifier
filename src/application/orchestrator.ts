@@ -8,6 +8,7 @@ import { initializeBanner } from "./managers/bannerManager";
 import { cleanupServerStates } from "@shared/utils/serverStateManager";
 import { syncAllActiveServersToQueue } from "@infrastructure/queue/serverQueueManager";
 import { startServerQueueWorker } from "./workers/queueWorker";
+import { MAX_LEGACY_PROCESSES, selectServersForLegacyFallback } from "./managers/legacyFallbackPolicy";
 import type { ServerConfig } from "@shared/types/index";
 
 dotenv.config({ quiet: true });
@@ -80,7 +81,13 @@ const initialize = async (): Promise<void> => {
 
   if (!queueStarted) {
     const { working } = separateServers(serverConfigs);
-    startWorkingServers(working);
+    const { toStart, skipped } = selectServersForLegacyFallback(working);
+    if (skipped.length > 0) {
+      console.error(
+        `❌ Redis indisponível e ${working.length} servidores estão configurados — o modo de fallback (um processo por servidor) só é seguro até ${MAX_LEGACY_PROCESSES}. Monitorando apenas os primeiros ${MAX_LEGACY_PROCESSES}; os outros ${skipped.length} ficam sem monitoramento até o Redis voltar.`
+      );
+    }
+    startWorkingServers(toStart);
   }
 
   startRenderLoop(2000, 1000);
