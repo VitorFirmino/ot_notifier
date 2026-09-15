@@ -35,6 +35,18 @@ export const buildFastifyServer = async () => {
     logger: false,
   });
 
+  app.setErrorHandler((error: Error & { code?: string }, request, reply) => {
+    if (error.code === "ELOCKED") {
+      console.warn(`⚠️ Lock ocupado em ${request.method} ${request.url}:`, error.message);
+      return reply
+        .status(503)
+        .send({ error: "Servidor ocupado processando outra atualização. Tente novamente em instantes." });
+    }
+
+    console.error(`❌ Erro não tratado em ${request.method} ${request.url}:`, error);
+    return reply.status(500).send({ error: "Erro interno do servidor." });
+  });
+
   app.register(cors, {
     origin: process.env.DASHBOARD_URL ?? "http://localhost:5173",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
