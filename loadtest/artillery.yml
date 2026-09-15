@@ -1,0 +1,22 @@
+config:
+  target: "http://localhost:3077"
+  phases:
+    - duration: 5
+      arrivalRate: 5
+      name: warm up
+    - duration: 10
+      arrivalRate: 20
+      name: ramp up
+    - duration: 10
+      arrivalRate: 50
+      name: peak
+  processor: "./artillery-processor.cjs"
+
+scenarios:
+  - name: "GET /api/servers"
+    beforeRequest: "attachCookie"
+    flow:
+      - get:
+          url: "/api/servers"
+          expect:
+            - statusCode: 200

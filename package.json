@@ -15,7 +15,14 @@
     "test": "vitest",
     "db:migration:generate": "tsx --tsconfig tsconfig.json ./node_modules/typeorm/cli.js migration:generate -d src/infrastructure/database/dataSource.ts",
     "db:migration:run": "tsx --tsconfig tsconfig.json ./node_modules/typeorm/cli.js migration:run -d src/infrastructure/database/dataSource.ts",
-    "db:auth:migrate": "npx @better-auth/cli migrate --config src/infrastructure/auth/auth.ts -y"
+    "db:auth:migrate": "npx @better-auth/cli migrate --config src/infrastructure/auth/auth.ts -y",
+    "loadtest:api": "bash loadtest/start-api.sh",
+    "loadtest:setup": "tsx --tsconfig tsconfig.json loadtest/setup.ts",
+    "loadtest:cleanup": "tsx --tsconfig tsconfig.json loadtest/cleanup.ts",
+    "loadtest:k6": "k6 run loadtest/k6-script.js",
+    "loadtest:artillery": "artillery run loadtest/artillery.yml",
+    "loadtest:autocannon": "tsx --tsconfig tsconfig.json loadtest/autocannon-run.ts",
+    "loadtest:wrk": "bash loadtest/run-wrk.sh"
   },
   "keywords": [],
   "author": "",
@@ -62,6 +69,7 @@
   "devDependencies": {
     "@better-auth/cli": "1.4.22",
     "@eslint/js": "^9.39.5",
+    "@types/autocannon": "^7.12.7",
     "@types/gradient-string": "^1.1.6",
     "@types/node": "^24.2.0",
     "@types/pg": "^8.23.1",
@@ -71,6 +79,8 @@
     "@typescript-eslint/parser": "^8.48.1",
     "@vitest/coverage-v8": "^4.0.10",
     "@vitest/ui": "^4.0.10",
+    "artillery": "^2.0.34",
+    "autocannon": "^8.0.0",
     "eslint": "^9.39.1",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-airbnb-typescript": "^18.0.0",

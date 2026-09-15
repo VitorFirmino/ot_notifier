@@ -6,6 +6,8 @@ node_modules/
 # Testing
 coverage/
 *.log
+loadtest/.storage/
+loadtest/.session.json
 
 # Production
 build/
