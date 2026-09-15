@@ -61,7 +61,23 @@ export const useAddServer = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: AddServerPayload) => api.addServer(payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: SERVERS_QUERY_KEY }),
+    onSuccess: (newServer) => {
+      queryClient.setQueryData<ServerConfig[]>(SERVERS_QUERY_KEY, (old) => {
+        const optimisticServer: ServerConfig = {
+          ...newServer,
+          liveState: {
+            processing: {
+              totalCharacters: Object.keys(newServer.characters || {}).length,
+              processed: 0,
+              startTime: Date.now(),
+              isInitialSync: true,
+            },
+          },
+        };
+        if (!old) return [optimisticServer];
+        return [...old.filter((server) => server.serverId !== newServer.serverId), optimisticServer];
+      });
+    },
   });
 };
 
