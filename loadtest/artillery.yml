@@ -14,9 +14,41 @@ config:
 
 scenarios:
   - name: "GET /api/servers"
+    weight: 70
     beforeRequest: "attachCookie"
     flow:
       - get:
           url: "/api/servers"
+          expect:
+            - statusCode: 200
+
+  - name: "GET /api/stats"
+    weight: 15
+    beforeRequest: "attachCookie"
+    flow:
+      - get:
+          url: "/api/stats"
+          expect:
+            - statusCode: 200
+
+  - name: "GET /api/events"
+    weight: 10
+    beforeRequest: "attachCookie"
+    flow:
+      - get:
+          url: "/api/events"
+          expect:
+            - statusCode: 200
+
+  - name: "PUT /api/servers/:id"
+    weight: 5
+    beforeScenario: "pickServerId"
+    beforeRequest: "attachCookie"
+    flow:
+      - put:
+          url: "/api/servers/{{ serverId }}"
+          json:
+            settings:
+              checkInterval: 120
           expect:
             - statusCode: 200

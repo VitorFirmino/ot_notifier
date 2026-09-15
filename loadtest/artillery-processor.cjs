@@ -4,8 +4,13 @@ const path = require("node:path");
 const session = JSON.parse(fs.readFileSync(path.join(__dirname, ".session.json"), "utf-8"));
 
 function attachCookie(requestParams, _context, _ee, next) {
-  requestParams.headers = { ...requestParams.headers, Cookie: session.cookie };
+  requestParams.headers = { ...requestParams.headers, Cookie: session.cookie, Origin: session.apiBase };
   return next();
 }
 
-module.exports = { attachCookie };
+function pickServerId(context, _ee, next) {
+  context.vars.serverId = session.serverIds[Math.floor(Math.random() * session.serverIds.length)];
+  return next();
+}
+
+module.exports = { attachCookie, pickServerId };

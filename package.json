@@ -20,9 +20,12 @@
     "loadtest:setup": "tsx --tsconfig tsconfig.json loadtest/setup.ts",
     "loadtest:cleanup": "tsx --tsconfig tsconfig.json loadtest/cleanup.ts",
     "loadtest:k6": "k6 run loadtest/k6-script.js",
+    "loadtest:k6:mixed": "k6 run loadtest/k6-mixed-script.js",
     "loadtest:artillery": "artillery run loadtest/artillery.yml",
     "loadtest:autocannon": "tsx --tsconfig tsconfig.json loadtest/autocannon-run.ts",
-    "loadtest:wrk": "bash loadtest/run-wrk.sh"
+    "loadtest:autocannon:write": "tsx --tsconfig tsconfig.json loadtest/autocannon-write-run.ts",
+    "loadtest:wrk": "bash loadtest/run-wrk.sh",
+    "loadtest:wrk:write": "bash loadtest/run-wrk-write.sh"
   },
   "keywords": [],
   "author": "",

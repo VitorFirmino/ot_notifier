@@ -81,9 +81,10 @@ const main = async (): Promise<void> => {
   await seedServers(userId, SERVER_COUNT);
   await pool.end();
 
+  const serverIds = Array.from({ length: SERVER_COUNT }, (_, i) => `loadtest_server_${i}`);
   fs.writeFileSync(
     LOADTEST_SESSION_FILE,
-    JSON.stringify({ email, userId, cookie, apiBase: LOADTEST_API_BASE, count: SERVER_COUNT }, null, 2)
+    JSON.stringify({ email, userId, cookie, apiBase: LOADTEST_API_BASE, count: SERVER_COUNT, serverIds }, null, 2)
   );
   console.log(`Ready. Session written to ${LOADTEST_SESSION_FILE}.`);
 };
