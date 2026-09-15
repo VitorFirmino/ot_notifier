@@ -23,6 +23,18 @@ const safeParseJson = async (res: Response): Promise<any> => {
   }
 };
 
+export class LoginRequiredApiError extends Error {
+  domain: string;
+  loginUrl: string;
+
+  constructor(message: string, domain: string, loginUrl: string) {
+    super(message);
+    this.name = "LoginRequiredApiError";
+    this.domain = domain;
+    this.loginUrl = loginUrl;
+  }
+}
+
 export const api = {
   async getServers(): Promise<ServerConfig[]> {
     const res = await fetch(`${API_BASE}/servers`);
@@ -63,7 +75,23 @@ export const api = {
     });
     if (!res.ok) {
       const data = await safeParseJson(res);
+      if (data.code === "LOGIN_REQUIRED") {
+        throw new LoginRequiredApiError(data.error || "Login necessário.", data.domain, data.loginUrl);
+      }
       throw new Error(data.error || "Erro ao adicionar servidor");
+    }
+    return await res.json();
+  },
+
+  async loginToSite(loginUrl: string, username: string, password: string): Promise<{ success: boolean }> {
+    const res = await fetch(`${API_BASE}/site-auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ loginUrl, username, password }),
+    });
+    if (!res.ok) {
+      const data = await safeParseJson(res);
+      throw new Error(data.error || "Erro ao efetuar login no site");
     }
     return await res.json();
   },

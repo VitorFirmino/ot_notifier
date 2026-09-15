@@ -16,6 +16,7 @@ import { registerStatsRoutes } from "./routes/stats";
 import { registerDiscoverRoutes } from "./routes/discover";
 import { registerProxyImageRoutes } from "./routes/proxyImage";
 import { registerCharacterRoutes } from "./routes/character";
+import { registerSiteAuthRoutes } from "./routes/siteAuth";
 
 dotenv.config({ quiet: true });
 
@@ -107,6 +108,7 @@ export const buildFastifyServer = async () => {
   registerDiscoverRoutes(app);
   registerProxyImageRoutes(app);
   registerCharacterRoutes(app);
+  registerSiteAuthRoutes(app);
 
   return app;
 };

@@ -10,6 +10,7 @@ import {
   updateServerWorkingStatus,
 } from "@infrastructure/storage/serverConfigManager";
 import { getGuildMembers } from "@infrastructure/scraping/parsers/guildParser";
+import { LoginRequiredError } from "@infrastructure/scraping/utils/loginRequiredDetector";
 import { getWebhookUrl } from "@application/workers/utils/webhookUtils";
 import { getAllServerStates } from "@shared/utils/serverStateManager";
 import {
@@ -136,6 +137,15 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
         newConfig.characters = charsObj;
         await saveServerConfig(newConfig);
       } catch (err: unknown) {
+        if (err instanceof LoginRequiredError) {
+          await deleteServerConfig(serverId);
+          return reply.status(401).send({
+            error: err.message,
+            code: "LOGIN_REQUIRED",
+            domain: err.domain,
+            loginUrl: err.loginUrl,
+          });
+        }
         console.warn(`⚠️ Não foi possível obter lista inicial de membros para ${serverId}:`, err);
         newConfig.isWorking = false;
         await saveServerConfig(newConfig);

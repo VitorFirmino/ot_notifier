@@ -81,15 +81,19 @@ class PlaywrightManager {
     return { browser, context };
   }
 
-    private getSessionKey(serverId?: string): string {
-      return serverId || "default";
+    private getSessionKey(urlOrDomain: string): string {
+      try {
+        return new URL(urlOrDomain).hostname;
+      } catch {
+        return urlOrDomain || "default";
+      }
     }
 
     private async getSession(
-      serverId?: string,
+      url: string,
       customHeaders?: Record<string, string>
     ): Promise<Session> {
-      const key = this.getSessionKey(serverId);
+      const key = this.getSessionKey(url);
       const existing = this.sessions.get(key);
       if (existing) {
         return existing;
@@ -117,7 +121,7 @@ class PlaywrightManager {
     ): Promise<string | null> {
       let pageClosed = false;
       try {
-        const { context } = await this.getSession(serverId, customHeaders);
+        const { context } = await this.getSession(url, customHeaders);
         const page = await context.newPage();
 
         try {
@@ -143,7 +147,7 @@ class PlaywrightManager {
 
           const cookies = await context.cookies();
           if (cookies && cookies.length > 0) {
-            await saveBrowserCookiesToJar(cookies, url, serverId);
+            await saveBrowserCookiesToJar(cookies, url);
           }
 
           for (let attempt = 0; ; attempt++) {
@@ -163,7 +167,7 @@ class PlaywrightManager {
       } catch (fetchErr: unknown) {
         console.warn(`[${serverId || "default"}] Erro no PlaywrightManager ao acessar ${url}:`, fetchErr);
         if (!pageClosed) {
-          await this.closeBrowser(serverId || "default").catch((closeBrowserErr: unknown) => {
+          await this.closeBrowser(url).catch((closeBrowserErr: unknown) => {
             console.warn(`[${serverId || "default"}] Erro ao fechar navegador:`, closeBrowserErr);
           });
         }
@@ -188,7 +192,7 @@ class PlaywrightManager {
     ): Promise<{ buffer: Buffer; contentType: string } | null> {
       let pageClosed = false;
       try {
-        const { context } = await this.getSession(serverId, customHeaders);
+        const { context } = await this.getSession(url, customHeaders);
         const page = await context.newPage();
 
         try {
@@ -225,7 +229,7 @@ class PlaywrightManager {
       } catch (fetchErr: unknown) {
         console.warn(`[${serverId || "default"}] Erro no PlaywrightManager ao acessar imagem ${url}:`, fetchErr);
         if (!pageClosed) {
-          await this.closeBrowser(serverId || "default").catch((closeErr: unknown) => {
+          await this.closeBrowser(url).catch((closeErr: unknown) => {
             console.debug(`[${serverId || "default"}] Aviso ao fechar browser após erro:`, closeErr);
           });
         }
@@ -252,6 +256,43 @@ class PlaywrightManager {
   async closeAllBrowsers(): Promise<void> {
     const keys = Array.from(this.sessions.keys());
     await Promise.all(keys.map((key) => this.closeBrowser(key)));
+  }
+
+  async performLogin(loginUrl: string, username: string, password: string): Promise<boolean> {
+    return this.navigationLimiter(async () => {
+      const { context } = await this.getSession(loginUrl);
+      const page = await context.newPage();
+
+      try {
+        await page.goto(loginUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+
+        const passwordField = page.locator('input[type="password"]').first();
+        await passwordField.waitFor({ timeout: 15000 });
+
+        const usernameField = page.locator('input[type="email"], input[type="text"]').first();
+        await usernameField.fill(username);
+        await passwordField.fill(password);
+        await passwordField.press("Enter");
+
+        await page.waitForLoadState("domcontentloaded", { timeout: 15000 }).catch((waitErr: unknown) => {
+          console.warn(`[login:${loginUrl}] Aviso ao esperar navegação pós-login:`, waitErr);
+        });
+        await page.waitForTimeout(2000);
+
+        const cookies = await context.cookies();
+        if (cookies.length > 0) {
+          await saveBrowserCookiesToJar(cookies, loginUrl);
+        }
+
+        const stillHasPasswordField = await page.locator('input[type="password"]').count();
+        return stillHasPasswordField === 0;
+      } catch (loginErr: unknown) {
+        console.warn(`[login:${loginUrl}] Erro ao tentar logar:`, loginErr);
+        return false;
+      } finally {
+        await page.close().catch(() => {});
+      }
+    });
   }
 }
 

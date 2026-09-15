@@ -20,10 +20,11 @@ export const fetchGuildPageWithHeaders = async (
   customHeaders: Record<string, string>
 ): Promise<string> => {
   const serverId = extractServerIdFromUrl(guildUrl);
+  const domain = new URL(guildUrl).hostname;
 
   return scheduleWithBottleneck(async () => {
     try {
-      const jar = getCookieJar(serverId);
+      const jar = getCookieJar(domain);
 
       const response = await axios.get(guildUrl, {
         jar,
@@ -117,7 +118,7 @@ export const fetchGuildPage = async (guildUrl: string): Promise<string> => {
 
     return scheduleWithBottleneck(async () => {
       try {
-        const jar = getCookieJar(serverId);
+        const jar = getCookieJar(urlObj.hostname);
 
         const response = await axios.get(guildUrl, {
           jar,
