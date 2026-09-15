@@ -4,6 +4,21 @@ import type { ServerConfig } from "@shared/types/index";
 
 export const QUEUE_NAME = "serverCheckQueue";
 
+const REDIS_OPERATION_TIMEOUT_MS = 5000;
+
+const withTimeout = async <T>(promise: Promise<T>, ms: number): Promise<T> => {
+  let timeoutId: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("Operação no Redis excedeu o tempo limite.")), ms);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 export const DOWN_RETRY_INTERVAL_MS = (() => {
   const parsed = Number.parseInt(process.env.CHECK_INTERVAL_IDLE ?? "", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 15 * 60 * 1000;
@@ -37,10 +52,13 @@ export const addOrUpdateServerSchedule = async (
   const schedulerId = `check-server:${serverId}`;
 
   try {
-    await queue.upsertJobScheduler(
-      schedulerId,
-      { every: Math.max(10000, intervalMs) },
-      { name: schedulerId, data: { serverId } }
+    await withTimeout(
+      queue.upsertJobScheduler(
+        schedulerId,
+        { every: Math.max(10000, intervalMs) },
+        { name: schedulerId, data: { serverId } }
+      ),
+      REDIS_OPERATION_TIMEOUT_MS
     );
 
     console.log(`⏰ [BullMQ] Job repetível agendado para ${serverId} a cada ${intervalMs / 1000}s`);
@@ -58,7 +76,7 @@ export const removeServerSchedule = async (serverId: string): Promise<void> => {
   const schedulerId = `check-server:${serverId}`;
 
   try {
-    await queue.removeJobScheduler(schedulerId);
+    await withTimeout(queue.removeJobScheduler(schedulerId), REDIS_OPERATION_TIMEOUT_MS);
     console.log(`🗑️ [BullMQ] Agendamento removido para ${serverId}`);
   } catch (err: unknown) {
     console.warn(`⚠️ [BullMQ] Erro ao remover agendamento de ${serverId}:`, err);
@@ -70,10 +88,9 @@ export const triggerServerCheckNow = async (serverId: string): Promise<void> => 
   const jobName = `trigger-now:${serverId}:${Date.now()}`;
 
   try {
-    await queue.add(
-      `check-server:${serverId}`,
-      { serverId, isManualTrigger: true },
-      { jobId: jobName }
+    await withTimeout(
+      queue.add(`check-server:${serverId}`, { serverId, isManualTrigger: true }, { jobId: jobName }),
+      REDIS_OPERATION_TIMEOUT_MS
     );
     console.log(`🚀 [BullMQ] Disparo manual de verificação enviado para ${serverId}`);
   } catch (err: unknown) {
