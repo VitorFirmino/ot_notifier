@@ -3,6 +3,21 @@ import net from "node:net";
 
 export class UnsafeUrlError extends Error {}
 
+const DNS_LOOKUP_TIMEOUT_MS = 5000;
+
+const lookupWithTimeout = async (hostname: string): Promise<{ address: string }[]> => {
+  let timeoutId: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("Tempo esgotado ao resolver o host.")), DNS_LOOKUP_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([dns.lookup(hostname, { all: true, verbatim: true }), timeoutPromise]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 const ipv4ToLong = (ip: string): number =>
   ip.split(".").reduce((acc, octet) => (acc << 8) + Number.parseInt(octet, 10), 0) >>> 0;
 
@@ -69,7 +84,7 @@ export const assertPublicHttpUrl = async (rawUrl: string): Promise<void> => {
 
   let addresses: { address: string }[];
   try {
-    addresses = await dns.lookup(hostname, { all: true, verbatim: true });
+    addresses = await lookupWithTimeout(hostname);
   } catch {
     throw new UnsafeUrlError("Não foi possível resolver o host da URL informada.");
   }

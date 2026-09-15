@@ -60,4 +60,17 @@ describe("assertPublicHttpUrl", () => {
       UnsafeUrlError
     );
   });
+
+  it("rejects instead of hanging forever when DNS resolution never settles", async () => {
+    vi.useFakeTimers();
+    mockedLookup.mockReturnValue(new Promise(() => {}));
+
+    const assertion = expect(assertPublicHttpUrl("https://slowdns.example.com/")).rejects.toThrow(
+      UnsafeUrlError
+    );
+    await vi.advanceTimersByTimeAsync(10000);
+    await assertion;
+
+    vi.useRealTimers();
+  });
 });
