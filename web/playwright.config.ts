@@ -40,7 +40,7 @@ export default defineConfig({
       },
     },
     {
-      command: `pnpm dev -- --port ${WEB_PORT} --strictPort`,
+      command: `pnpm exec vite --port ${WEB_PORT} --strictPort`,
       url: `http://localhost:${WEB_PORT}`,
       timeout: 30000,
       reuseExistingServer: !process.env.CI,
