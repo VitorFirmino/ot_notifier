@@ -3,7 +3,7 @@ import { useForm, type UseFormRegister, type FieldErrors } from "react-hook-form
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
-import { Server, Save, Compass, Loader2, Image as ImageIcon, Search } from "lucide-react";
+import { Server, Save, Compass, Loader2, Image as ImageIcon, Search, Lock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ import { Label } from "@components/ui/label";
 import { Button } from "@components/ui/button";
 import { Skeleton } from "@components/ui/skeleton";
 import type { ServerConfig, GuildDiscovered } from "@types";
-import { api, getProxiedImageUrl } from "@services/api";
+import { api, getProxiedImageUrl, LoginRequiredApiError } from "@services/api";
 
 const urlOrEmpty = (message: string) => z.union([z.literal(""), z.url(message)]);
 
@@ -42,7 +42,7 @@ type DiscoveryFormValues = z.infer<typeof discoverySchema>;
 interface ServerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (serverData: Partial<ServerConfig>) => void;
+  onSave: (serverData: Partial<ServerConfig>) => Promise<void>;
   initialServer?: ServerConfig | null;
 }
 
@@ -56,6 +56,12 @@ export const ServerModal: React.FC<ServerModalProps> = ({
   const [serverId, setServerId] = useState("");
   const [selectedDiscoveredGuild, setSelectedDiscoveredGuild] = useState<GuildDiscovered | null>(null);
   const [guildSearchQuery, setGuildSearchQuery] = useState("");
+  const [loginPrompt, setLoginPrompt] = useState<{ domain: string; loginUrl: string } | null>(null);
+  const [pendingSaveValues, setPendingSaveValues] = useState<ServerFormValues | null>(null);
+  const [siteLoginUsername, setSiteLoginUsername] = useState("");
+  const [siteLoginPassword, setSiteLoginPassword] = useState("");
+  const [isSiteLoggingIn, setIsSiteLoggingIn] = useState(false);
+  const [siteLoginError, setSiteLoginError] = useState<string | null>(null);
 
   const {
     register,
@@ -106,6 +112,12 @@ export const ServerModal: React.FC<ServerModalProps> = ({
     : discoveredGuilds;
 
   useEffect(() => {
+    setLoginPrompt(null);
+    setPendingSaveValues(null);
+    setSiteLoginUsername("");
+    setSiteLoginPassword("");
+    setSiteLoginError(null);
+
     if (initialServer) {
       setActiveTab("manual");
       setServerId(initialServer.serverId);
@@ -154,7 +166,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
     setSelectedDiscoveredGuild(null);
   };
 
-  const onSaveSubmit = (values: ServerFormValues) => {
+  const onSaveSubmit = async (values: ServerFormValues) => {
     const generatedId =
       serverId ||
       values.serverName
@@ -162,23 +174,52 @@ export const ServerModal: React.FC<ServerModalProps> = ({
         .replace(/[^a-z0-9]+/g, "_")
         .replace(/^_+|_+$/g, "");
 
-    onSave({
-      serverId: generatedId,
-      serverName: values.serverName,
-      guild: {
-        url: values.guildUrl,
-        logoUrl: values.logoUrl || undefined,
-        webhookUrl: values.webhookUrl || undefined,
-        enabled: initialServer ? initialServer.guild.enabled : true,
-      },
-      settings: {
-        checkInterval: values.checkInterval * 1000,
-        concurrency: values.concurrency,
-        requestDelay: values.requestDelay,
-      },
-    });
+    try {
+      await onSave({
+        serverId: generatedId,
+        serverName: values.serverName,
+        guild: {
+          url: values.guildUrl,
+          logoUrl: values.logoUrl || undefined,
+          webhookUrl: values.webhookUrl || undefined,
+          enabled: initialServer ? initialServer.guild.enabled : true,
+        },
+        settings: {
+          checkInterval: values.checkInterval * 1000,
+          concurrency: values.concurrency,
+          requestDelay: values.requestDelay,
+        },
+      });
+      onClose();
+    } catch (err: unknown) {
+      if (err instanceof LoginRequiredApiError) {
+        setPendingSaveValues(values);
+        setLoginPrompt({ domain: err.domain, loginUrl: err.loginUrl });
+        return;
+      }
+      onClose();
+    }
+  };
 
-    onClose();
+  const handleSiteLoginSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!loginPrompt) return;
+
+    setIsSiteLoggingIn(true);
+    setSiteLoginError(null);
+    try {
+      await api.loginToSite(loginPrompt.loginUrl, siteLoginUsername, siteLoginPassword);
+      setLoginPrompt(null);
+      setSiteLoginUsername("");
+      setSiteLoginPassword("");
+      if (pendingSaveValues) {
+        await onSaveSubmit(pendingSaveValues);
+      }
+    } catch (err: unknown) {
+      setSiteLoginError(err instanceof Error ? err.message : "Erro ao efetuar login no site.");
+    } finally {
+      setIsSiteLoggingIn(false);
+    }
   };
 
   return (
@@ -191,7 +232,66 @@ export const ServerModal: React.FC<ServerModalProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        {!initialServer ? (
+        {loginPrompt ? (
+          <form onSubmit={handleSiteLoginSubmit} className="space-y-4">
+            <div className="glass-surface flex items-start gap-3 rounded-lg border border-border p-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-warning/10 text-warning">
+                <Lock className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 text-sm text-foreground">
+                <span className="font-medium">{loginPrompt.domain}</span> exige login para acessar a
+                guilda. Informe uma conta desse site para continuar o cadastro.
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="site-login-username">Usuário / email</Label>
+              <Input
+                id="site-login-username"
+                type="text"
+                value={siteLoginUsername}
+                onChange={(event) => setSiteLoginUsername(event.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="site-login-password">Senha</Label>
+              <Input
+                id="site-login-password"
+                type="password"
+                value={siteLoginPassword}
+                onChange={(event) => setSiteLoginPassword(event.target.value)}
+                required
+              />
+            </div>
+
+            {siteLoginError && <p className="text-[11px] text-destructive">{siteLoginError}</p>}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setLoginPrompt(null);
+                  setPendingSaveValues(null);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSiteLoggingIn}>
+                {isSiteLoggingIn ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Entrando...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-4 w-4" /> Entrar e continuar
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        ) : !initialServer ? (
           <Tabs value={activeTab} onValueChange={(tab) => setActiveTab(tab as "manual" | "auto")}>
             <TabsList className="w-full">
               <TabsTrigger value="auto" className="gap-1.5">

@@ -45,14 +45,13 @@ export const getCookieJar = (serverId?: string): CookieJar => {
 
 export const saveBrowserCookiesToJar = async (
   cookies: Array<{ name: string; value: string; domain?: string; path?: string }>,
-  targetUrl: string,
-  serverId?: string
+  targetUrl: string
 ): Promise<void> => {
   if (!cookies || !cookies.length) return;
   try {
-    const jar = getCookieJar(serverId);
     const urlObj = new URL(targetUrl);
     const domain = urlObj.hostname;
+    const jar = getCookieJar(domain);
 
     for (const cookie of cookies) {
       try {
@@ -197,7 +196,7 @@ export const fetchWithAxiosResult = async (
       const urlObj = new URL(url);
       const domain = urlObj.hostname;
 
-      const jar = getCookieJar(serverId);
+      const jar = getCookieJar(domain);
 
       if (headers.cookie) {
         await loadCookiesIntoJar(jar, headers.cookie, domain);

@@ -9,6 +9,9 @@ import { extractCharacterNameFromHref, isCharacterProfileHref } from "../scraper
 import { normalizeUrl } from "../utils/urlUtils";
 import { isValidPlayerName } from "../utils/validators";
 import { fetchGuildPage, fetchGuildPageWithHeaders } from "../http/guildFetcher";
+import { detectLoginRequiredPage, LoginRequiredError } from "../utils/loginRequiredDetector";
+import { getSiteCredential } from "@infrastructure/storage/siteCredentials";
+import { playwrightManager } from "../playwrightManager";
 
 type ScraperKey = "nested_table_form" | "query_params" | "characters_path" | "path_based";
 
@@ -243,13 +246,34 @@ export const isGuildNotExistHtml = (html: string): boolean => {
   );
 };
 
+const fetchGuildHtml = (guildUrl: string, customHeaders?: Record<string, string>): Promise<string> =>
+  customHeaders ? fetchGuildPageWithHeaders(guildUrl, customHeaders) : fetchGuildPage(guildUrl);
+
 export const getGuildMembers = async (
   guildUrl: string,
   customHeaders?: Record<string, string>
 ): Promise<GuildMember[]> => {
-  const html = customHeaders
-    ? await fetchGuildPageWithHeaders(guildUrl, customHeaders)
-    : await fetchGuildPage(guildUrl);
+  let html = await fetchGuildHtml(guildUrl, customHeaders);
+
+  const loginUrl = detectLoginRequiredPage(html, guildUrl);
+  if (loginUrl) {
+    const domain = new URL(guildUrl).hostname;
+    const credential = await getSiteCredential(domain);
+    if (credential) {
+      const loggedIn = await playwrightManager.performLogin(
+        credential.loginUrl,
+        credential.username,
+        credential.password
+      );
+      if (loggedIn) {
+        html = await fetchGuildHtml(guildUrl, customHeaders);
+      }
+    }
+
+    if (detectLoginRequiredPage(html, guildUrl)) {
+      throw new LoginRequiredError(domain, loginUrl);
+    }
+  }
 
   if (isGuildNotExistHtml(html)) {
     const match =

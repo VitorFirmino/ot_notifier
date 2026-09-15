@@ -63,6 +63,12 @@ export const updateServerBodySchema = z.object({
   settings: settingsSchema.optional(),
 });
 
+export const siteLoginBodySchema = z.object({
+  loginUrl: requiredString("URL de login é obrigatória."),
+  username: requiredString("Usuário é obrigatório."),
+  password: requiredString("Senha é obrigatória."),
+});
+
 export const inspectCharacterBodySchema = z.object({
   name: requiredString("Nome do personagem é obrigatório."),
   url: optionalString,

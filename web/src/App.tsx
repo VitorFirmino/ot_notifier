@@ -26,6 +26,7 @@ import {
 } from "@hooks/useServerMutations";
 import { useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@lib/authClient";
+import { LoginRequiredApiError } from "@services/api";
 import { LoginView } from "@components/LoginView";
 
 type TabId = "dashboard" | "servers" | "characters" | "feed" | "settings";
@@ -232,36 +233,34 @@ function AuthenticatedApp() {
     });
   };
 
-  const handleSaveServer = (serverData: Partial<ServerConfig>) => {
+  const handleSaveServer = async (serverData: Partial<ServerConfig>): Promise<void> => {
     if (editingServer) {
-      updateServerMutation.mutate(
-        { serverId: editingServer.serverId, payload: serverData },
-        {
-          onSuccess: () => showToast(`Configurações de ${serverData.serverName} salvas no backend.`, "success"),
-          onError: (err: unknown) => {
-            const message = err instanceof Error ? err.message : "Erro desconhecido ao salvar";
-            showToast(`❌ Falha ao salvar ${serverData.serverName}: ${message}`, "error");
-          },
-        }
-      );
+      try {
+        await updateServerMutation.mutateAsync({ serverId: editingServer.serverId, payload: serverData });
+        showToast(`Configurações de ${serverData.serverName} salvas no backend.`, "success");
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Erro desconhecido ao salvar";
+        showToast(`❌ Falha ao salvar ${serverData.serverName}: ${message}`, "error");
+        throw err;
+      }
     } else {
-      addServerMutation.mutate(
-        {
+      try {
+        const newServer = await addServerMutation.mutateAsync({
           url: serverData.guild?.url || "",
           name: serverData.serverName,
           logoUrl: serverData.guild?.logoUrl,
           webhookUrl: serverData.guild?.webhookUrl,
           kills: serverData.guild?.kills,
           world: serverData.guild?.world,
-        },
-        {
-          onSuccess: (newServer) => showToast(`Novo servidor ${newServer.serverName} cadastrado no backend!`, "success"),
-          onError: (err: unknown) => {
-            const message = err instanceof Error ? err.message : "Erro ao adicionar servidor";
-            showToast(message, "error");
-          },
+        });
+        showToast(`Novo servidor ${newServer.serverName} cadastrado no backend!`, "success");
+      } catch (err: unknown) {
+        if (!(err instanceof LoginRequiredApiError)) {
+          const message = err instanceof Error ? err.message : "Erro ao adicionar servidor";
+          showToast(message, "error");
         }
-      );
+        throw err;
+      }
     }
   };
 
