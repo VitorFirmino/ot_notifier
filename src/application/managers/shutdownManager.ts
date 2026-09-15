@@ -3,6 +3,7 @@ import { shutdownAllProcesses } from "./processManager";
 import { stopRenderLoop } from "./renderManager";
 import { clearRender } from "@shared/utils/blockRenderer";
 import { stopServerQueueWorker } from "../workers/queueWorker";
+import { playwrightManager } from "@infrastructure/scraping/playwrightManager";
 
 interface ShutdownState {
   shutdownInProgress: boolean;
@@ -28,7 +29,11 @@ export const shutdown = async (): Promise<void> => {
     stopRenderLoop();
     clearRender();
 
-    const shutdownPromise = Promise.all([shutdownAllProcesses(), stopServerQueueWorker()]);
+    const shutdownPromise = Promise.all([
+      shutdownAllProcesses(),
+      stopServerQueueWorker(),
+      playwrightManager.closeAllBrowsers(),
+    ]);
     const timeoutPromise = new Promise<void>((resolve) => {
       setTimeout(() => {
         resolve();
