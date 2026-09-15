@@ -144,6 +144,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
 
     if (newConfig.guild.enabled !== false && newConfig.isWorking !== false) {
       void addOrUpdateServerSchedule(serverId, newConfig.settings?.checkInterval || 120000);
+      void triggerServerCheckNow(serverId);
     }
 
     return reply.status(201).send(newConfig);
