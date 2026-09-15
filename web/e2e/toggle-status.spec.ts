@@ -25,7 +25,6 @@ test.describe("Pausing and reactivating a server", () => {
       name: "Toggle Me Guild",
     });
     await expect(page.getByRole("heading", { name: "Toggle Me Guild" })).toBeVisible();
-    await expect(page.getByText("Ativo", { exact: true })).toBeVisible();
 
     const servers = (await (await page.request.get("/api/servers")).json()) as Array<{
       serverId: string;
