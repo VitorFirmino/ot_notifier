@@ -31,6 +31,8 @@ export default defineConfig({
       url: `http://localhost:${API_PORT}/api/stats`,
       timeout: 60000,
       reuseExistingServer: !process.env.CI,
+      stdout: "pipe",
+      stderr: "pipe",
       env: {
         API_PORT: String(API_PORT),
         DASHBOARD_URL: `http://localhost:${WEB_PORT}`,
