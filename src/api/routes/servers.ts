@@ -143,7 +143,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
     }
 
     if (newConfig.guild.enabled !== false && newConfig.isWorking !== false) {
-      await addOrUpdateServerSchedule(serverId, newConfig.settings?.checkInterval || 120000);
+      void addOrUpdateServerSchedule(serverId, newConfig.settings?.checkInterval || 120000);
     }
 
     return reply.status(201).send(newConfig);
@@ -173,7 +173,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
       });
 
       await updateServerCharacters(serverId, updatedChars);
-      await triggerServerCheckNow(serverId);
+      void triggerServerCheckNow(serverId);
       const updatedConfig = loadServerConfig(serverId);
       return reply.status(200).send(updatedConfig);
     } catch (err: unknown) {
@@ -184,7 +184,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
         message.includes("não encontrada");
       if (isNotFound) {
         await updateServerWorkingStatus(serverId, false);
-        await scheduleServerRetry(serverId);
+        void scheduleServerRetry(serverId);
       }
       const status = isNotFound ? 404 : 500;
       return reply.status(status).send({ error: `Erro ao sincronizar: ${message}` });
@@ -266,13 +266,13 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
       }
 
       if (updated.guild.enabled === false) {
-        await removeServerSchedule(serverId);
+        void removeServerSchedule(serverId);
         await clearProcessingState(serverId);
         await clearVerifyingState(serverId);
       } else if (updated.isWorking === false) {
-        await scheduleServerRetry(serverId);
+        void scheduleServerRetry(serverId);
       } else {
-        await addOrUpdateServerSchedule(serverId, updated.settings?.checkInterval || 120000);
+        void addOrUpdateServerSchedule(serverId, updated.settings?.checkInterval || 120000);
       }
 
       return reply.status(200).send(updated);
@@ -290,7 +290,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
     }
 
     await deleteServerConfig(serverId);
-    await removeServerSchedule(serverId);
+    void removeServerSchedule(serverId);
     return reply.status(200).send({ success: true, message: `Servidor ${serverId} removido` });
   });
 };
