@@ -5,6 +5,23 @@ import { LOADTEST_SESSION_FILE, LOADTEST_STORAGE_DIR } from "./config";
 
 dotenv.config({ quiet: true });
 
+const cleanupBullMqSchedulers = async (): Promise<void> => {
+  const { getServerCheckQueue } = await import("../src/infrastructure/queue/serverQueueManager");
+  const queue = getServerCheckQueue();
+
+  const schedulers = await queue.getJobSchedulers(0, 10000, false);
+  const staleSchedulers = schedulers.filter((scheduler) =>
+    scheduler.key?.startsWith("check-server:loadtest_server_")
+  );
+
+  for (const scheduler of staleSchedulers) {
+    await queue.removeJobScheduler(scheduler.key!);
+  }
+
+  console.log(`Removed ${staleSchedulers.length} leftover BullMQ job schedulers.`);
+  await queue.close();
+};
+
 const main = async (): Promise<void> => {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -23,6 +40,8 @@ const main = async (): Promise<void> => {
     fs.rmSync(LOADTEST_STORAGE_DIR, { recursive: true, force: true });
     console.log(`Removed ${LOADTEST_STORAGE_DIR}.`);
   }
+
+  await cleanupBullMqSchedulers();
 };
 
 main().catch((err) => {
