@@ -3,7 +3,7 @@ import { useForm, type UseFormRegister, type FieldErrors } from "react-hook-form
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
-import { Server, Save, Compass, Loader2, Image as ImageIcon } from "lucide-react";
+import { Server, Save, Compass, Loader2, Image as ImageIcon, Search } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +55,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
   const [activeTab, setActiveTab] = useState<"manual" | "auto">("auto");
   const [serverId, setServerId] = useState("");
   const [selectedDiscoveredGuild, setSelectedDiscoveredGuild] = useState<GuildDiscovered | null>(null);
+  const [guildSearchQuery, setGuildSearchQuery] = useState("");
 
   const {
     register,
@@ -97,6 +98,12 @@ export const ServerModal: React.FC<ServerModalProps> = ({
     : discoverMutation.isSuccess && discoveredGuilds.length === 0
       ? "Nenhuma guilda encontrada nesta URL. Verifique se o endereço está correto."
       : null;
+  const showGuildSearch = discoveredGuilds.length > 4;
+  const filteredDiscoveredGuilds = showGuildSearch
+    ? discoveredGuilds.filter((guild) =>
+        guild.name.toLowerCase().includes(guildSearchQuery.trim().toLowerCase())
+      )
+    : discoveredGuilds;
 
   useEffect(() => {
     if (initialServer) {
@@ -124,6 +131,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
         requestDelay: 1000,
       });
       setSelectedDiscoveredGuild(null);
+      setGuildSearchQuery("");
       discoverMutation.reset();
       resetDiscoveryForm();
     }
@@ -131,6 +139,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
   }, [initialServer, isOpen]);
 
   const handleDiscover = (values: DiscoveryFormValues) => {
+    setGuildSearchQuery("");
     discoverMutation.mutate(values.discoveryUrl);
   };
 
@@ -292,11 +301,35 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                   {discoveredGuilds.length > 0 && !isDiscovering && (
                     <div className="space-y-2">
                       <h4 className="flex items-center justify-between text-xs font-medium text-muted-foreground">
-                        <span>Guildas encontradas ({discoveredGuilds.length})</span>
+                        <span>
+                          Guildas encontradas ({discoveredGuilds.length})
+                          {showGuildSearch && guildSearchQuery.trim() && (
+                            <> · {filteredDiscoveredGuilds.length} com &quot;{guildSearchQuery.trim()}&quot;</>
+                          )}
+                        </span>
                         <span className="text-[10px] text-success">Clique para cadastrar</span>
                       </h4>
+
+                      {showGuildSearch && (
+                        <div className="relative">
+                          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            type="text"
+                            placeholder="Buscar pelo nome da guilda..."
+                            value={guildSearchQuery}
+                            onChange={(event) => setGuildSearchQuery(event.target.value)}
+                            className="pl-8 text-xs"
+                          />
+                        </div>
+                      )}
+
+                      {filteredDiscoveredGuilds.length === 0 ? (
+                        <p className="py-4 text-center text-xs text-muted-foreground">
+                          Nenhuma guilda encontrada com esse nome.
+                        </p>
+                      ) : (
                       <div className="grid max-h-60 grid-cols-2 gap-3 overflow-y-auto pr-1">
-                        {discoveredGuilds.map((discoveredGuild, guildIndex) => (
+                        {filteredDiscoveredGuilds.map((discoveredGuild, guildIndex) => (
                           <button
                             key={guildIndex}
                             type="button"
@@ -319,6 +352,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                           </button>
                         ))}
                       </div>
+                      )}
                     </div>
                   )}
                 </>
