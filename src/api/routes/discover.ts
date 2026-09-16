@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { discoverGuildRoute, normalizeBaseUrl } from "@infrastructure/scraping/utils/guildRouteDiscovery";
+import { LoginRequiredError } from "@infrastructure/scraping/utils/loginRequiredDetector";
 import type { DiscoverGuildsPayload } from "@shared/types/index";
 import { assertPublicUrlOrReply, parseOrReply } from "../validation";
 import { discoverGuildsBodySchema } from "../schemas";
@@ -14,9 +15,17 @@ export const registerDiscoverRoutes = (app: FastifyInstance): void => {
     if (!(await assertPublicUrlOrReply(targetUrl, reply))) return;
 
     try {
-      const { guilds, html } = await discoverGuildRoute(targetUrl);
+      const { guilds, html } = await discoverGuildRoute(targetUrl, request.userId);
       return reply.status(200).send({ guilds, htmlLength: html.length });
     } catch (err: unknown) {
+      if (err instanceof LoginRequiredError) {
+        return reply.status(401).send({
+          error: err.message,
+          code: "LOGIN_REQUIRED",
+          domain: err.domain,
+          loginUrl: err.loginUrl,
+        });
+      }
       const message = err instanceof Error ? err.message : "Erro ao efetuar scraping na URL";
       const status =
         message.includes("doesn't exist") ||

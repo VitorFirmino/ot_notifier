@@ -58,6 +58,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
   const [guildSearchQuery, setGuildSearchQuery] = useState("");
   const [loginPrompt, setLoginPrompt] = useState<{ domain: string; loginUrl: string } | null>(null);
   const [pendingSaveValues, setPendingSaveValues] = useState<ServerFormValues | null>(null);
+  const [pendingDiscoveryUrl, setPendingDiscoveryUrl] = useState<string | null>(null);
   const [siteLoginUsername, setSiteLoginUsername] = useState("");
   const [siteLoginPassword, setSiteLoginPassword] = useState("");
   const [isSiteLoggingIn, setIsSiteLoggingIn] = useState(false);
@@ -114,6 +115,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
   useEffect(() => {
     setLoginPrompt(null);
     setPendingSaveValues(null);
+    setPendingDiscoveryUrl(null);
     setSiteLoginUsername("");
     setSiteLoginPassword("");
     setSiteLoginError(null);
@@ -150,9 +152,16 @@ export const ServerModal: React.FC<ServerModalProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialServer, isOpen]);
 
-  const handleDiscover = (values: DiscoveryFormValues) => {
+  const handleDiscover = async (values: DiscoveryFormValues) => {
     setGuildSearchQuery("");
-    discoverMutation.mutate(values.discoveryUrl);
+    try {
+      await discoverMutation.mutateAsync(values.discoveryUrl);
+    } catch (err: unknown) {
+      if (err instanceof LoginRequiredApiError) {
+        setPendingDiscoveryUrl(values.discoveryUrl);
+        setLoginPrompt({ domain: err.domain, loginUrl: err.loginUrl });
+      }
+    }
   };
 
   const handleSelectDiscoveredGuild = (guild: GuildDiscovered) => {
@@ -213,7 +222,11 @@ export const ServerModal: React.FC<ServerModalProps> = ({
       setSiteLoginUsername("");
       setSiteLoginPassword("");
       if (pendingSaveValues) {
+        setPendingSaveValues(null);
         await onSaveSubmit(pendingSaveValues);
+      } else if (pendingDiscoveryUrl) {
+        setPendingDiscoveryUrl(null);
+        await handleDiscover({ discoveryUrl: pendingDiscoveryUrl });
       }
     } catch (err: unknown) {
       setSiteLoginError(err instanceof Error ? err.message : "Erro ao efetuar login no site.");
@@ -274,6 +287,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                 onClick={() => {
                   setLoginPrompt(null);
                   setPendingSaveValues(null);
+                  setPendingDiscoveryUrl(null);
                 }}
               >
                 Cancelar

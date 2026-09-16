@@ -2,6 +2,8 @@ import { createRequestHeaders, fetchWithAxiosResult, type AxiosFetchResult } fro
 import { discoverGuildsFromList, isGuildNotExistHtml } from "../parsers/guildParser";
 import { extractServerIdFromUrl } from "@shared/utils/serverIdentity";
 import { playwrightManager } from "../playwrightManager";
+import { detectLoginRequiredPage, LoginRequiredError } from "./loginRequiredDetector";
+import { getSiteCredential } from "@infrastructure/storage/siteCredentials";
 import type { GuildDiscovered } from "../../../shared/types/index";
 
 const CANDIDATE_TIMEOUT_MS = 8000;
@@ -60,7 +62,7 @@ const evaluateCandidateHtml = (html: string | null, candidateUrl: string): Candi
   return { kind: "fetched-empty", html, url: candidateUrl };
 };
 
-export const discoverGuildRoute = async (rawUrl: string): Promise<GuildRouteDiscoveryResult> => {
+export const discoverGuildRoute = async (rawUrl: string, userId?: string): Promise<GuildRouteDiscoveryResult> => {
   const normalized = normalizeBaseUrl(rawUrl);
   const origin = new URL(normalized).origin;
   const serverId = extractServerIdFromUrl(normalized);
@@ -79,6 +81,7 @@ export const discoverGuildRoute = async (rawUrl: string): Promise<GuildRouteDisc
     lastFetched: { html: string; url: string } | null;
     lastErrorCode: string | null;
     sawForbidden: boolean;
+    loginRequired: { domain: string; loginUrl: string } | null;
   };
 
   const runPass = async (
@@ -91,6 +94,7 @@ export const discoverGuildRoute = async (rawUrl: string): Promise<GuildRouteDisc
       lastFetched: null,
       lastErrorCode: null,
       sawForbidden: false,
+      loginRequired: null,
     };
 
     for (const candidateUrl of candidateUrls) {
@@ -105,7 +109,30 @@ export const discoverGuildRoute = async (rawUrl: string): Promise<GuildRouteDisc
         continue;
       }
 
-      const outcome = evaluateCandidateHtml(result.html, candidateUrl);
+      let html = result.html;
+      const loginUrl = detectLoginRequiredPage(html, candidateUrl);
+      if (loginUrl) {
+        const domain = new URL(candidateUrl).hostname;
+        const credential = userId ? await getSiteCredential(userId, domain) : null;
+        if (credential) {
+          const loggedIn = await playwrightManager.performLogin(
+            credential.loginUrl,
+            credential.username,
+            credential.password
+          );
+          if (loggedIn) {
+            const retryResult = await fetchOne(candidateUrl);
+            if (retryResult.html) html = retryResult.html;
+          }
+        }
+
+        if (detectLoginRequiredPage(html, candidateUrl)) {
+          summary.loginRequired = summary.loginRequired || { domain, loginUrl };
+          continue;
+        }
+      }
+
+      const outcome = evaluateCandidateHtml(html, candidateUrl);
       if (outcome.kind === "success") {
         summary.confident = { guilds: outcome.guilds, html: outcome.html, resolvedUrl: outcome.url };
         return summary;
@@ -129,6 +156,7 @@ export const discoverGuildRoute = async (rawUrl: string): Promise<GuildRouteDisc
   let weakMatch = axiosPass.weakMatch;
   let lastFetched = axiosPass.lastFetched;
   let lastErrorCode = axiosPass.lastErrorCode;
+  let loginRequired = axiosPass.loginRequired;
 
   if (axiosPass.sawForbidden) {
     const browserCandidates = uniqueCandidates.slice(0, BROWSER_CANDIDATE_LIMIT);
@@ -143,6 +171,7 @@ export const discoverGuildRoute = async (rawUrl: string): Promise<GuildRouteDisc
     weakMatch = weakMatch || browserPass.weakMatch;
     lastFetched = browserPass.lastFetched || lastFetched;
     lastErrorCode = browserPass.lastErrorCode || lastErrorCode;
+    loginRequired = loginRequired || browserPass.loginRequired;
   }
 
   if (weakMatch) {
@@ -151,6 +180,10 @@ export const discoverGuildRoute = async (rawUrl: string): Promise<GuildRouteDisc
 
   if (lastFetched) {
     return { guilds: [], html: lastFetched.html, resolvedUrl: lastFetched.url };
+  }
+
+  if (loginRequired) {
+    throw new LoginRequiredError(loginRequired.domain, loginRequired.loginUrl);
   }
 
   throw new Error(

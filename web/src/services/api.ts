@@ -62,6 +62,9 @@ export const api = {
     });
     if (!res.ok) {
       const data = await safeParseJson(res);
+      if (data.code === "LOGIN_REQUIRED") {
+        throw new LoginRequiredApiError(data.error || "Login necessário.", data.domain, data.loginUrl);
+      }
       throw new Error(data.error || "Falha ao efetuar scraping na URL informada");
     }
     return await res.json();

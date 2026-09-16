@@ -94,3 +94,74 @@ test.describe("Adding a server on a site that requires login", () => {
     expect(serverId).toBeDefined();
   });
 });
+
+test.describe("Auto-discovery on a site that requires login", () => {
+  const email = uniqueTestEmail("e2e-discoverylogin");
+
+  test.afterAll(async ({ pool }) => {
+    await deleteTestUser(pool, email);
+  });
+
+  test("prompts for login during discovery, then shows guilds after a successful login", async ({ page, pool }) => {
+    await signUpVerifyAndLogin(page, pool, email, "E2E Discovery Login Test");
+
+    let discoverCallCount = 0;
+    await page.route("**/api/discover", async (route) => {
+      discoverCallCount += 1;
+      if (discoverCallCount === 1) {
+        await route.fulfill({
+          status: 401,
+          contentType: "application/json",
+          body: JSON.stringify({
+            error: "Login necessário para acessar example.com.",
+            code: "LOGIN_REQUIRED",
+            domain: "example.com",
+            loginUrl: "https://example.com/sub.php?page=login",
+          }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          guilds: [
+            {
+              name: "Discovered After Login",
+              url: "https://example.com/?subtopic=guilds&action=view&GuildName=Discovered+After+Login",
+            },
+          ],
+          htmlLength: 123,
+        }),
+      });
+    });
+
+    let loginCallCount = 0;
+    await page.route("**/api/site-auth/login", async (route) => {
+      loginCallCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, domain: "example.com" }),
+      });
+    });
+
+    await page.getByRole("button", { name: "Novo Servidor" }).click();
+    await page.getByLabel("URL do servidor").fill("example.com");
+    await page.getByRole("button", { name: "Buscar guildas" }).click();
+
+    await expect(page.getByText("example.com", { exact: false })).toBeVisible();
+    await expect(page.getByLabel("Usuário / email")).toBeVisible();
+    await expect(page.getByLabel("Senha", { exact: true })).toBeVisible();
+
+    await page.getByLabel("Usuário / email").fill("deweda8045@duidir.com");
+    await page.getByLabel("Senha", { exact: true }).fill("deweda@123");
+    await page.getByRole("button", { name: "Entrar e continuar" }).click();
+
+    await expect(page.getByText("Discovered After Login")).toBeVisible();
+
+    expect(loginCallCount).toBe(1);
+    expect(discoverCallCount).toBe(2);
+  });
+});
