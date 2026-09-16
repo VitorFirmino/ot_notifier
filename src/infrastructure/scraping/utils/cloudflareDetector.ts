@@ -60,7 +60,6 @@ export const detectCloudflareFromHtml = (html: string): boolean => {
     "__cf_chl",
     "cf-chl-widget",
     "_cf_chl_opt",
-    "challenge-platform",
   ];
 
   return indicators.some((indicator) => htmlLower.includes(indicator));
