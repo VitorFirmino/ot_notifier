@@ -2,6 +2,7 @@ import { Worker, type Job, type ConnectionOptions } from "bullmq";
 import { QUEUE_NAME } from "@infrastructure/queue/serverQueueManager";
 import { getRedisOptions } from "@infrastructure/queue/redisConnection";
 import { processServerCheck } from "./handlers/serverCheckHandler";
+import { recordJobActivity } from "../managers/heartbeatManager";
 
 let workerInstance: Worker | null = null;
 
@@ -41,10 +42,12 @@ export const startServerQueueWorker = (): Worker => {
   );
 
   workerInstance.on("completed", (job: Job) => {
+    recordJobActivity();
     console.log(`🎉 [BullMQ Worker] Job ${job.id} para ${job.data?.serverId} concluído.`);
   });
 
   workerInstance.on("failed", (job: Job | undefined, err: Error) => {
+    recordJobActivity();
     console.warn(`❌ [BullMQ Worker] Job ${job?.id} falhou:`, err.message);
   });
 

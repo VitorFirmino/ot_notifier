@@ -9,6 +9,7 @@ import { cleanupServerStates } from "@shared/utils/serverStateManager";
 import { syncAllActiveServersToQueue } from "@infrastructure/queue/serverQueueManager";
 import { startServerQueueWorker } from "./workers/queueWorker";
 import { MAX_LEGACY_PROCESSES, selectServersForLegacyFallback } from "./managers/legacyFallbackPolicy";
+import { startHeartbeatFileLoop, startJobActivityWatchdog } from "./managers/heartbeatManager";
 import type { ServerConfig } from "@shared/types/index";
 
 dotenv.config({ quiet: true });
@@ -70,6 +71,8 @@ const initialize = async (): Promise<void> => {
   await initializeBanner(serverConfigs.length);
   setupShutdownHandlers();
 
+  const { working } = separateServers(serverConfigs);
+
   let queueStarted = false;
   try {
     await syncAllActiveServersToQueue(serverConfigs);
@@ -80,7 +83,6 @@ const initialize = async (): Promise<void> => {
   }
 
   if (!queueStarted) {
-    const { working } = separateServers(serverConfigs);
     const { toStart, skipped } = selectServersForLegacyFallback(working);
     if (skipped.length > 0) {
       console.error(
@@ -88,6 +90,11 @@ const initialize = async (): Promise<void> => {
       );
     }
     startWorkingServers(toStart);
+  }
+
+  startHeartbeatFileLoop(20000);
+  if (queueStarted) {
+    startJobActivityWatchdog(60000, 5 * 60000, () => working.length > 0);
   }
 
   startRenderLoop(2000, 1000);

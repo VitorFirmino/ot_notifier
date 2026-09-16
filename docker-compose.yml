@@ -22,6 +22,12 @@ services:
       - states_data:/app/data
       - cloakbrowser_data:/root/.cloakbrowser
       - ./src/infrastructure/storage/servers.json:/app/src/infrastructure/storage/servers.json
+    healthcheck:
+      test: ["CMD", "node", "-e", "const s=require('fs').statSync('/app/data/.orchestrator-heartbeat'); process.exit(Date.now()-s.mtimeMs<90000?0:1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   api:
     build:
