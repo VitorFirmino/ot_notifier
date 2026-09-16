@@ -129,7 +129,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
 
     if (Object.keys(newConfig.characters).length === 0) {
       try {
-        const members = await getGuildMembers(url);
+        const members = await getGuildMembers(url, undefined, request.userId);
         const charsObj: Record<string, CharacterInfo> = {};
         members.forEach((member) => {
           charsObj[member.name] = createBlankCharacter(member.url);
@@ -174,7 +174,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
     if (!(await assertPublicUrlOrReply(config.guild.url, reply))) return;
 
     try {
-      const members = await getGuildMembers(config.guild.url);
+      const members = await getGuildMembers(config.guild.url, undefined, config.createdByUserId);
       const updatedChars = { ...config.characters };
 
       members.forEach((member) => {

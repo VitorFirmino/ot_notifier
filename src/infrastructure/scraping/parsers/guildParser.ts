@@ -251,14 +251,15 @@ const fetchGuildHtml = (guildUrl: string, customHeaders?: Record<string, string>
 
 export const getGuildMembers = async (
   guildUrl: string,
-  customHeaders?: Record<string, string>
+  customHeaders?: Record<string, string>,
+  userId?: string
 ): Promise<GuildMember[]> => {
   let html = await fetchGuildHtml(guildUrl, customHeaders);
 
   const loginUrl = detectLoginRequiredPage(html, guildUrl);
   if (loginUrl) {
     const domain = new URL(guildUrl).hostname;
-    const credential = await getSiteCredential(domain);
+    const credential = userId ? await getSiteCredential(userId, domain) : null;
     if (credential) {
       const loggedIn = await playwrightManager.performLogin(
         credential.loginUrl,

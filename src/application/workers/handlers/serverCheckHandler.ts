@@ -181,7 +181,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
 
       try {
         const { getGuildMembers } = await import("@infrastructure/scraping/parsers/guildParser");
-        const members = await getGuildMembers(guild.url, settings?.headers);
+        const members = await getGuildMembers(guild.url, settings?.headers, serverConfig.createdByUserId);
 
         if (members.length === 0) {
           const duration = ((Date.now() - startTime) / 1000).toFixed(2);

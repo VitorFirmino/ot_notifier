@@ -3,6 +3,9 @@ import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn } fro
 @Entity({ name: "site_credentials" })
 export class SiteCredential {
   @PrimaryColumn({ type: "varchar" })
+  userId!: string;
+
+  @PrimaryColumn({ type: "varchar" })
   domain!: string;
 
   @Column({ type: "varchar" })

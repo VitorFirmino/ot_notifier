@@ -25,11 +25,17 @@ export const registerSiteAuthRoutes = (app: FastifyInstance): void => {
         return reply.status(401).send({ error: "Usuário ou senha incorretos." });
       }
 
-      await saveSiteCredential({ domain, loginUrl: body.loginUrl, username: body.username, password: body.password });
+      await saveSiteCredential({
+        userId: request.userId!,
+        domain,
+        loginUrl: body.loginUrl,
+        username: body.username,
+        password: body.password,
+      });
       return reply.status(200).send({ success: true, domain });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erro ao efetuar login no site";
-      return reply.status(500).send({ error: message });
+      console.error(`❌ Erro ao efetuar login em ${domain}:`, err);
+      return reply.status(500).send({ error: "Erro ao efetuar login no site." });
     }
   });
 };
