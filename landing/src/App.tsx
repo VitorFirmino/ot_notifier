@@ -2,6 +2,7 @@ import { Hero } from "@components/Hero";
 import { HowItWorks } from "@components/HowItWorks";
 import { DashboardPreview } from "@components/DashboardPreview";
 import { Features } from "@components/Features";
+import { Footer } from "@components/Footer";
 
 export default function App() {
   return (
@@ -10,6 +11,7 @@ export default function App() {
       <HowItWorks />
       <DashboardPreview />
       <Features />
+      <Footer />
     </main>
   );
 }
