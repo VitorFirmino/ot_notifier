@@ -23,7 +23,6 @@ export const registerProxyImageRoutes = (app: FastifyInstance): void => {
       if (!ALLOWED_PROXIED_IMAGE_TYPES.includes(contentType)) {
         return sendError(reply, 415, "Tipo de imagem não suportado.");
       }
-      // Binary passthrough — not JSON, so it stays outside the success envelope.
       return reply
         .status(200)
         .header("Content-Type", contentType)
