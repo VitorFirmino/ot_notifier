@@ -204,9 +204,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
       if (err instanceof LoginRequiredApiError) {
         setPendingSaveValues(values);
         setLoginPrompt({ domain: err.domain, loginUrl: err.loginUrl });
-        return;
       }
-      onClose();
     }
   };
 
