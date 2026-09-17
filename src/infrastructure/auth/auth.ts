@@ -4,14 +4,24 @@ import { isValid as isNotDisposableEmail } from "mailchecker";
 import { getAuthEnv } from "@shared/utils/authEnv";
 import { sendPasswordResetEmail, sendVerificationEmail } from "@infrastructure/email/resend";
 
-const { DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, DASHBOARD_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } =
-  getAuthEnv();
+const {
+  DATABASE_URL,
+  BETTER_AUTH_SECRET,
+  BETTER_AUTH_URL,
+  DASHBOARD_URL,
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  COOKIE_DOMAIN,
+} = getAuthEnv();
 
 export const auth = betterAuth({
   database: new Pool({ connectionString: DATABASE_URL, max: 10 }),
   secret: BETTER_AUTH_SECRET,
   baseURL: BETTER_AUTH_URL ?? "http://localhost:3001",
   trustedOrigins: [DASHBOARD_URL ?? "http://localhost:5173"],
+  ...(COOKIE_DOMAIN
+    ? { advanced: { crossSubDomainCookies: { enabled: true, domain: COOKIE_DOMAIN } } }
+    : {}),
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,

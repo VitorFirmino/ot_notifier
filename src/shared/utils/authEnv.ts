@@ -20,6 +20,7 @@ const authEnvSchema = z.object({
       }
     }, "BETTER_AUTH_URL inválida ou insegura — use https:// em produção (http:// só é permitido para localhost), senão o cookie de sessão não recebe a flag Secure."),
   DASHBOARD_URL: z.string().optional(),
+  COOKIE_DOMAIN: z.string().optional(),
   RESEND_API_KEY: z
     .string({ error: "RESEND_API_KEY não configurada — necessária para o envio do email de recuperação de senha." })
     .min(1, "RESEND_API_KEY não configurada — necessária para o envio do email de recuperação de senha."),
