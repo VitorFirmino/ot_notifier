@@ -79,7 +79,7 @@ export const LoginView: React.FC = () => {
               email: values.email,
               password: values.password,
               name: values.name,
-              callbackURL: window.location.origin,
+              callbackURL: `${window.location.origin}/app`,
             });
 
       if (result.error) {
@@ -104,7 +104,7 @@ export const LoginView: React.FC = () => {
     try {
       await authClient.requestPasswordReset({
         email: values.email,
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/app/reset-password`,
       });
       setForgotPasswordSent(true);
     } catch {
@@ -113,7 +113,7 @@ export const LoginView: React.FC = () => {
   };
 
   const handleGoogleSignIn = async () => {
-    await authClient.signIn.social({ provider: "google", callbackURL: window.location.origin });
+    await authClient.signIn.social({ provider: "google", callbackURL: `${window.location.origin}/app` });
   };
 
   return (
@@ -205,7 +205,7 @@ export const LoginView: React.FC = () => {
                     try {
                       await authClient.sendVerificationEmail({
                         email: verificationSent,
-                        callbackURL: window.location.origin,
+                        callbackURL: `${window.location.origin}/app`,
                       });
                     } catch {
                       setApiError("Não foi possível conectar à API. Verifique se o backend está rodando.");
