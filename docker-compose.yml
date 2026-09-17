@@ -41,7 +41,6 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ot_notifier}
-      DASHBOARD_URL: http://localhost:8080
     depends_on:
       redis:
         condition: service_healthy
