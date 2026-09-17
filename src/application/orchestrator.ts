@@ -60,9 +60,7 @@ const initialize = async (): Promise<void> => {
   const serverConfigs = await getAllServerConfigs();
 
   if (serverConfigs.length === 0) {
-    console.error("Nenhum servidor configurado.");
-    console.error("Adicione servidores em servers.json ou via: npm run manage");
-    process.exit(1);
+    console.log("Nenhum servidor configurado ainda — aguardando o primeiro servidor ser adicionado.");
   }
 
   const activeIds = serverConfigs.map((server) => server.serverId);

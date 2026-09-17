@@ -1,0 +1,13 @@
+services:
+  web:
+    ports: []
+    networks:
+      - default
+      - proxy_net
+
+  postgres:
+    ports: []
+
+networks:
+  proxy_net:
+    external: true
