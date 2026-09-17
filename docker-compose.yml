@@ -10,12 +10,11 @@ services:
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
-    # No depends_on postgres here — the scraping/monitoring orchestrator this
-    # container runs never touches Postgres; only `pnpm api` (run separately,
-    # outside Docker today) does. Redis IS used directly by this container
-    # (BullMQ scheduling), so it waits on that one.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ot_notifier}
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     volumes:
       - storage_data:/app/src/infrastructure/storage/data
@@ -71,7 +70,7 @@ services:
       - api
 
   redis:
-    image: redis:7-alpine
+    image: public.ecr.aws/docker/library/redis:7-alpine
     container_name: ot_notifier_redis
     restart: unless-stopped
     volumes:
@@ -83,7 +82,7 @@ services:
       retries: 10
 
   postgres:
-    image: postgres:16-alpine
+    image: public.ecr.aws/docker/library/postgres:16-alpine
     container_name: ot_notifier_postgres
     restart: unless-stopped
     environment:

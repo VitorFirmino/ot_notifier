@@ -1,4 +1,4 @@
-FROM node:22-slim AS deps
+FROM public.ecr.aws/docker/library/node:22-slim AS deps
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ RUN \
     npm install --omit=dev --legacy-peer-deps; \
   fi
 
-FROM node:22-slim AS runtime
+FROM public.ecr.aws/docker/library/node:22-slim AS runtime
 
 WORKDIR /app
 
