@@ -22,7 +22,7 @@ export const Hero: React.FC = () => {
         </h1>
         <p className="mt-6 max-w-xl leading-relaxed text-text-muted">
           O OT Notifier acompanha suas guildas e personagens favoritos e avisa no Discord quando alguém sobe de
-          nível ou morre — sem precisar ficar checando o site do servidor.
+          nível ou morre, sem precisar ficar checando o site do servidor.
         </p>
         <a href="#como-funciona" className="mt-8 inline-block border-b border-accent-dim pb-1 text-accent">
           Ver como funciona
