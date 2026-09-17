@@ -23,7 +23,7 @@ test.describe("Navigating into a server's detail page", () => {
     });
     await expect(page.getByRole("heading", { name: "Server Detail Guild" })).toBeVisible();
 
-    const servers = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const servers = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
     }>;

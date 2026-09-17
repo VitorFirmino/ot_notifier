@@ -58,7 +58,7 @@ describe("POST /api/servers — two guilds on the same domain", () => {
       payload: { url: guildAUrl, name: "Integration Guild A" },
     });
     expect(responseA.statusCode).toBe(201);
-    const serverA = responseA.json();
+    const serverA = responseA.json().data;
     serverIdsToClean.push(serverA.serverId);
 
     const responseB = await app.inject({
@@ -68,7 +68,7 @@ describe("POST /api/servers — two guilds on the same domain", () => {
       payload: { url: guildBUrl, name: "Integration Guild B" },
     });
     expect(responseB.statusCode).toBe(201);
-    const serverB = responseB.json();
+    const serverB = responseB.json().data;
     serverIdsToClean.push(serverB.serverId);
 
     expect(serverA.serverId).not.toBe(serverB.serverId);
@@ -79,7 +79,7 @@ describe("POST /api/servers — two guilds on the same domain", () => {
       headers: { cookie: session.sessionCookie },
     });
     expect(listResponse.statusCode).toBe(200);
-    const servers = listResponse.json() as ServerListItem[];
+    const servers = listResponse.json().data as ServerListItem[];
 
     const foundA = servers.find((server) => server.serverId === serverA.serverId);
     const foundB = servers.find((server) => server.serverId === serverB.serverId);
@@ -113,7 +113,7 @@ describe("Server ownership isolation", () => {
       },
     });
     expect(createResponse.statusCode).toBe(201);
-    ownedServerId = createResponse.json().serverId;
+    ownedServerId = createResponse.json().data.serverId;
   });
 
   afterAll(async () => {
@@ -130,7 +130,7 @@ describe("Server ownership isolation", () => {
       url: "/api/servers",
       headers: { cookie: intruder.sessionCookie },
     });
-    const servers = response.json() as ServerListItem[];
+    const servers = response.json().data as ServerListItem[];
     expect(servers.find((server) => server.serverId === ownedServerId)).toBeUndefined();
   });
 
@@ -140,7 +140,7 @@ describe("Server ownership isolation", () => {
       url: "/api/servers",
       headers: { cookie: owner.sessionCookie },
     });
-    const servers = response.json() as ServerListItem[];
+    const servers = response.json().data as ServerListItem[];
     expect(servers.find((server) => server.serverId === ownedServerId)).toBeDefined();
   });
 
@@ -151,7 +151,7 @@ describe("Server ownership isolation", () => {
       headers: { cookie: intruder.sessionCookie },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().totalServers).toBe(0);
+    expect(response.json().data.totalServers).toBe(0);
   });
 
   it("blocks a non-owner from syncing the server", async () => {
@@ -199,7 +199,7 @@ describe("Server ownership isolation", () => {
       payload: { serverName: "Renamed By Owner" },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().serverName).toBe("Renamed By Owner");
+    expect(response.json().data.serverName).toBe("Renamed By Owner");
   });
 
   it("allows the owner to delete their own server", async () => {
@@ -215,7 +215,7 @@ describe("Server ownership isolation", () => {
       url: "/api/servers",
       headers: { cookie: owner.sessionCookie },
     });
-    const servers = listResponse.json() as ServerListItem[];
+    const servers = listResponse.json().data as ServerListItem[];
     expect(servers.find((server) => server.serverId === ownedServerId)).toBeUndefined();
   });
 });
@@ -245,7 +245,7 @@ describe("Admin visibility", () => {
       },
     });
     expect(createResponse.statusCode).toBe(201);
-    regularUserServerId = createResponse.json().serverId;
+    regularUserServerId = createResponse.json().data.serverId;
   });
 
   afterAll(async () => {
@@ -263,7 +263,7 @@ describe("Admin visibility", () => {
       url: "/api/servers",
       headers: { cookie: admin.sessionCookie },
     });
-    const servers = response.json() as ServerListItem[];
+    const servers = response.json().data as ServerListItem[];
     expect(servers.find((server) => server.serverId === regularUserServerId)).toBeDefined();
   });
 

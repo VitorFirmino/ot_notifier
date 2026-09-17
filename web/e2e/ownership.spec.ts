@@ -29,7 +29,7 @@ test.describe("A server added by one account is invisible to another", () => {
     });
     await expect(ownerPage.getByRole("heading", { name: "Owner Only Guild" })).toBeVisible();
 
-    const ownServers = (await (await ownerPage.request.get("/api/servers")).json()) as Array<{
+    const ownServers = ((await (await ownerPage.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
     }>;
@@ -43,7 +43,7 @@ test.describe("A server added by one account is invisible to another", () => {
     await expect(intruderPage.getByRole("heading", { name: "Owner Only Guild" })).not.toBeVisible();
     await expect(intruderPage.getByText("Servidores Open Tibia Monitored (0)")).toBeVisible();
 
-    const intruderServers = (await (await intruderPage.request.get("/api/servers")).json()) as unknown[];
+    const intruderServers = ((await (await intruderPage.request.get("/api/servers")).json()).data) as unknown[];
     expect(intruderServers).toHaveLength(0);
 
     const deleteResponse = await intruderPage.request.delete(`/api/servers/${ownedServerId}`);

@@ -34,12 +34,15 @@ test.describe("Auto-discovery tab", () => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          guilds: [
-            {
-              name: "Discovered Guild",
-              url: "https://example.com/?subtopic=guilds&action=view&GuildName=Discovered+Guild",
-            },
-          ],
+          success: true,
+          data: {
+            guilds: [
+              {
+                name: "Discovered Guild",
+                url: "https://example.com/?subtopic=guilds&action=view&GuildName=Discovered+Guild",
+              },
+            ],
+          },
         }),
       });
     });
@@ -53,7 +56,7 @@ test.describe("Auto-discovery tab", () => {
     await expect(page.getByRole("dialog")).toBeHidden();
     await expect(page.getByRole("heading", { name: "Discovered Guild" })).toBeVisible();
 
-    const servers = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const servers = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
       guild: { url: string };

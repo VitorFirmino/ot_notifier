@@ -61,7 +61,7 @@ test.describe("A second account cannot claim a guild another account already own
     await addServerManually(ownerPage, { url: guildUrl, name: "Claimed Guild" });
     await expect(ownerPage.getByRole("heading", { name: "Claimed Guild" })).toBeVisible();
 
-    const ownerServers = (await (await ownerPage.request.get("/api/servers")).json()) as Array<{
+    const ownerServers = ((await (await ownerPage.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
     }>;
@@ -89,7 +89,7 @@ test.describe("A second account cannot claim a guild another account already own
     ).toBeVisible();
 
     await expect(intruderPage.getByRole("heading", { name: "Stolen Guild" })).not.toBeVisible();
-    const intruderServers = (await (await intruderPage.request.get("/api/servers")).json()) as unknown[];
+    const intruderServers = ((await (await intruderPage.request.get("/api/servers")).json()).data) as unknown[];
     expect(intruderServers).toHaveLength(0);
 
     await intruderContext.close();

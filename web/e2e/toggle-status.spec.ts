@@ -26,7 +26,7 @@ test.describe("Pausing and reactivating a server", () => {
     });
     await expect(page.getByRole("heading", { name: "Toggle Me Guild" })).toBeVisible();
 
-    const servers = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const servers = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
       guild: { enabled: boolean };
@@ -39,7 +39,7 @@ test.describe("Pausing and reactivating a server", () => {
     await expect(page.getByText("Toggle Me Guild foi pausado.")).toBeVisible();
     await expect(page.getByText("Pausado", { exact: true })).toBeVisible();
 
-    const serversAfterPause = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const serversAfterPause = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       guild: { enabled: boolean };
     }>;
@@ -49,7 +49,7 @@ test.describe("Pausing and reactivating a server", () => {
     await expect(page.getByText("Toggle Me Guild foi ativado.")).toBeVisible();
     await expect(page.getByText("Ativo", { exact: true })).toBeVisible();
 
-    const serversAfterReactivate = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const serversAfterReactivate = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       guild: { enabled: boolean };
     }>;

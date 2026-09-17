@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { getAllServerConfigs } from "@infrastructure/storage/serverConfigManager";
+import { sendSuccess } from "../responseHelpers";
 
 export const registerStatsRoutes = (app: FastifyInstance): void => {
   app.get("/api/stats", async (request, reply) => {
@@ -20,7 +21,7 @@ export const registerStatsRoutes = (app: FastifyInstance): void => {
       }
     });
 
-    return reply.status(200).send({
+    return sendSuccess(reply, {
       activeServers: activeCount,
       totalServers: configs.length,
       monitoredCharacters: totalChars,

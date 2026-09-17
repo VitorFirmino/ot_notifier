@@ -17,6 +17,7 @@ import { registerDiscoverRoutes } from "./routes/discover";
 import { registerProxyImageRoutes } from "./routes/proxyImage";
 import { registerCharacterRoutes } from "./routes/character";
 import { registerSiteAuthRoutes } from "./routes/siteAuth";
+import { sendError } from "./responseHelpers";
 
 dotenv.config({ quiet: true });
 
@@ -39,13 +40,11 @@ export const buildFastifyServer = async () => {
   app.setErrorHandler((error: Error & { code?: string }, request, reply) => {
     if (error.code === "ELOCKED") {
       console.warn(`⚠️ Lock ocupado em ${request.method} ${request.url}:`, error.message);
-      return reply
-        .status(503)
-        .send({ error: "Servidor ocupado processando outra atualização. Tente novamente em instantes." });
+      return sendError(reply, 503, "Servidor ocupado processando outra atualização. Tente novamente em instantes.");
     }
 
     console.error(`❌ Erro não tratado em ${request.method} ${request.url}:`, error);
-    return reply.status(500).send({ error: "Erro interno do servidor." });
+    return sendError(reply, 500, "Erro interno do servidor.");
   });
 
   app.register(cors, {
@@ -74,13 +73,13 @@ export const buildFastifyServer = async () => {
 
     const session = await auth.api.getSession({ headers: fromNodeHeaders(request.headers) });
     if (!session) {
-      return reply.status(401).send({ error: "Não autenticado." });
+      return sendError(reply, 401, "Não autenticado.");
     }
     request.userId = session.user.id;
     request.isAdmin = adminEmails.has(session.user.email.toLowerCase());
 
     if (request.url.startsWith("/admin/queues") && !request.isAdmin) {
-      return reply.status(403).send({ error: "Você não tem permissão para acessar o painel de filas." });
+      return sendError(reply, 403, "Você não tem permissão para acessar o painel de filas.");
     }
   });
 

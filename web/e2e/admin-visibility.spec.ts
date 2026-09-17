@@ -32,7 +32,7 @@ test.describe("Admin sees every user's servers", () => {
     await expect(ownerPage.getByRole("dialog")).toBeHidden();
     await expect(ownerPage.getByRole("heading", { name: "Regular User Guild" })).toBeVisible();
 
-    const ownerServers = (await (await ownerPage.request.get("/api/servers")).json()) as Array<{
+    const ownerServers = ((await (await ownerPage.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
     }>;
@@ -56,7 +56,7 @@ test.describe("Admin sees every user's servers", () => {
 
     await expect(adminPage.getByRole("heading", { name: "Regular User Guild" })).toBeVisible();
 
-    const adminServers = (await (await adminPage.request.get("/api/servers")).json()) as Array<{
+    const adminServers = ((await (await adminPage.request.get("/api/servers")).json()).data) as Array<{
       serverName: string;
     }>;
     expect(adminServers.some((server) => server.serverName === "Regular User Guild")).toBe(true);

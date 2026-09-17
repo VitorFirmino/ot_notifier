@@ -23,7 +23,7 @@ test.describe("Dashboard behavior when the API becomes unreachable", () => {
     });
     await expect(page.getByRole("heading", { name: "Offline Test Guild" })).toBeVisible();
 
-    const servers = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const servers = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
     }>;

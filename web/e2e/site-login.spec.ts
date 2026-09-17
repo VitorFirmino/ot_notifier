@@ -52,7 +52,7 @@ test.describe("Adding a server on a site that requires login", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ success: true, domain: "example.com" }),
+        body: JSON.stringify({ success: true, data: { domain: "example.com" } }),
       });
     });
 
@@ -86,7 +86,7 @@ test.describe("Adding a server on a site that requires login", () => {
     await expect(page.getByRole("dialog")).toBeHidden();
     await expect(page.getByRole("heading", { name: "Needs Login Guild" })).toBeVisible();
 
-    const servers = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const servers = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
     }>;
@@ -126,13 +126,16 @@ test.describe("Auto-discovery on a site that requires login", () => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          guilds: [
-            {
-              name: "Discovered After Login",
-              url: "https://example.com/?subtopic=guilds&action=view&GuildName=Discovered+After+Login",
-            },
-          ],
-          htmlLength: 123,
+          success: true,
+          data: {
+            guilds: [
+              {
+                name: "Discovered After Login",
+                url: "https://example.com/?subtopic=guilds&action=view&GuildName=Discovered+After+Login",
+              },
+            ],
+            htmlLength: 123,
+          },
         }),
       });
     });
@@ -143,7 +146,7 @@ test.describe("Auto-discovery on a site that requires login", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ success: true, domain: "example.com" }),
+        body: JSON.stringify({ success: true, data: { domain: "example.com" } }),
       });
     });
 

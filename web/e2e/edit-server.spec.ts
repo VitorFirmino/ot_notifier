@@ -23,7 +23,7 @@ test.describe("Editing an existing server", () => {
     });
     await expect(page.getByRole("heading", { name: "Edit Me Guild" })).toBeVisible();
 
-    const serversBeforeEdit = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const serversBeforeEdit = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
     }>;
@@ -42,7 +42,7 @@ test.describe("Editing an existing server", () => {
     await expect(page.getByRole("heading", { name: "Edited Guild Name" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Edit Me Guild", exact: true })).not.toBeVisible();
 
-    const serversAfterEdit = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const serversAfterEdit = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
       settings?: { checkInterval?: number };

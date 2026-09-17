@@ -24,6 +24,11 @@ const safeParseJson = async (res: Response): Promise<any> => {
   }
 };
 
+const unwrapData = async <T>(res: Response): Promise<T> => {
+  const body = await res.json();
+  return body.data as T;
+};
+
 export class LoginRequiredApiError extends Error {
   domain: string;
   loginUrl: string;
@@ -40,19 +45,19 @@ export const api = {
   async getServers(): Promise<ServerConfig[]> {
     const res = await fetch(`${API_BASE}/servers`, FETCH_DEFAULTS);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
+    return await unwrapData(res);
   },
 
   async getStats(): Promise<SystemStatsResponse> {
     const res = await fetch(`${API_BASE}/stats`, FETCH_DEFAULTS);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
+    return await unwrapData(res);
   },
 
   async getEvents(limit = 50): Promise<ActivityEvent[]> {
     const res = await fetch(`${API_BASE}/events?limit=${limit}`, FETCH_DEFAULTS);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
+    return await unwrapData(res);
   },
 
   async discoverGuilds(url: string): Promise<DiscoverGuildsResponse> {
@@ -69,7 +74,7 @@ export const api = {
       }
       throw new Error(data.error || "Falha ao efetuar scraping na URL informada");
     }
-    return await res.json();
+    return await unwrapData(res);
   },
 
   async addServer(payload: AddServerPayload): Promise<ServerConfig> {
@@ -86,10 +91,10 @@ export const api = {
       }
       throw new Error(data.error || "Erro ao adicionar servidor");
     }
-    return await res.json();
+    return await unwrapData(res);
   },
 
-  async loginToSite(loginUrl: string, username: string, password: string): Promise<{ success: boolean }> {
+  async loginToSite(loginUrl: string, username: string, password: string): Promise<{ domain: string }> {
     const res = await fetch(`${API_BASE}/site-auth/login`, {
       ...FETCH_DEFAULTS,
       method: "POST",
@@ -100,7 +105,7 @@ export const api = {
       const data = await safeParseJson(res);
       throw new Error(data.error || "Erro ao efetuar login no site");
     }
-    return await res.json();
+    return await unwrapData(res);
   },
 
   async updateServer(serverId: string, payload: UpdateServerPayload): Promise<ServerConfig> {
@@ -114,7 +119,7 @@ export const api = {
       const data = await safeParseJson(res);
       throw new Error(data.error || "Erro ao atualizar servidor");
     }
-    return await res.json();
+    return await unwrapData(res);
   },
 
   async syncServer(serverId: string): Promise<ServerConfig> {
@@ -126,7 +131,7 @@ export const api = {
       const data = await safeParseJson(res);
       throw new Error(data.error || "Erro ao sincronizar servidor");
     }
-    return await res.json();
+    return await unwrapData(res);
   },
 
   async testWebhook(serverId: string): Promise<void> {
@@ -176,6 +181,6 @@ export const api = {
       const data = await safeParseJson(res);
       throw new Error(data.error || "Erro ao inspecionar personagem no servidor");
     }
-    return await res.json();
+    return await unwrapData(res);
   },
 };

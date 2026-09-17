@@ -23,7 +23,7 @@ test.describe("Deleting a server", () => {
     });
     await expect(page.getByRole("heading", { name: "Delete Me Guild" })).toBeVisible();
 
-    const servers = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const servers = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
     }>;
@@ -36,14 +36,14 @@ test.describe("Deleting a server", () => {
     await expect(page.getByRole("heading", { name: "Remover servidor" })).not.toBeVisible();
     await expect(page.getByRole("heading", { name: "Delete Me Guild" })).toBeVisible();
 
-    const serversAfterCancel = (await (await page.request.get("/api/servers")).json()) as unknown[];
+    const serversAfterCancel = ((await (await page.request.get("/api/servers")).json()).data) as unknown[];
     expect(serversAfterCancel).toHaveLength(1);
 
     await page.getByRole("button", { name: "Remover servidor", exact: true }).click();
     await page.getByRole("button", { name: "Remover", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Delete Me Guild" })).not.toBeVisible();
 
-    const serversAfterDelete = (await (await page.request.get("/api/servers")).json()) as unknown[];
+    const serversAfterDelete = ((await (await page.request.get("/api/servers")).json()).data) as unknown[];
     expect(serversAfterDelete).toHaveLength(0);
 
     serverId = undefined;

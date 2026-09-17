@@ -3,6 +3,7 @@ import { playwrightManager } from "@infrastructure/scraping/playwrightManager";
 import { saveSiteCredential } from "@infrastructure/storage/siteCredentials";
 import { assertPublicUrlOrReply, parseOrReply } from "../validation";
 import { siteLoginBodySchema } from "../schemas";
+import { sendSuccess, sendError } from "../responseHelpers";
 
 interface SiteLoginPayload {
   loginUrl: string;
@@ -22,7 +23,7 @@ export const registerSiteAuthRoutes = (app: FastifyInstance): void => {
     try {
       const success = await playwrightManager.performLogin(body.loginUrl, body.username, body.password);
       if (!success) {
-        return reply.status(401).send({ error: "Usuário ou senha incorretos." });
+        return sendError(reply, 401, "Usuário ou senha incorretos.");
       }
 
       await saveSiteCredential({
@@ -32,10 +33,10 @@ export const registerSiteAuthRoutes = (app: FastifyInstance): void => {
         username: body.username,
         password: body.password,
       });
-      return reply.status(200).send({ success: true, domain });
+      return sendSuccess(reply, { domain });
     } catch (err: unknown) {
       console.error(`❌ Erro ao efetuar login em ${domain}:`, err);
-      return reply.status(500).send({ error: "Erro ao efetuar login no site." });
+      return sendError(reply, 500, "Erro ao efetuar login no site.");
     }
   });
 };

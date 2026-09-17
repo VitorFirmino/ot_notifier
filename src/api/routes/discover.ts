@@ -4,6 +4,7 @@ import { LoginRequiredError } from "@infrastructure/scraping/utils/loginRequired
 import type { DiscoverGuildsPayload } from "@shared/types/index";
 import { assertPublicUrlOrReply, parseOrReply } from "../validation";
 import { discoverGuildsBodySchema } from "../schemas";
+import { sendSuccess, sendError } from "../responseHelpers";
 
 export const registerDiscoverRoutes = (app: FastifyInstance): void => {
   app.post<{ Body: DiscoverGuildsPayload }>("/api/discover", async (request, reply) => {
@@ -16,11 +17,10 @@ export const registerDiscoverRoutes = (app: FastifyInstance): void => {
 
     try {
       const { guilds, html } = await discoverGuildRoute(targetUrl, request.userId);
-      return reply.status(200).send({ guilds, htmlLength: html.length });
+      return sendSuccess(reply, { guilds, htmlLength: html.length });
     } catch (err: unknown) {
       if (err instanceof LoginRequiredError) {
-        return reply.status(401).send({
-          error: err.message,
+        return sendError(reply, 401, err.message, {
           code: "LOGIN_REQUIRED",
           domain: err.domain,
           loginUrl: err.loginUrl,
@@ -33,7 +33,7 @@ export const registerDiscoverRoutes = (app: FastifyInstance): void => {
         message.includes("não encontrada")
           ? 404
           : 500;
-      return reply.status(status).send({ error: message });
+      return sendError(reply, status, message);
     }
   });
 };

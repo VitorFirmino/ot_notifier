@@ -36,7 +36,7 @@ test.describe("Managing a server from the \"Servidores & Saúde\" tab", () => {
     await expect(page.getByRole("heading", { name: "Config Panel Guild" })).toBeVisible();
     await expect(page.getByText("Ativo", { exact: true })).toBeVisible();
 
-    const servers = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const servers = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
     }>;
@@ -54,7 +54,7 @@ test.describe("Managing a server from the \"Servidores & Saúde\" tab", () => {
     await page.getByRole("button", { name: "Remover", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Config Panel Guild" })).not.toBeVisible();
 
-    const serversAfterDelete = (await (await page.request.get("/api/servers")).json()) as unknown[];
+    const serversAfterDelete = ((await (await page.request.get("/api/servers")).json()).data) as unknown[];
     expect(serversAfterDelete).toHaveLength(0);
     serverId = undefined;
   });

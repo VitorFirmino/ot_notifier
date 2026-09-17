@@ -23,7 +23,7 @@ test.describe("Searching for a character", () => {
     });
     await expect(page.getByRole("heading", { name: "Character Search Guild" })).toBeVisible();
 
-    const servers = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const servers = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
     }>;

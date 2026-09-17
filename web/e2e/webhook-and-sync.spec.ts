@@ -23,7 +23,7 @@ test.describe("Testing webhook and syncing a server from the dashboard", () => {
     });
     await expect(page.getByRole("heading", { name: "Webhook Sync Test Guild" })).toBeVisible();
 
-    const servers = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const servers = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
     }>;

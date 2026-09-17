@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { fetchImageProxied } from "@infrastructure/scraping/utils/imageProxy";
 import { assertPublicUrlOrReply, parseOrReply } from "../validation";
 import { proxyImageQuerySchema } from "../schemas";
+import { sendError } from "../responseHelpers";
 
 const ALLOWED_PROXIED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"];
 
@@ -16,12 +17,13 @@ export const registerProxyImageRoutes = (app: FastifyInstance): void => {
     try {
       const image = await fetchImageProxied(rawUrl);
       if (!image) {
-        return reply.status(502).send({ error: "Não foi possível obter a imagem da URL informada." });
+        return sendError(reply, 502, "Não foi possível obter a imagem da URL informada.");
       }
       const contentType = image.contentType.split(";")[0].trim().toLowerCase();
       if (!ALLOWED_PROXIED_IMAGE_TYPES.includes(contentType)) {
-        return reply.status(415).send({ error: "Tipo de imagem não suportado." });
+        return sendError(reply, 415, "Tipo de imagem não suportado.");
       }
+      // Binary passthrough — not JSON, so it stays outside the success envelope.
       return reply
         .status(200)
         .header("Content-Type", contentType)
@@ -32,7 +34,7 @@ export const registerProxyImageRoutes = (app: FastifyInstance): void => {
         .send(image.buffer);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro ao buscar a imagem";
-      return reply.status(500).send({ error: message });
+      return sendError(reply, 500, message);
     }
   });
 };

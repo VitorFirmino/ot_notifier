@@ -27,6 +27,7 @@ import type { AddServerPayload, UpdateServerPayload, CharacterInfo } from "@shar
 import { assertPublicUrlOrReply, parseOrReply } from "../validation";
 import { addServerBodySchema, updateServerBodySchema } from "../schemas";
 import { sendTestWebhookOrReply } from "./webhookTestHelper";
+import { sendSuccess, sendError } from "../responseHelpers";
 
 interface ServerParams {
   id: string;
@@ -61,7 +62,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
       };
     });
 
-    return reply.status(200).send(configsWithLiveState);
+    return sendSuccess(reply, configsWithLiveState);
   });
 
   app.post<{ Body: AddServerPayload }>("/api/servers", async (request, reply) => {
@@ -118,13 +119,13 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
     });
 
     if (addResult.outcome === "forbidden") {
-      return reply.status(403).send({ error: "Você não tem permissão para modificar este servidor." });
+      return sendError(reply, 403, "Você não tem permissão para modificar este servidor.");
     }
     if (addResult.outcome === "conflict") {
-      return reply.status(409).send({ error: addResult.conflictMessage });
+      return sendError(reply, 409, addResult.conflictMessage);
     }
     if (!newConfig) {
-      return reply.status(500).send({ error: "Erro ao criar o servidor." });
+      return sendError(reply, 500, "Erro ao criar o servidor.");
     }
 
     if (Object.keys(newConfig.characters).length === 0) {
@@ -139,8 +140,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
       } catch (err: unknown) {
         if (err instanceof LoginRequiredError) {
           await deleteServerConfig(serverId);
-          return reply.status(401).send({
-            error: err.message,
+          return sendError(reply, 401, err.message, {
             code: "LOGIN_REQUIRED",
             domain: err.domain,
             loginUrl: err.loginUrl,
@@ -157,7 +157,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
       void triggerServerCheckNow(serverId);
     }
 
-    return reply.status(201).send(newConfig);
+    return sendSuccess(reply, newConfig, 201);
   });
 
   app.post<{ Params: ServerParams }>("/api/servers/:id/sync", async (request, reply) => {
@@ -165,10 +165,10 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
     const config = loadServerConfig(serverId);
 
     if (!config) {
-      return reply.status(404).send({ error: "Servidor não encontrado" });
+      return sendError(reply, 404, "Servidor não encontrado");
     }
     if (config.createdByUserId !== request.userId && !request.isAdmin) {
-      return reply.status(403).send({ error: "Você não tem permissão para sincronizar este servidor." });
+      return sendError(reply, 403, "Você não tem permissão para sincronizar este servidor.");
     }
 
     if (!(await assertPublicUrlOrReply(config.guild.url, reply))) return;
@@ -186,7 +186,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
       await updateServerCharacters(serverId, updatedChars);
       void triggerServerCheckNow(serverId);
       const updatedConfig = loadServerConfig(serverId);
-      return reply.status(200).send(updatedConfig);
+      return sendSuccess(reply, updatedConfig);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro interno ao sincronizar";
       const isNotFound =
@@ -198,7 +198,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
         void scheduleServerRetry(serverId);
       }
       const status = isNotFound ? 404 : 500;
-      return reply.status(status).send({ error: `Erro ao sincronizar: ${message}` });
+      return sendError(reply, status, `Erro ao sincronizar: ${message}`);
     }
   });
 
@@ -207,15 +207,15 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
     const config = loadServerConfig(serverId);
 
     if (!config) {
-      return reply.status(404).send({ error: "Servidor não encontrado" });
+      return sendError(reply, 404, "Servidor não encontrado");
     }
     if (config.createdByUserId !== request.userId && !request.isAdmin) {
-      return reply.status(403).send({ error: "Você não tem permissão para testar o webhook deste servidor." });
+      return sendError(reply, 403, "Você não tem permissão para testar o webhook deste servidor.");
     }
 
     const webhookUrl = getWebhookUrl(config);
     if (!webhookUrl) {
-      return reply.status(400).send({ error: "Nenhum webhook Discord configurado para este servidor." });
+      return sendError(reply, 400, "Nenhum webhook Discord configurado para este servidor.");
     }
 
     if (!(await assertPublicUrlOrReply(webhookUrl, reply, "URL de webhook inválida."))) return;
@@ -267,13 +267,13 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
       });
 
       if (updateResult.outcome === "not_found") {
-        return reply.status(404).send({ error: "Servidor não encontrado" });
+        return sendError(reply, 404, "Servidor não encontrado");
       }
       if (updateResult.outcome === "forbidden") {
-        return reply.status(403).send({ error: "Você não tem permissão para editar este servidor." });
+        return sendError(reply, 403, "Você não tem permissão para editar este servidor.");
       }
       if (!updated) {
-        return reply.status(500).send({ error: "Erro ao atualizar o servidor." });
+        return sendError(reply, 500, "Erro ao atualizar o servidor.");
       }
 
       if (updated.guild.enabled === false) {
@@ -286,7 +286,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
         void addOrUpdateServerSchedule(serverId, updated.settings?.checkInterval || 120000);
       }
 
-      return reply.status(200).send(updated);
+      return sendSuccess(reply, updated);
     }
   );
 
@@ -294,14 +294,14 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
     const { id: serverId } = request.params;
     const existing = loadServerConfig(serverId);
     if (!existing) {
-      return reply.status(404).send({ error: "Servidor não encontrado" });
+      return sendError(reply, 404, "Servidor não encontrado");
     }
     if (existing.createdByUserId !== request.userId && !request.isAdmin) {
-      return reply.status(403).send({ error: "Você não tem permissão para remover este servidor." });
+      return sendError(reply, 403, "Você não tem permissão para remover este servidor.");
     }
 
     await deleteServerConfig(serverId);
     void removeServerSchedule(serverId);
-    return reply.status(200).send({ success: true, message: `Servidor ${serverId} removido` });
+    return sendSuccess(reply, { message: `Servidor ${serverId} removido` });
   });
 };

@@ -35,7 +35,7 @@ test.describe("Filtering the server list from the top bar", () => {
     await expect(page.getByRole("heading", { name: "Filter Alpha Guild" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Filter Beta Guild" })).toBeVisible();
 
-    const servers = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const servers = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
     }>;

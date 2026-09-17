@@ -23,7 +23,7 @@ test.describe("Inspecting a character live", () => {
     });
     await expect(page.getByRole("heading", { name: "Inspect Test Guild" })).toBeVisible();
 
-    const servers = (await (await page.request.get("/api/servers")).json()) as Array<{
+    const servers = ((await (await page.request.get("/api/servers")).json()).data) as Array<{
       serverId: string;
       serverName: string;
     }>;
@@ -61,13 +61,16 @@ test.describe("Inspecting a character live", () => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          exists: true,
-          name: "Inspectable Knight",
-          level: 150,
-          isOnline: true,
-          vocation: "Elite Knight",
-          residence: "Thais",
-          deaths: [],
+          success: true,
+          data: {
+            exists: true,
+            name: "Inspectable Knight",
+            level: 150,
+            isOnline: true,
+            vocation: "Elite Knight",
+            residence: "Thais",
+            deaths: [],
+          },
         }),
       });
     });

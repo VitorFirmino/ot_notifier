@@ -5,6 +5,7 @@ import { parseCharacterDetailsFromHtml } from "@infrastructure/scraping/parsers/
 import type { InspectCharacterParams } from "@shared/types/index";
 import { assertPublicUrlOrReply, parseOrReply } from "../validation";
 import { inspectCharacterBodySchema } from "../schemas";
+import { sendSuccess, sendError } from "../responseHelpers";
 
 export const registerCharacterRoutes = (app: FastifyInstance): void => {
   app.post<{ Body: InspectCharacterParams }>("/api/character/inspect", async (request, reply) => {
@@ -28,7 +29,7 @@ export const registerCharacterRoutes = (app: FastifyInstance): void => {
     }
 
     if (!targetUrl) {
-      return reply.status(400).send({ error: "URL do personagem não pôde ser determinada" });
+      return sendError(reply, 400, "URL do personagem não pôde ser determinada");
     }
 
     if (!(await assertPublicUrlOrReply(targetUrl, reply))) return;
@@ -36,10 +37,10 @@ export const registerCharacterRoutes = (app: FastifyInstance): void => {
     try {
       const html = await fetchGuildPage(targetUrl);
       const details = parseCharacterDetailsFromHtml(html, name, targetUrl);
-      return reply.status(200).send(details);
+      return sendSuccess(reply, details);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro de conexão com o servidor";
-      return reply.status(500).send({ error: `Erro ao inspecionar personagem: ${message}` });
+      return sendError(reply, 500, `Erro ao inspecionar personagem: ${message}`);
     }
   });
 };

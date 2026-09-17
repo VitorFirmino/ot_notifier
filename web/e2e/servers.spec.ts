@@ -39,7 +39,7 @@ test.describe("Adding two guilds on the same OT server", () => {
     await expect(page.getByRole("heading", { name: "E2E Guild B", exact: true })).toBeVisible();
 
     const statsResponse = await page.request.get("/api/servers");
-    const servers = (await statsResponse.json()) as Array<{ serverId: string; serverName: string }>;
+    const servers = ((await statsResponse.json()).data) as Array<{ serverId: string; serverName: string }>;
     const guildA = servers.find((server) => server.serverName === "E2E Guild A");
     const guildB = servers.find((server) => server.serverName === "E2E Guild B");
     expect(guildA).toBeDefined();
