@@ -30,6 +30,7 @@ export const registerProxyImageRoutes = (app: FastifyInstance): void => {
         .header("Content-Disposition", 'inline; filename="image"')
         .header("X-Content-Type-Options", "nosniff")
         .header("Content-Security-Policy", "default-src 'none'; sandbox")
+        .header("Cross-Origin-Resource-Policy", "cross-origin")
         .send(image.buffer);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro ao buscar a imagem";
