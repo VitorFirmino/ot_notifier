@@ -10,7 +10,7 @@ test.describe("Signup, email verification, login, logout", () => {
   });
 
   test("blocks access until the email is verified, then lets the same account in", async ({ page, pool }) => {
-    await page.goto("/login");
+    await page.goto("/app/login");
 
     await page.getByRole("button", { name: "Não tem conta? Criar uma" }).click();
     await page.getByLabel("Nome:").fill("E2E Auth Test");
@@ -37,7 +37,7 @@ test.describe("Signup, email verification, login, logout", () => {
     await page.getByRole("button", { name: "Sair" }).click();
     await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
 
-    await page.goto("/");
+    await page.goto("/app");
     await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
   });
 });

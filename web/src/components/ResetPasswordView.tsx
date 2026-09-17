@@ -95,7 +95,7 @@ export const ResetPasswordView: React.FC = () => {
             {token && isDone && (
               <div className="space-y-4">
                 <p className="text-sm text-success">Senha alterada com sucesso.</p>
-                <Button className="group h-12 w-full text-base" onClick={() => navigate("/")}>
+                <Button className="group h-12 w-full text-base" onClick={() => navigate("/app")}>
                   Ir para o login
                   <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
                 </Button>

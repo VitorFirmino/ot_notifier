@@ -11,7 +11,7 @@ export const signUpVerifyAndLogin = async (
   name: string,
   password: string = TEST_PASSWORD
 ): Promise<void> => {
-  await page.goto("/login");
+  await page.goto("/app/login");
   await page.getByRole("button", { name: "Não tem conta? Criar uma" }).click();
   await page.getByLabel("Nome:").fill(name);
   await page.getByLabel("Email:").fill(email);

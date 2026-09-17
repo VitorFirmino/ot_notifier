@@ -14,7 +14,7 @@ test.describe("Forgot password", () => {
     page,
     pool,
   }) => {
-    await page.goto("/login");
+    await page.goto("/app/login");
     await page.getByRole("button", { name: "Não tem conta? Criar uma" }).click();
     await page.getByLabel("Nome:").fill("E2E Reset Test");
     await page.getByLabel("Email:").fill(email);
@@ -34,7 +34,7 @@ test.describe("Forgot password", () => {
     ).toBeVisible();
 
     const token = await getPasswordResetToken(pool, email);
-    await page.goto(`/reset-password?token=${token}`);
+    await page.goto(`/app/reset-password?token=${token}`);
 
     await expect(page.getByRole("heading", { name: "Nova senha" })).toBeVisible();
     await page.getByLabel("Nova senha:").fill(newPassword);

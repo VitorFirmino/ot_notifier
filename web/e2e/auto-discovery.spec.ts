@@ -26,7 +26,7 @@ test.describe("Auto-discovery tab", () => {
   });
 
   test("selecting a discovered guild pre-fills and saves it through the normal add flow", async ({ page }) => {
-    await page.goto("/login");
+    await page.goto("/app/login");
     await loginAsExistingUser(page, email, TEST_PASSWORD);
 
     await page.route("**/api/discover", async (route) => {

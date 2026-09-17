@@ -10,7 +10,7 @@ test.describe("Filtering the server list from the top bar", () => {
     if (createdServerIds.length > 0) {
       const context = await browser.newContext();
       const page = await context.newPage();
-      await page.goto("/login");
+      await page.goto("/app/login");
       const { loginAsExistingUser, TEST_PASSWORD } = await import("./helpers/auth");
       await loginAsExistingUser(page, email, TEST_PASSWORD);
       for (const id of createdServerIds) {

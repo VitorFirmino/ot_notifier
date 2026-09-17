@@ -16,7 +16,7 @@ export default defineConfig({
   reporter: process.env.CI ? "line" : "list",
   timeout: 30000,
   use: {
-    baseURL: `http://localhost:${WEB_PORT}`,
+    baseURL: `http://localhost:${WEB_PORT}/app/`,
     trace: "retain-on-failure",
   },
   projects: [

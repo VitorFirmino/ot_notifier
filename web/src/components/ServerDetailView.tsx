@@ -62,7 +62,7 @@ export const ServerDetailView: React.FC<ServerDetailViewProps> = ({
   if (!server) {
     return (
       <div className="space-y-4 animate-fade-in">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/servers")}>
+        <Button variant="ghost" size="sm" onClick={() => navigate("/app/servers")}>
           <ArrowLeft className="h-4 w-4" /> Voltar
         </Button>
         <Card className="py-0">
@@ -89,7 +89,7 @@ export const ServerDetailView: React.FC<ServerDetailViewProps> = ({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <Button variant="ghost" size="sm" onClick={() => navigate("/servers")}>
+      <Button variant="ghost" size="sm" onClick={() => navigate("/app/servers")}>
         <ArrowLeft className="h-4 w-4" /> Voltar para Servidores
       </Button>
 

@@ -42,7 +42,7 @@ test.describe("Admin sees every user's servers", () => {
 
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
-    await adminPage.goto("/login");
+    await adminPage.goto("/app/login");
     await adminPage.getByRole("button", { name: "Não tem conta? Criar uma" }).click();
     await adminPage.getByLabel("Nome:").fill("E2E Admin");
     await adminPage.getByLabel("Email:").fill(adminEmail);

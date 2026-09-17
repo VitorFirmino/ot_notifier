@@ -10,7 +10,7 @@ test.describe("Authentication error paths", () => {
   });
 
   test("signup form blocks mismatched and too-short passwords before hitting the API", async ({ page }) => {
-    await page.goto("/login");
+    await page.goto("/app/login");
     await page.getByRole("button", { name: "Não tem conta? Criar uma" }).click();
     await page.getByLabel("Nome:").fill("E2E Auth Errors");
     await page.getByLabel("Email:").fill(uniqueTestEmail("e2e-shortpw"));
@@ -54,7 +54,7 @@ test.describe("Authentication error paths", () => {
   });
 
   test("logging in with the wrong password shows a generic error, not which field was wrong", async ({ page }) => {
-    await page.goto("/login");
+    await page.goto("/app/login");
     await page.getByLabel("Email:").fill(email);
     await page.getByLabel("Senha:", { exact: true }).fill("TotallyWrong!Pass2026");
     await page.getByRole("button", { name: "Entrar", exact: true }).click();
@@ -67,7 +67,7 @@ test.describe("Authentication error paths", () => {
   test("requesting a password reset for an email that isn't registered still shows the generic success message", async ({
     page,
   }) => {
-    await page.goto("/login");
+    await page.goto("/app/login");
     await page.getByRole("button", { name: "Esqueci minha senha" }).click();
     await page.getByLabel("Email:").fill(uniqueTestEmail("e2e-doesnotexist"));
     await page.getByRole("button", { name: "Enviar link de recuperação" }).click();

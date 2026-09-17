@@ -10,7 +10,7 @@ test.describe("Adding two guilds on the same OT server", () => {
     if (createdServerIds.length > 0) {
       const context = await browser.newContext();
       const page = await context.newPage();
-      await page.goto("/login");
+      await page.goto("/app/login");
       await loginAsExistingUser(page, email, TEST_PASSWORD);
 
       for (const serverId of createdServerIds) {

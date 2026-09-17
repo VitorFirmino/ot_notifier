@@ -96,7 +96,7 @@ export const StatCards: React.FC<StatCardsProps> = ({ stats, isLoading }) => {
         icon={Server}
         accent="primary"
         detail={<span className="text-success">workers on</span>}
-        to="/servers"
+        to="/app/servers"
       />
 
       <StatTile
@@ -105,7 +105,7 @@ export const StatCards: React.FC<StatCardsProps> = ({ stats, isLoading }) => {
         icon={Users}
         accent="success"
         detail={<span>{stats.onlineCharacters} online</span>}
-        to="/characters"
+        to="/app/characters"
       />
 
       <StatTile
@@ -114,7 +114,7 @@ export const StatCards: React.FC<StatCardsProps> = ({ stats, isLoading }) => {
         icon={Bell}
         accent="warning"
         detail={<span>disparos</span>}
-        to="/feed"
+        to="/app/feed"
       />
 
       <StatTile
@@ -123,7 +123,7 @@ export const StatCards: React.FC<StatCardsProps> = ({ stats, isLoading }) => {
         icon={ShieldCheck}
         accent="primary"
         detail={<span>servidores protegidos</span>}
-        to="/servers"
+        to="/app/servers"
       />
     </div>
   );

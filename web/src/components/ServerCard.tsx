@@ -62,7 +62,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({
   isTestingWebhook = false,
 }) => {
   const navigate = useNavigate();
-  const openDetail = () => navigate(`/servers/${server.serverId}`);
+  const openDetail = () => navigate(`/app/servers/${server.serverId}`);
   const isEnabled = server.guild.enabled !== false;
   const isWorking = server.isWorking !== false;
   const status = getStatusInfo(isEnabled, isWorking);

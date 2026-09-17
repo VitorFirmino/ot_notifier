@@ -32,17 +32,17 @@ import { LoginView } from "@components/LoginView";
 type TabId = "dashboard" | "servers" | "characters" | "feed" | "settings";
 
 const TAB_PATHS: Record<TabId, string> = {
-  dashboard: "/",
-  servers: "/servers",
-  characters: "/characters",
-  feed: "/feed",
-  settings: "/settings",
+  dashboard: "/app",
+  servers: "/app/servers",
+  characters: "/app/characters",
+  feed: "/app/feed",
+  settings: "/app/settings",
 };
 
 const getTabFromPath = (pathname: string): TabId => {
   const match = (Object.entries(TAB_PATHS) as [TabId, string][]).find(([, path]) => path === pathname);
   if (match) return match[0];
-  if (pathname.startsWith("/servers/")) return "servers";
+  if (pathname.startsWith("/app/servers/")) return "servers";
   return "dashboard";
 };
 
@@ -78,7 +78,7 @@ export default function App() {
     setHasResolvedSessionOnce(true);
   }
 
-  if (location.pathname === "/reset-password") {
+  if (location.pathname === "/app/reset-password") {
     return <ResetPasswordView />;
   }
 
@@ -87,14 +87,14 @@ export default function App() {
   }
 
   if (!session) {
-    if (location.pathname !== "/login") {
-      return <Navigate to="/login" replace />;
+    if (location.pathname !== "/app/login") {
+      return <Navigate to="/app/login" replace />;
     }
     return <LoginView />;
   }
 
-  if (location.pathname === "/login") {
-    return <Navigate to="/" replace />;
+  if (location.pathname === "/app/login") {
+    return <Navigate to="/app" replace />;
   }
 
   return <AuthenticatedApp />;
@@ -105,7 +105,7 @@ function AuthenticatedApp() {
   const navigate = useNavigate();
   const activeTab = getTabFromPath(location.pathname);
   const handleTabChange = (tab: TabId) => navigate(TAB_PATHS[tab]);
-  const detailServerId = matchPath("/servers/:serverId", location.pathname)?.params.serverId;
+  const detailServerId = matchPath("/app/servers/:serverId", location.pathname)?.params.serverId;
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -227,7 +227,7 @@ function AuthenticatedApp() {
     deleteMutation.mutate(serverId, {
       onSuccess: () => {
         showToast("Servidor removido do backend com sucesso.", "info");
-        if (detailServerId === serverId) navigate("/servers");
+        if (detailServerId === serverId) navigate("/app/servers");
       },
       onError: () => showToast("Falha ao remover o servidor no backend. Ele continua cadastrado.", "error"),
     });
