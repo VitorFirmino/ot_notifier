@@ -57,7 +57,7 @@ CLAUDE.md
 docs/
 
 # Runtime server state (contains live webhook URLs, per-character tracking data)
-data/
+/data/
 src/infrastructure/storage/data/
 src/infrastructure/storage/servers.json
 src/infrastructure/storage/.locks/
