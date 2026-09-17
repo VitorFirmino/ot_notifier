@@ -239,7 +239,7 @@ jobs:
 
   deploy-web:
     name: Deploy web dashboard
-    needs: [backend, web, e2e, audit, docker, changes]
+    needs: [backend, web, e2e, audit, docker, changes, deploy-api]
     if: >
       always() &&
       github.ref == 'refs/heads/main' && github.event_name == 'push' &&
@@ -248,7 +248,8 @@ jobs:
       needs.web.result == 'success' &&
       needs.e2e.result == 'success' &&
       needs.audit.result == 'success' &&
-      needs.docker.result == 'success'
+      needs.docker.result == 'success' &&
+      (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: appleboy/ssh-action@v1
