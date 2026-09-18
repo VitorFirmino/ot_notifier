@@ -7,11 +7,13 @@ gsap.registerPlugin(useGSAP);
 interface UseHeroResult {
   containerRef: RefObject<HTMLDivElement | null>;
   headlineRef: RefObject<HTMLHeadingElement | null>;
+  glowRef: RefObject<HTMLDivElement | null>;
 }
 
 export const useHero = (): UseHeroResult => {
   const containerRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
     () => {
@@ -26,6 +28,7 @@ export const useHero = (): UseHeroResult => {
             gsap.set(words, { autoAlpha: 1, y: 0 });
             return;
           }
+
           gsap.timeline().from(words, {
             autoAlpha: 0,
             y: 24,
@@ -33,11 +36,24 @@ export const useHero = (): UseHeroResult => {
             ease: "power3.out",
             stagger: 0.08,
           });
+
+          if (glowRef.current) {
+            gsap.to(glowRef.current, {
+              x: 40,
+              y: -20,
+              scale: 1.15,
+              opacity: 0.5,
+              duration: 5,
+              repeat: -1,
+              yoyo: true,
+              ease: "sine.inOut",
+            });
+          }
         }
       );
     },
     { scope: containerRef }
   );
 
-  return { containerRef, headlineRef };
+  return { containerRef, headlineRef, glowRef };
 };

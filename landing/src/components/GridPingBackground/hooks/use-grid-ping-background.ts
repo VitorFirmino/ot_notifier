@@ -1,8 +1,9 @@
 import { useRef, type RefObject } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-gsap.registerPlugin(useGSAP);
+gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 interface Ping {
   x: number;
@@ -89,6 +90,17 @@ export const useGridPingBackground = (): UseGridPingBackgroundResult => {
       window.addEventListener("resize", resize);
 
       if (motionOk) {
+        gsap.to(canvas, {
+          yPercent: 20,
+          ease: "none",
+          scrollTrigger: {
+            trigger: parent,
+            start: "top top",
+            end: "bottom top",
+            scrub: true,
+          },
+        });
+
         spawnPing();
         rafId = requestAnimationFrame(drawFrame);
         pingIntervalId = window.setInterval(spawnPing, PING_INTERVAL_MS);
