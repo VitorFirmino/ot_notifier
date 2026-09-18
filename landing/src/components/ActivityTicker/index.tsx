@@ -1,38 +1,43 @@
+import { TrendingUp, Skull, type LucideIcon } from "lucide-react";
 import { useActivityTicker } from "./hooks/use-activity-ticker";
-import { RadarSweep } from "@components/RadarSweep";
 
-const KIND_LABEL: Record<string, string> = {
-  "level-up": "Level up",
-  death: "Morte",
-  webhook: "Discord",
+const KIND_ICON: Record<string, LucideIcon> = {
+  "level-up": TrendingUp,
+  death: Skull,
 };
 
-const KIND_COLOR: Record<string, string> = {
-  "level-up": "text-accent",
-  death: "text-danger",
-  webhook: "text-success",
+const KIND_BADGE: Record<string, string> = {
+  "level-up": "bg-accent/15 text-accent",
+  death: "bg-danger/15 text-danger",
 };
 
 export const ActivityTicker: React.FC = () => {
   const { listRef, events } = useActivityTicker();
 
   return (
-    <div className="glass-panel relative min-w-72 flex-1 basis-[35%] rounded-xl border border-white/10 p-6">
-      <RadarSweep />
-      <div className="flex items-center gap-2">
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
-        </span>
-        <span className="font-mono text-xs uppercase tracking-wide text-text-muted">Feed de atividade</span>
-      </div>
-      <ul ref={listRef} className="mt-4 flex flex-col gap-3">
-        {events.map((event) => (
-          <li key={event.id} data-ticker-item className="flex items-baseline gap-3 font-mono text-sm">
-            <span className={`w-16 shrink-0 ${KIND_COLOR[event.kind]}`}>{KIND_LABEL[event.kind]}</span>
-            <span>{event.message}</span>
-          </li>
-        ))}
+    <div className="min-w-72 flex-1 basis-[35%]">
+      <p className="mb-4 text-sm text-text-muted">Notificações recentes no Discord</p>
+      <ul ref={listRef} className="flex flex-col gap-3">
+        {events.map((event) => {
+          const Icon = KIND_ICON[event.kind];
+          return (
+            <li
+              key={event.id}
+              data-ticker-item
+              className="glass-panel flex items-start gap-3 rounded-lg border border-white/10 p-4"
+            >
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${KIND_BADGE[event.kind]}`}>
+                <Icon className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-text">
+                  <span className="font-medium">{event.character}</span> {event.detail}
+                </p>
+                <span className="text-xs text-text-muted">{event.timeLabel}</span>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
