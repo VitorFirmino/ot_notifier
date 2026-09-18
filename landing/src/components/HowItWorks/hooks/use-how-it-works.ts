@@ -31,44 +31,47 @@ export const HOW_IT_WORKS_STEPS: HowItWorksStep[] = [
 
 interface UseHowItWorksResult {
   sectionRef: RefObject<HTMLDivElement | null>;
-  pathRef: RefObject<SVGPathElement | null>;
   steps: HowItWorksStep[];
 }
 
 export const useHowItWorks = (): UseHowItWorksResult => {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const pathRef = useRef<SVGPathElement | null>(null);
 
   useGSAP(
     () => {
-      const path = pathRef.current;
-      const nodes = sectionRef.current?.querySelectorAll("[data-step-node]");
-      const icons = sectionRef.current?.querySelectorAll("[data-step-icon]");
-      if (!path || !nodes || nodes.length === 0 || !icons || icons.length === 0) return;
+      const cards = sectionRef.current?.querySelectorAll("[data-step-card]");
+      if (!cards || cards.length === 0) return;
 
-      const pathLength = path.getTotalLength();
-      gsap.set(path, { strokeDasharray: pathLength, strokeDashoffset: pathLength });
-      gsap.set(icons, { autoAlpha: 0, scale: 0.6 });
+      gsap.matchMedia().add(
+        { motionOk: "(prefers-reduced-motion: no-preference)" },
+        (context) => {
+          const { motionOk } = context.conditions as { motionOk: boolean };
+          if (!motionOk) {
+            gsap.set(cards, { autoAlpha: 1, y: 0, rotationX: 0, scale: 1 });
+            return;
+          }
 
-      gsap
-        .timeline({
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top 70%",
-            end: "bottom 60%",
-            scrub: true,
-          },
-        })
-        .to(path, { strokeDashoffset: 0, ease: "none" })
-        .to(nodes, { opacity: 1, stagger: { each: 0.3, from: "start" }, ease: "none" }, 0)
-        .to(
-          icons,
-          { autoAlpha: 1, scale: 1, stagger: { each: 0.3, from: "start" }, ease: "back.out(2)" },
-          0
-        );
+          gsap.set(cards, { transformPerspective: 900 });
+          gsap.set(cards, { autoAlpha: 0, y: 40, rotationX: 25, scale: 0.92 });
+
+          ScrollTrigger.batch(cards, {
+            start: "top 88%",
+            onEnter: (batch) =>
+              gsap.to(batch, {
+                autoAlpha: 1,
+                y: 0,
+                rotationX: 0,
+                scale: 1,
+                duration: 0.6,
+                stagger: 0.15,
+                ease: "power3.out",
+              }),
+          });
+        }
+      );
     },
     { scope: sectionRef }
   );
 
-  return { sectionRef, pathRef, steps: HOW_IT_WORKS_STEPS };
+  return { sectionRef, steps: HOW_IT_WORKS_STEPS };
 };
