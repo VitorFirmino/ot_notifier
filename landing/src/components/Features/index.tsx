@@ -28,9 +28,11 @@ export const Features: React.FC = () => {
             <article
               key={feature.id}
               data-feature-card
-              className={`group glass-panel rounded-xl border border-white/10 p-6 ${SIZE_CLASS[feature.size]}`}
+              className={`group glass-liquid rounded-2xl border border-white/10 p-7 ${SIZE_CLASS[feature.size]}`}
             >
-              <Icon className="mb-3 h-6 w-6 text-accent transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:rotate-6" />
+              <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-accent/25 to-accent/5 text-accent">
+                <Icon className="h-5 w-5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:rotate-6" />
+              </span>
               <h3 className="mb-2">{feature.title}</h3>
               <p className="leading-relaxed text-text-muted">{feature.description}</p>
             </article>

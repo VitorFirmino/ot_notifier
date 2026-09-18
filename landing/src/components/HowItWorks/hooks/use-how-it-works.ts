@@ -43,10 +43,12 @@ export const useHowItWorks = (): UseHowItWorksResult => {
     () => {
       const path = pathRef.current;
       const nodes = sectionRef.current?.querySelectorAll("[data-step-node]");
-      if (!path || !nodes || nodes.length === 0) return;
+      const icons = sectionRef.current?.querySelectorAll("[data-step-icon]");
+      if (!path || !nodes || nodes.length === 0 || !icons || icons.length === 0) return;
 
       const pathLength = path.getTotalLength();
       gsap.set(path, { strokeDasharray: pathLength, strokeDashoffset: pathLength });
+      gsap.set(icons, { autoAlpha: 0, scale: 0.6 });
 
       gsap
         .timeline({
@@ -58,7 +60,12 @@ export const useHowItWorks = (): UseHowItWorksResult => {
           },
         })
         .to(path, { strokeDashoffset: 0, ease: "none" })
-        .to(nodes, { opacity: 1, stagger: { each: 0.3, from: "start" }, ease: "none" }, 0);
+        .to(nodes, { opacity: 1, stagger: { each: 0.3, from: "start" }, ease: "none" }, 0)
+        .to(
+          icons,
+          { autoAlpha: 1, scale: 1, stagger: { each: 0.3, from: "start" }, ease: "back.out(2)" },
+          0
+        );
     },
     { scope: sectionRef }
   );
