@@ -28,13 +28,14 @@ export const Features: React.FC = () => {
             <article
               key={feature.id}
               data-feature-card
-              className={`group glass-liquid rounded-2xl border border-white/10 p-7 ${SIZE_CLASS[feature.size]}`}
+              className={`group glass-liquid relative overflow-hidden rounded-2xl border border-white/10 p-7 ${SIZE_CLASS[feature.size]}`}
             >
-              <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-accent/25 to-accent/5 text-accent">
+              <span aria-hidden="true" data-spotlight className="pointer-events-none absolute inset-0" />
+              <span className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-accent/25 to-accent/5 text-accent">
                 <Icon className="h-5 w-5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:rotate-6" />
               </span>
-              <h3 className="mb-2">{feature.title}</h3>
-              <p className="leading-relaxed text-text-muted">{feature.description}</p>
+              <h3 className="relative mb-2">{feature.title}</h3>
+              <p className="relative leading-relaxed text-text-muted">{feature.description}</p>
             </article>
           );
         })}

@@ -60,16 +60,16 @@ export const useFeatures = (): UseFeaturesResult => {
   const gridRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
-    () => {
-      const cards = gridRef.current?.querySelectorAll("[data-feature-card]");
-      if (!cards || cards.length === 0) return;
+    (_context, contextSafe) => {
+      const cards = Array.from(gridRef.current?.querySelectorAll("[data-feature-card]") ?? []) as HTMLElement[];
+      if (cards.length === 0) return;
 
       gsap.matchMedia().add(
         { motionOk: "(prefers-reduced-motion: no-preference)" },
         (context) => {
           const { motionOk } = context.conditions as { motionOk: boolean };
           if (!motionOk) {
-            gsap.set(cards, { autoAlpha: 1, y: 0, rotationX: 0, scale: 1 });
+            gsap.set(cards, { autoAlpha: 1, y: 0, rotationX: 0, rotationY: 0, scale: 1 });
             return;
           }
 
@@ -88,6 +88,32 @@ export const useFeatures = (): UseFeaturesResult => {
                 stagger: 0.1,
                 ease: "power3.out",
               }),
+          });
+
+          cards.forEach((card) => {
+            const spotlight = card.querySelector('[data-spotlight]') as HTMLElement | null;
+            const setRotateX = gsap.quickTo(card, "rotationX", { duration: 0.5, ease: "power3" });
+            const setRotateY = gsap.quickTo(card, "rotationY", { duration: 0.5, ease: "power3" });
+
+            const handleMove = contextSafe?.((event: PointerEvent) => {
+              const rect = card.getBoundingClientRect();
+              const relX = (event.clientX - rect.left) / rect.width - 0.5;
+              const relY = (event.clientY - rect.top) / rect.height - 0.5;
+              setRotateX(-relY * 12);
+              setRotateY(relX * 12);
+              if (spotlight) {
+                spotlight.style.background = `radial-gradient(circle at ${(relX + 0.5) * 100}% ${(relY + 0.5) * 100}%, color-mix(in oklab, var(--color-accent) 20%, transparent), transparent 60%)`;
+              }
+            });
+
+            const handleLeave = contextSafe?.(() => {
+              setRotateX(0);
+              setRotateY(0);
+              if (spotlight) spotlight.style.background = "transparent";
+            });
+
+            if (handleMove) card.addEventListener("pointermove", handleMove);
+            if (handleLeave) card.addEventListener("pointerleave", handleLeave);
           });
         }
       );
