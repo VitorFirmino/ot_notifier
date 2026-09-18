@@ -29,6 +29,26 @@ export const HOW_IT_WORKS_STEPS: HowItWorksStep[] = [
   },
 ];
 
+const ICON_ANIMATIONS: Record<string, (glyph: Element) => void> = {
+  cadastro: (glyph) => {
+    gsap.to(glyph, { rotation: 360, duration: 6, repeat: -1, ease: "none", transformOrigin: "50% 50%" });
+  },
+  monitoramento: (glyph) => {
+    gsap.to(glyph, { rotation: 360, duration: 4, repeat: -1, ease: "none", transformOrigin: "50% 50%" });
+    gsap.to(glyph, {
+      scale: 1.15,
+      duration: 1,
+      repeat: -1,
+      yoyo: true,
+      ease: "sine.inOut",
+      transformOrigin: "50% 50%",
+    });
+  },
+  notificacao: (glyph) => {
+    gsap.to(glyph, { x: 3, y: -3, duration: 0.8, repeat: -1, yoyo: true, ease: "sine.inOut" });
+  },
+};
+
 interface UseHowItWorksResult {
   sectionRef: RefObject<HTMLDivElement | null>;
   steps: HowItWorksStep[];
@@ -40,6 +60,7 @@ export const useHowItWorks = (): UseHowItWorksResult => {
   useGSAP(
     () => {
       const cards = sectionRef.current?.querySelectorAll("[data-step-card]");
+      const glyphs = sectionRef.current?.querySelectorAll("[data-step-icon-glyph]");
       if (!cards || cards.length === 0) return;
 
       gsap.matchMedia().add(
@@ -66,6 +87,12 @@ export const useHowItWorks = (): UseHowItWorksResult => {
                 stagger: 0.15,
                 ease: "power3.out",
               }),
+          });
+
+          glyphs?.forEach((glyph) => {
+            const stepId = (glyph as HTMLElement).dataset.stepId;
+            const animate = stepId ? ICON_ANIMATIONS[stepId] : undefined;
+            animate?.(glyph);
           });
         }
       );

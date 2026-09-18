@@ -29,28 +29,34 @@ export const useHero = (): UseHeroResult => {
             return;
           }
 
-          gsap
-            .timeline()
-            .from(words, {
-              autoAlpha: 0,
-              y: 24,
-              duration: 0.7,
-              ease: "power3.out",
-              stagger: 0.08,
-            })
-            .to(
-              words,
-              {
-                color: "var(--color-accent)",
-                duration: 0.7,
-                stagger: { each: 0.09, from: "start" },
-                ease: "sine.inOut",
-                repeat: -1,
-                repeatDelay: 1.4,
-                yoyo: true,
-              },
-              "+=0.3"
-            );
+          gsap.timeline().from(words, {
+            autoAlpha: 0,
+            y: 24,
+            duration: 0.7,
+            ease: "power3.out",
+            stagger: 0.08,
+          });
+
+          const wordEls = Array.from(words) as HTMLElement[];
+          const baseColor = getComputedStyle(document.documentElement).getPropertyValue("--color-text").trim() || "#e5e7eb";
+          const accentColor = getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim() || "#22d3ee";
+          const sweep = { pos: -2 };
+
+          gsap.to(sweep, {
+            pos: wordEls.length + 1,
+            duration: 3.2,
+            delay: 1.5,
+            repeat: -1,
+            repeatDelay: 1,
+            ease: "none",
+            onUpdate: () => {
+              wordEls.forEach((word, i) => {
+                const distance = Math.abs(sweep.pos - i);
+                const intensity = Math.max(0, 1 - distance / 1.4);
+                word.style.color = gsap.utils.interpolate(baseColor, accentColor, intensity);
+              });
+            },
+          });
 
           if (glowRef.current) {
             gsap.to(glowRef.current, {

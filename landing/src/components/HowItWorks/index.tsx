@@ -29,7 +29,7 @@ export const HowItWorks: React.FC = () => {
                 {String(index + 1).padStart(2, "0")}
               </span>
               <span className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-accent/25 to-accent/5 text-accent">
-                <Icon className="h-5 w-5" />
+                <Icon data-step-icon-glyph data-step-id={step.id} className="h-5 w-5" />
               </span>
               <h3 className="relative mb-2 text-accent">{step.title}</h3>
               <p className="relative leading-relaxed text-text-muted">{step.description}</p>
