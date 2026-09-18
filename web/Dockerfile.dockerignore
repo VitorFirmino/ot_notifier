@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+.env
+.env.*
+data
+docs
+.git
+.gitignore
+coverage
+*.log
+*.tmp
+playwright-report
+test-results
+.claude
+.vscode
