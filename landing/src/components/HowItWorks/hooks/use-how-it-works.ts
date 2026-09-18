@@ -31,21 +31,45 @@ export const HOW_IT_WORKS_STEPS: HowItWorksStep[] = [
 
 const ICON_ANIMATIONS: Record<string, (glyph: Element) => void> = {
   cadastro: (glyph) => {
-    gsap.to(glyph, { rotation: 360, duration: 6, repeat: -1, ease: "none", transformOrigin: "50% 50%" });
-  },
-  monitoramento: (glyph) => {
-    gsap.to(glyph, { rotation: 360, duration: 4, repeat: -1, ease: "none", transformOrigin: "50% 50%" });
-    gsap.to(glyph, {
-      scale: 1.15,
-      duration: 1,
-      repeat: -1,
-      yoyo: true,
-      ease: "sine.inOut",
-      transformOrigin: "50% 50%",
+    const check = glyph.querySelector('[data-anim="check"]') as SVGPathElement | null;
+    if (!check) return;
+    const length = check.getTotalLength();
+    gsap.set(check, { strokeDasharray: length, strokeDashoffset: length });
+    gsap.timeline({ repeat: -1, repeatDelay: 1.4 }).to(check, {
+      strokeDashoffset: 0,
+      duration: 0.6,
+      ease: "power2.out",
     });
   },
+  monitoramento: (glyph) => {
+    const pupil = glyph.querySelector('[data-anim="pupil"]');
+    const lid = glyph.querySelector('[data-anim="lid"]');
+    if (pupil) {
+      gsap.to(pupil, {
+        scale: 1.3,
+        duration: 1,
+        repeat: -1,
+        yoyo: true,
+        ease: "sine.inOut",
+        transformOrigin: "50% 50%",
+      });
+    }
+    if (lid) {
+      gsap
+        .timeline({ repeat: -1, repeatDelay: 2.2 })
+        .to(lid, { scaleY: 0.1, duration: 0.12, ease: "power1.inOut", transformOrigin: "50% 50%" })
+        .to(lid, { scaleY: 1, duration: 0.12, ease: "power1.inOut", transformOrigin: "50% 50%" });
+    }
+  },
   notificacao: (glyph) => {
-    gsap.to(glyph, { x: 3, y: -3, duration: 0.8, repeat: -1, yoyo: true, ease: "sine.inOut" });
+    const body = glyph.querySelector('[data-anim="body"]');
+    if (!body) return;
+    gsap
+      .timeline({ repeat: -1, repeatDelay: 1.6 })
+      .to(body, { rotation: 14, duration: 0.12, ease: "power1.inOut", transformOrigin: "50% 0%" })
+      .to(body, { rotation: -14, duration: 0.24, ease: "power1.inOut", transformOrigin: "50% 0%" })
+      .to(body, { rotation: 8, duration: 0.2, ease: "power1.inOut", transformOrigin: "50% 0%" })
+      .to(body, { rotation: 0, duration: 0.2, ease: "power1.inOut", transformOrigin: "50% 0%" });
   },
 };
 

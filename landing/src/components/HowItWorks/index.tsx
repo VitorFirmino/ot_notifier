@@ -1,10 +1,12 @@
-import { Compass, Radar, Send, type LucideIcon } from "lucide-react";
 import { useHowItWorks } from "./hooks/use-how-it-works";
+import { ShieldIcon } from "./icons/ShieldIcon";
+import { EyeIcon } from "./icons/EyeIcon";
+import { BellIcon } from "./icons/BellIcon";
 
-const STEP_ICON: Record<string, LucideIcon> = {
-  cadastro: Compass,
-  monitoramento: Radar,
-  notificacao: Send,
+const STEP_ICON: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
+  cadastro: ShieldIcon,
+  monitoramento: EyeIcon,
+  notificacao: BellIcon,
 };
 
 export const HowItWorks: React.FC = () => {
@@ -28,8 +30,8 @@ export const HowItWorks: React.FC = () => {
               >
                 {String(index + 1).padStart(2, "0")}
               </span>
-              <span className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-accent/25 to-accent/5 text-accent">
-                <Icon data-step-icon-glyph data-step-id={step.id} className="h-5 w-5" />
+              <span className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-white/10 to-white/0 text-text">
+                <Icon data-step-icon-glyph data-step-id={step.id} className="h-8 w-8" />
               </span>
               <h3 className="relative mb-2 text-accent">{step.title}</h3>
               <p className="relative leading-relaxed text-text-muted">{step.description}</p>
