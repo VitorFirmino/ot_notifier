@@ -30,8 +30,8 @@ export const HowItWorks: React.FC = () => {
               >
                 {String(index + 1).padStart(2, "0")}
               </span>
-              <span className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-white/10 to-white/0 text-text">
-                <Icon data-step-icon-glyph data-step-id={step.id} className="h-8 w-8" />
+              <span className="relative mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-white/10 to-white/0">
+                <Icon data-step-icon-glyph data-step-id={step.id} className="h-11 w-11" />
               </span>
               <h3 className="relative mb-2 text-accent">{step.title}</h3>
               <p className="relative leading-relaxed text-text-muted">{step.description}</p>
