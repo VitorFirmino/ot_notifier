@@ -11,6 +11,11 @@ const KIND_BADGE: Record<string, string> = {
   death: "bg-danger/15 text-danger",
 };
 
+const KIND_TINT: Record<string, string> = {
+  "level-up": "var(--color-accent)",
+  death: "var(--color-danger)",
+};
+
 export const ActivityTicker: React.FC = () => {
   const { listRef, events } = useActivityTicker();
 
@@ -24,7 +29,8 @@ export const ActivityTicker: React.FC = () => {
             <li
               key={event.id}
               data-ticker-item
-              className="glass-panel flex items-start gap-3 rounded-lg border border-white/10 p-4"
+              style={{ "--tint": KIND_TINT[event.kind] } as React.CSSProperties}
+              className="glass-liquid flex items-start gap-3 rounded-lg border border-white/10 p-5"
             >
               <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${KIND_BADGE[event.kind]}`}>
                 <Icon className="h-4 w-4" />

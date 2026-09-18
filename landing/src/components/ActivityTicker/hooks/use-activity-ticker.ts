@@ -23,15 +23,16 @@ export const useActivityTicker = (): UseActivityTickerResult => {
         (context) => {
           const { motionOk } = context.conditions as { motionOk: boolean };
           if (!motionOk) {
-            gsap.set(items, { autoAlpha: 1, y: 0 });
+            gsap.set(items, { autoAlpha: 1, y: 0, scale: 1 });
             return;
           }
 
-          gsap.set(items, { autoAlpha: 0, y: 16 });
+          gsap.set(items, { autoAlpha: 0, y: 16, scale: 0.95 });
 
           gsap.timeline({ repeat: -1, repeatDelay: 1.2 }).to(items, {
             autoAlpha: 1,
             y: 0,
+            scale: 1,
             duration: 0.5,
             ease: "power2.out",
             stagger: 0.5,
