@@ -10,14 +10,15 @@
   --color-success: #34d399;
   --color-danger: #fb7185;
   --font-sans: 'Inter', -apple-system, sans-serif;
-  --font-heading: 'Outfit', -apple-system, sans-serif;
+  --font-heading: 'Chakra Petch', -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
 @layer base {
   h1, h2, h3 {
     font-family: var(--font-heading);
-    letter-spacing: -0.015em;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 }
 
