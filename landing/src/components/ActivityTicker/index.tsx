@@ -30,7 +30,7 @@ export const ActivityTicker: React.FC = () => {
               key={event.id}
               data-ticker-item
               style={{ "--tint": KIND_TINT[event.kind] } as React.CSSProperties}
-              className="glass-liquid flex items-start gap-3 rounded-lg border border-white/10 p-5"
+              className="glass-liquid flex items-start gap-3 rounded-2xl border border-white/10 p-5"
             >
               <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${KIND_BADGE[event.kind]}`}>
                 <Icon className="h-4 w-4" />
