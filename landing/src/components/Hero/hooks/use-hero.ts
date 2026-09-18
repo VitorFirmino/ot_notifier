@@ -29,13 +29,28 @@ export const useHero = (): UseHeroResult => {
             return;
           }
 
-          gsap.timeline().from(words, {
-            autoAlpha: 0,
-            y: 24,
-            duration: 0.7,
-            ease: "power3.out",
-            stagger: 0.08,
-          });
+          gsap
+            .timeline()
+            .from(words, {
+              autoAlpha: 0,
+              y: 24,
+              duration: 0.7,
+              ease: "power3.out",
+              stagger: 0.08,
+            })
+            .to(
+              words,
+              {
+                color: "var(--color-accent)",
+                duration: 0.7,
+                stagger: { each: 0.09, from: "start" },
+                ease: "sine.inOut",
+                repeat: -1,
+                repeatDelay: 1.4,
+                yoyo: true,
+              },
+              "+=0.3"
+            );
 
           if (glowRef.current) {
             gsap.to(glowRef.current, {
