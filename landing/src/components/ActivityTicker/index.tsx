@@ -1,4 +1,5 @@
 import { useActivityTicker } from "./hooks/use-activity-ticker";
+import { RadarSweep } from "@components/RadarSweep";
 
 const KIND_LABEL: Record<string, string> = {
   "level-up": "Level up",
@@ -17,6 +18,7 @@ export const ActivityTicker: React.FC = () => {
 
   return (
     <div className="glass-panel relative min-w-72 flex-1 basis-[35%] rounded-xl border border-white/10 p-6">
+      <RadarSweep />
       <div className="flex items-center gap-2">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
