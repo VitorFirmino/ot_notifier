@@ -26,7 +26,7 @@ export const HowItWorks: React.FC = () => {
             >
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute -top-6 -right-2 font-heading text-8xl font-bold text-white/5"
+                className="pointer-events-none absolute top-4 right-5 font-heading text-7xl font-bold text-white/5"
               >
                 {String(index + 1).padStart(2, "0")}
               </span>
