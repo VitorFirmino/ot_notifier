@@ -64,12 +64,33 @@ export const useFeatures = (): UseFeaturesResult => {
       const cards = gridRef.current?.querySelectorAll("[data-feature-card]");
       if (!cards || cards.length === 0) return;
 
-      gsap.set(cards, { autoAlpha: 0, y: 20 });
+      gsap.matchMedia().add(
+        { motionOk: "(prefers-reduced-motion: no-preference)" },
+        (context) => {
+          const { motionOk } = context.conditions as { motionOk: boolean };
+          if (!motionOk) {
+            gsap.set(cards, { autoAlpha: 1, y: 0, rotationX: 0, scale: 1 });
+            return;
+          }
 
-      ScrollTrigger.batch(cards, {
-        start: "top 85%",
-        onEnter: (batch) => gsap.to(batch, { autoAlpha: 1, y: 0, duration: 0.5, stagger: 0.1, ease: "power2.out" }),
-      });
+          gsap.set(cards, { transformPerspective: 900 });
+          gsap.set(cards, { autoAlpha: 0, y: 40, rotationX: 25, scale: 0.92 });
+
+          ScrollTrigger.batch(cards, {
+            start: "top 88%",
+            onEnter: (batch) =>
+              gsap.to(batch, {
+                autoAlpha: 1,
+                y: 0,
+                rotationX: 0,
+                scale: 1,
+                duration: 0.6,
+                stagger: 0.1,
+                ease: "power3.out",
+              }),
+          });
+        }
+      );
     },
     { scope: gridRef }
   );

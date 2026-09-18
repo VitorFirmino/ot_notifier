@@ -22,23 +22,25 @@ export const useDashboardPreview = (): UseDashboardPreviewResult => {
         (context) => {
           const { motionOk } = context.conditions as { motionOk: boolean };
           if (!motionOk) {
-            gsap.set(frame, { autoAlpha: 1, rotationX: 0, y: 0 });
+            gsap.set(frame, { autoAlpha: 1, rotationX: 0, rotationY: 0, scale: 1, y: 0 });
             return;
           }
 
-          gsap.set(frame, { transformPerspective: 1200 });
+          gsap.set(frame, { transformPerspective: 800 });
           gsap.fromTo(
             frame,
-            { autoAlpha: 0, rotationX: 18, y: 60 },
+            { autoAlpha: 0, rotationX: 50, rotationY: -10, scale: 0.8, y: 140 },
             {
               autoAlpha: 1,
               rotationX: 0,
+              rotationY: 0,
+              scale: 1,
               y: 0,
               ease: "none",
               scrollTrigger: {
                 trigger: frame,
-                start: "top 90%",
-                end: "top 35%",
+                start: "top 95%",
+                end: "top 30%",
                 scrub: true,
               },
             }

@@ -1,4 +1,5 @@
 import { TrendingUp, Skull, type LucideIcon } from "lucide-react";
+import { FaDiscord } from "react-icons/fa";
 import { useActivityTicker } from "./hooks/use-activity-ticker";
 
 const KIND_ICON: Record<string, LucideIcon> = {
@@ -21,7 +22,10 @@ export const ActivityTicker: React.FC = () => {
 
   return (
     <div className="min-w-72 flex-1 basis-[35%]">
-      <p className="mb-4 text-sm text-text-muted">Notificações recentes no Discord</p>
+      <p className="mb-4 flex items-center gap-2 text-sm text-text-muted">
+        <FaDiscord className="h-4 w-4 text-[#5865F2]" />
+        Notificações recentes no Discord
+      </p>
       <ul ref={listRef} className="flex flex-col gap-3">
         {events.map((event) => {
           const Icon = KIND_ICON[event.kind];
