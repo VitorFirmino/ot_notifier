@@ -38,8 +38,20 @@ export const useHero = (): UseHeroResult => {
           });
 
           const wordEls = Array.from(words) as HTMLElement[];
-          const baseColor = getComputedStyle(document.documentElement).getPropertyValue("--color-text").trim() || "#e5e7eb";
-          const accentColor = getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim() || "#22d3ee";
+          const readThemeColors = (): { baseColor: string; accentColor: string } => {
+            const styles = getComputedStyle(document.documentElement);
+            return {
+              baseColor: styles.getPropertyValue("--color-text").trim() || "#e5e7eb",
+              accentColor: styles.getPropertyValue("--color-accent").trim() || "#22d3ee",
+            };
+          };
+
+          let { baseColor, accentColor } = readThemeColors();
+          const themeObserver = new MutationObserver(() => {
+            ({ baseColor, accentColor } = readThemeColors());
+          });
+          themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
           const sweep = { pos: -2 };
 
           gsap.to(sweep, {
@@ -70,6 +82,8 @@ export const useHero = (): UseHeroResult => {
               ease: "sine.inOut",
             });
           }
+
+          return () => themeObserver.disconnect();
         }
       );
     },

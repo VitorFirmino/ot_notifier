@@ -1,9 +1,8 @@
 import { useRef, type RefObject } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-gsap.registerPlugin(useGSAP, ScrollTrigger);
+gsap.registerPlugin(useGSAP);
 
 interface Ping {
   x: number;
@@ -20,17 +19,32 @@ const PING_INTERVAL_MS = 2400;
 const GRID_SPACING = 28;
 const DOT_RADIUS = 1.2;
 
+const hexToRgb = (hex: string): string => {
+  const clean = hex.trim().replace("#", "");
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `${r}, ${g}, ${b}`;
+};
+
 export const useGridPingBackground = (): UseGridPingBackgroundResult => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useGSAP(
     () => {
       const canvas = canvasRef.current;
-      const parent = canvas?.parentElement;
       const ctx = canvas?.getContext("2d");
-      if (!canvas || !parent || !ctx) return;
+      if (!canvas || !ctx) return;
 
-      const accent = getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim() || "#22d3ee";
+      const readColors = (): { accent: string; dotRgb: string } => {
+        const styles = getComputedStyle(document.documentElement);
+        return {
+          accent: styles.getPropertyValue("--color-accent").trim() || "#22d3ee",
+          dotRgb: hexToRgb(styles.getPropertyValue("--color-text").trim() || "#e5e7eb"),
+        };
+      };
+
+      let { accent, dotRgb } = readColors();
       const motionOk = window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
 
       let width = 0;
@@ -40,8 +54,8 @@ export const useGridPingBackground = (): UseGridPingBackgroundResult => {
       let pingIntervalId = 0;
 
       const resize = (): void => {
-        width = parent.clientWidth;
-        height = parent.clientHeight;
+        width = window.innerWidth;
+        height = window.innerHeight;
         const dpr = window.devicePixelRatio || 1;
         canvas.width = width * dpr;
         canvas.height = height * dpr;
@@ -51,7 +65,7 @@ export const useGridPingBackground = (): UseGridPingBackgroundResult => {
       };
 
       const drawDots = (): void => {
-        ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.fillStyle = `rgba(${dotRgb}, 0.08)`;
         for (let y = GRID_SPACING / 2; y < height; y += GRID_SPACING) {
           for (let x = GRID_SPACING / 2; x < width; x += GRID_SPACING) {
             ctx.beginPath();
@@ -89,18 +103,13 @@ export const useGridPingBackground = (): UseGridPingBackgroundResult => {
       resize();
       window.addEventListener("resize", resize);
 
-      if (motionOk) {
-        gsap.to(canvas, {
-          yPercent: 20,
-          ease: "none",
-          scrollTrigger: {
-            trigger: parent,
-            start: "top top",
-            end: "bottom top",
-            scrub: true,
-          },
-        });
+      const themeObserver = new MutationObserver(() => {
+        ({ accent, dotRgb } = readColors());
+        if (!motionOk) drawDots();
+      });
+      themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
+      if (motionOk) {
         spawnPing();
         rafId = requestAnimationFrame(drawFrame);
         pingIntervalId = window.setInterval(spawnPing, PING_INTERVAL_MS);
@@ -112,6 +121,7 @@ export const useGridPingBackground = (): UseGridPingBackgroundResult => {
         window.removeEventListener("resize", resize);
         cancelAnimationFrame(rafId);
         window.clearInterval(pingIntervalId);
+        themeObserver.disconnect();
       };
     },
     { scope: canvasRef }

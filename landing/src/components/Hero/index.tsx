@@ -2,7 +2,6 @@ import { Fragment } from "react";
 import { ArrowRight } from "lucide-react";
 import { useHero } from "./hooks/use-hero";
 import { ActivityTicker } from "@components/ActivityTicker";
-import { GridPingBackground } from "@components/GridPingBackground";
 
 const HEADLINE_WORDS = ["Monitore", "suas", "guildas", "de", "Open", "Tibia", "em", "tempo", "real."];
 
@@ -11,7 +10,6 @@ export const Hero: React.FC = () => {
 
   return (
     <section ref={containerRef} id="hero" className="relative overflow-hidden px-5 py-24 sm:px-8">
-      <GridPingBackground />
       <div className="relative mx-auto flex max-w-6xl flex-wrap items-center gap-12">
         <div className="relative min-w-80 flex-1 basis-[55%]">
           <div
