@@ -15,6 +15,10 @@ export const getProxyConfig = (): ProxyConfig | null => {
   };
 };
 
+export const buildProxyConfigFromEndpoint = (host: string, port: number): ProxyConfig => ({
+  server: `http://${host}:${port}`,
+});
+
 export type AxiosProxyConfig = {
   protocol: string;
   host: string;

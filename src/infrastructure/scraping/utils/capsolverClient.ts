@@ -26,7 +26,12 @@ export type CloudflareChallengeSolution = {
   userAgent: string;
 };
 
-const buildProxyString = (): string | null => {
+const buildProxyString = (endpoint?: string | null): string | null => {
+  if (endpoint) {
+    const [host, port] = endpoint.split(":");
+    if (host && port) return `http:${host}:${port}`;
+  }
+
   const proxy = getProxyConfig();
   if (!proxy) return null;
 
@@ -43,12 +48,13 @@ const buildProxyString = (): string | null => {
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const solveCloudflareChallenge = async (
-  targetUrl: string
+  targetUrl: string,
+  proxyEndpoint?: string | null
 ): Promise<CloudflareChallengeSolution | null> => {
   const clientKey = process.env.CAPSOLVER_API_KEY;
   if (!clientKey) return null;
 
-  const proxy = buildProxyString();
+  const proxy = buildProxyString(proxyEndpoint);
   if (!proxy) {
     console.warn("[capsolver] CAPSOLVER_API_KEY definido mas SCRAPING_PROXY_SERVER ausente; AntiCloudflareTask exige proxy.");
     return null;
