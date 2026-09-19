@@ -1,4 +1,4 @@
-import { getProxyConfig } from "./proxyConfig";
+import { getProxyConfig, getProxyConfigForSession } from "./proxyConfig";
 
 const CAPSOLVER_API_BASE = "https://api.capsolver.com";
 const POLL_INTERVAL_MS = 3000;
@@ -26,13 +26,8 @@ export type CloudflareChallengeSolution = {
   userAgent: string;
 };
 
-const buildProxyString = (endpoint?: string | null): string | null => {
-  if (endpoint) {
-    const [host, port] = endpoint.split(":");
-    if (host && port) return `http:${host}:${port}`;
-  }
-
-  const proxy = getProxyConfig();
+const buildProxyString = (sessionId?: string | null): string | null => {
+  const proxy = sessionId ? getProxyConfigForSession(sessionId) : getProxyConfig();
   if (!proxy) return null;
 
   const parsed = new URL(proxy.server);
@@ -49,12 +44,12 @@ const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(
 
 export const solveCloudflareChallenge = async (
   targetUrl: string,
-  proxyEndpoint?: string | null
+  proxySessionId?: string | null
 ): Promise<CloudflareChallengeSolution | null> => {
   const clientKey = process.env.CAPSOLVER_API_KEY;
   if (!clientKey) return null;
 
-  const proxy = buildProxyString(proxyEndpoint);
+  const proxy = buildProxyString(proxySessionId);
   if (!proxy) {
     console.warn("[capsolver] CAPSOLVER_API_KEY definido mas SCRAPING_PROXY_SERVER ausente; AntiCloudflareTask exige proxy.");
     return null;

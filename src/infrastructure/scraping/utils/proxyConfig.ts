@@ -15,9 +15,20 @@ export const getProxyConfig = (): ProxyConfig | null => {
   };
 };
 
-export const buildProxyConfigFromEndpoint = (host: string, port: number): ProxyConfig => ({
-  server: `http://${host}:${port}`,
-});
+const DEFAULT_SESSION_LIFE_MINUTES = 25;
+
+const getSessionLifeMinutes = (): number =>
+  parseInt(process.env.SCRAPING_PROXY_SESSION_LIFE_MINUTES || String(DEFAULT_SESSION_LIFE_MINUTES), 10);
+
+export const getProxyConfigForSession = (sessionId: string): ProxyConfig | null => {
+  const base = getProxyConfig();
+  if (!base?.username) return base;
+
+  return {
+    ...base,
+    username: `${base.username}_life-${getSessionLifeMinutes()}_session-${sessionId}`,
+  };
+};
 
 export type AxiosProxyConfig = {
   protocol: string;
@@ -26,8 +37,8 @@ export type AxiosProxyConfig = {
   auth?: { username: string; password: string };
 };
 
-export const getAxiosProxyConfig = (): AxiosProxyConfig | null => {
-  const proxy = getProxyConfig();
+export const getAxiosProxyConfig = (sessionId?: string): AxiosProxyConfig | null => {
+  const proxy = sessionId ? getProxyConfigForSession(sessionId) : getProxyConfig();
   if (!proxy) return null;
 
   const parsed = new URL(proxy.server);

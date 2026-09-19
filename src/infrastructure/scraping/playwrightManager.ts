@@ -2,15 +2,15 @@ import { chromium, type Browser, type BrowserContext, type Page } from "playwrig
 import pLimit from "p-limit";
 import { getRandomUserAgent } from "./utils/userAgentGenerator";
 import { saveBrowserCookiesToJar } from "./http/axiosClient";
-import { getProxyConfig, buildProxyConfigFromEndpoint } from "./utils/proxyConfig";
+import { getProxyConfig, getProxyConfigForSession } from "./utils/proxyConfig";
 import { solveCloudflareChallenge } from "./utils/capsolverClient";
-import { acquireProxyForDomain, releasePinnedProxy } from "./utils/proxyPoolManager";
+import { acquireProxyForDomain, releasePinnedProxy } from "./utils/proxySessionManager";
 import { getCachedClearance, saveClearance, invalidateClearance } from "./utils/clearanceCache";
 
 type Session = {
   browser: Browser;
   context: BrowserContext;
-  proxyEndpoint: string | null;
+  proxySessionId: string | null;
 };
 
 export type NavigationTimeouts = {
@@ -27,7 +27,7 @@ class PlaywrightManager {
   private async createSession(
     serverId: string,
     customHeaders?: Record<string, string>,
-    proxyEndpoint?: string | null,
+    proxySessionId?: string | null,
     forcedUserAgent?: string
   ): Promise<Session> {
     const userAgent =
@@ -39,11 +39,8 @@ class PlaywrightManager {
     let browser: Browser;
     let context: BrowserContext;
 
-    const [pooledHost, pooledPort] = proxyEndpoint ? proxyEndpoint.split(":") : [];
     const proxy =
-      (pooledHost && pooledPort
-        ? buildProxyConfigFromEndpoint(pooledHost, Number(pooledPort))
-        : getProxyConfig()) ?? undefined;
+      (proxySessionId ? getProxyConfigForSession(proxySessionId) : getProxyConfig()) ?? undefined;
 
     const contextOptions = {
       userAgent,
@@ -63,7 +60,7 @@ class PlaywrightManager {
       }
       browser = (await patchrightChromium.launch({ headless: false, args: launchArgs })) as unknown as Browser;
       context = await browser.newContext({ ignoreHTTPSErrors: true, proxy });
-      return { browser, context, proxyEndpoint: proxyEndpoint ?? null };
+      return { browser, context, proxySessionId: proxySessionId ?? null };
     } catch (patchrightErr: unknown) {
       console.debug(`[${serverId}] Patchright não disponível:`, patchrightErr);
     }
@@ -87,7 +84,7 @@ class PlaywrightManager {
       });
       browser = cloakBrowser as unknown as Browser;
       context = await browser.newContext(contextOptions);
-      return { browser, context, proxyEndpoint: proxyEndpoint ?? null };
+      return { browser, context, proxySessionId: proxySessionId ?? null };
     } catch (cloakError: unknown) {
       const msg = cloakError instanceof Error ? cloakError.message : String(cloakError);
       console.warn(`[${serverId}] CloakBrowser indisponível, tentando Playwright Chromium padrão: ${msg}`);
@@ -100,7 +97,7 @@ class PlaywrightManager {
     });
     context = await browser.newContext(contextOptions);
 
-    return { browser, context, proxyEndpoint: proxyEndpoint ?? null };
+    return { browser, context, proxySessionId: proxySessionId ?? null };
   }
 
     private getSessionKey(urlOrDomain: string): string {
@@ -131,15 +128,15 @@ class PlaywrightManager {
       customHeaders?: Record<string, string>
     ): Promise<Session> {
       const pooled = await acquireProxyForDomain(domain);
-      const proxyEndpoint = pooled ? `${pooled.host}:${pooled.port}` : null;
+      const proxySessionId = pooled?.sessionId ?? null;
 
-      const cached = proxyEndpoint || getProxyConfig() ? await getCachedClearance(domain) : null;
-      const reusableClearance = cached && (!proxyEndpoint || cached.proxyEndpoint === proxyEndpoint) ? cached : null;
+      const cached = proxySessionId || getProxyConfig() ? await getCachedClearance(domain) : null;
+      const reusableClearance = cached && (!proxySessionId || cached.proxySessionId === proxySessionId) ? cached : null;
 
       const session = await this.createSession(
         domain,
         customHeaders,
-        proxyEndpoint,
+        proxySessionId,
         reusableClearance?.userAgent
       );
 
@@ -168,7 +165,7 @@ class PlaywrightManager {
     private async harvestClearanceCookie(
       page: Page,
       url: string,
-      proxyEndpoint?: string | null
+      proxySessionId?: string | null
     ): Promise<void> {
       const domain = new URL(url).hostname;
 
@@ -185,7 +182,7 @@ class PlaywrightManager {
         await saveClearance(domain, {
           cfClearance: clearance.value,
           userAgent,
-          proxyEndpoint: proxyEndpoint ?? null,
+          proxySessionId: proxySessionId ?? null,
           exitIp: null,
           solvedAt: Date.now(),
         });
@@ -199,7 +196,7 @@ class PlaywrightManager {
       url: string,
       serverId?: string,
       navigationOptions?: NavigationTimeouts,
-      proxyEndpoint?: string | null
+      proxySessionId?: string | null
     ): Promise<void> {
       const gotoTimeoutMs = navigationOptions?.gotoTimeoutMs ?? 45000;
       const networkIdleTimeoutMs = navigationOptions?.networkIdleTimeoutMs ?? 8000;
@@ -223,7 +220,7 @@ class PlaywrightManager {
         const domain = new URL(url).hostname;
         await invalidateClearance(domain);
 
-        const solved = await solveCloudflareChallenge(url, proxyEndpoint);
+        const solved = await solveCloudflareChallenge(url, proxySessionId);
         if (solved) {
           await page.context().addCookies([
             { name: "cf_clearance", value: solved.cfClearance, domain, path: "/" },
@@ -232,7 +229,7 @@ class PlaywrightManager {
           await saveClearance(domain, {
             cfClearance: solved.cfClearance,
             userAgent: solved.userAgent,
-            proxyEndpoint: proxyEndpoint ?? null,
+            proxySessionId: proxySessionId ?? null,
             exitIp: null,
             solvedAt: Date.now(),
           });
@@ -244,7 +241,7 @@ class PlaywrightManager {
         }
       }
 
-      await this.harvestClearanceCookie(page, url, proxyEndpoint);
+      await this.harvestClearanceCookie(page, url, proxySessionId);
 
       await page.waitForTimeout(2000);
       await page.waitForLoadState("networkidle", { timeout: networkIdleTimeoutMs }).catch((networkIdleErr: unknown) => {
@@ -260,11 +257,11 @@ class PlaywrightManager {
     ): Promise<string | null> {
       let pageClosed = false;
       try {
-        const { context, proxyEndpoint } = await this.getSession(url, customHeaders);
+        const { context, proxySessionId } = await this.getSession(url, customHeaders);
         const page = await context.newPage();
 
         try {
-          await this.navigateAndWaitForContent(page, url, serverId, navigationOptions, proxyEndpoint);
+          await this.navigateAndWaitForContent(page, url, serverId, navigationOptions, proxySessionId);
 
           const cookies = await context.cookies();
           if (cookies && cookies.length > 0) {
@@ -317,11 +314,11 @@ class PlaywrightManager {
     ): Promise<string | null> {
       let pageClosed = false;
       try {
-        const { context, proxyEndpoint } = await this.getSession(url, customHeaders);
+        const { context, proxySessionId } = await this.getSession(url, customHeaders);
         const page = await context.newPage();
 
         try {
-          await this.navigateAndWaitForContent(page, url, serverId, navigationOptions, proxyEndpoint);
+          await this.navigateAndWaitForContent(page, url, serverId, navigationOptions, proxySessionId);
 
           const select = page.locator("select").first();
           if ((await select.count()) === 0) return null;

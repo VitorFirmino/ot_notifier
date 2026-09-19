@@ -8,7 +8,7 @@ const DEFAULT_TTL_SECONDS = 1500;
 export type CachedClearance = {
   cfClearance: string;
   userAgent: string;
-  proxyEndpoint: string | null;
+  proxySessionId: string | null;
   exitIp: string | null;
   solvedAt: number;
 };
