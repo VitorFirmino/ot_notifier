@@ -230,6 +230,20 @@ export const discoverGuildsFromList = (html: string, baseUrl: string): GuildDisc
     addGuild(displayName, `guilds.php?name=${encodeURIComponent(decodedName)}`, logoSrc, kills);
   });
 
+  $("a[href*='view=guilds'][href*='action=show']").each((_, elem) => {
+    const $link = $(elem);
+    const href = $link.attr("href") || "";
+    const name = $link.text().trim();
+    if (!name) return;
+
+    const $container = $link.closest(".guild-row").length
+      ? $link.closest(".guild-row")
+      : $link.closest("tr, li");
+    const logoSrc = $container.find("img").first().attr("src");
+
+    addGuild(name, href, logoSrc);
+  });
+
   return guilds;
 };
 

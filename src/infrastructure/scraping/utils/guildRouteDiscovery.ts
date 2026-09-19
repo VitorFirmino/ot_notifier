@@ -22,6 +22,7 @@ const fetchCandidate = async (
 const CANDIDATE_PATHS = [
   "?subtopic=guilds",
   "/index.php?subtopic=guilds",
+  "?view=guilds",
   "/community/guilds",
   "/guilds.php",
   "/guilds",

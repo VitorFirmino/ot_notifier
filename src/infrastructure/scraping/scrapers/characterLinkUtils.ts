@@ -26,14 +26,19 @@ const getResolvedUrl = (href: string, baseUrl: string): URL | null => {
   }
 };
 
+const isCharactersRouteParam = (resolved: URL): boolean => {
+  const subtopic = (getSearchParamCaseInsensitive(resolved, "subtopic") || "").toLowerCase();
+  const view = (getSearchParamCaseInsensitive(resolved, "view") || "").toLowerCase();
+  return subtopic === "characters" || view === "characters";
+};
+
 export const extractCharacterNameFromHref = (href: string, baseUrl: string): string => {
   const resolved = getResolvedUrl(href, baseUrl);
   if (!resolved) return "";
 
-  const subtopic = (getSearchParamCaseInsensitive(resolved, "subtopic") || "").toLowerCase();
   const nameParam = getSearchParamCaseInsensitive(resolved, "name");
 
-  if (subtopic === "characters" && nameParam) {
+  if (isCharactersRouteParam(resolved) && nameParam) {
     return normalizeText(safeDecode(nameParam));
   }
 
@@ -66,8 +71,7 @@ export const isCharacterProfileHref = (href: string, baseUrl: string): boolean =
   const name = extractCharacterNameFromHref(href, baseUrl);
   if (!name) return false;
 
-  const subtopic = (getSearchParamCaseInsensitive(resolved, "subtopic") || "").toLowerCase();
-  if (subtopic === "characters") return true;
+  if (isCharactersRouteParam(resolved)) return true;
 
   if (/\/characters$/i.test(resolved.pathname) && getSearchParamCaseInsensitive(resolved, "name")) {
     return true;
