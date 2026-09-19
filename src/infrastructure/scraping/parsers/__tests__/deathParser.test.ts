@@ -56,6 +56,45 @@ describe("deathParser", () => {
     });
   });
 
+  describe("modern app template (heading with an icon, table in a sibling container)", () => {
+    const html = `
+      <div>
+        <div class="card-header"><h2><svg class="lucide-skull"></svg>Mortes do Personagem</h2></div>
+      </div>
+      <div class="card-body">
+        <div class="card-content">
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr><th>Data</th><th>Descrição</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>31 de ago. de 2026, 18:41</td>
+                  <td>Morto no level <span class="font-semibold">840</span> por <span>the scourge of oblivion</span></td>
+                </tr>
+                <tr>
+                  <td>26 de ago. de 2026, 20:39</td>
+                  <td>Morto no level <span class="font-semibold">833</span> por <span>spark of destruction</span> (maior dano por <span>frenzy</span>)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+
+    it("finds the table by walking forward from the deaths heading, even nested in sibling containers", () => {
+      const $ = cheerio.load(html);
+      const deaths = extractAllDeaths($);
+
+      expect(deaths).toHaveLength(2);
+      expect(deaths[0]).toMatchObject({ level: 840, killers: [] });
+      expect(deaths[0].time).toBe("31 de ago. de 2026, 18:41");
+      expect(deaths[1]).toMatchObject({ level: 833, killers: [] });
+    });
+  });
+
   it("returns an empty array when there is no death table at all", () => {
     const $ = cheerio.load("<html><body><p>No deaths here.</p></body></html>");
     expect(extractAllDeaths($)).toEqual([]);

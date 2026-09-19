@@ -29,6 +29,26 @@ const extractKillers = ($: cheerio.CheerioAPI, deathCell: cheerio.Cheerio<AnyNod
     .get()
     .filter(Boolean);
 
+const DEATH_HEADING_LABELS = ["character deaths", "deaths", "últimas mortes", "mortes do personagem"];
+
+const findTableAfterDeathHeading = ($: cheerio.CheerioAPI): cheerio.Cheerio<AnyNode> => {
+  const heading = $("h1, h2, h3, h4, h5, h6")
+    .filter((_, el) => {
+      const title = normalizeText($(el).text()).toLowerCase();
+      return DEATH_HEADING_LABELS.some((label) => title.includes(label));
+    })
+    .first();
+
+  if (heading.length === 0) return $();
+
+  const allNodes = $("*").toArray();
+  const headingIndex = allNodes.indexOf(heading[0]);
+  if (headingIndex === -1) return $();
+
+  const nextTable = allNodes.slice(headingIndex + 1).find((node) => "tagName" in node && node.tagName === "table");
+  return nextTable ? $(nextTable) : $();
+};
+
 const parseDeathFromRow = ($: cheerio.CheerioAPI, row: ReturnType<typeof $>): DeathInfo | null => {
   const cells = row.find("td");
   if (cells.length < 2) return null;
@@ -86,6 +106,10 @@ export const extractAllDeaths = ($: cheerio.CheerioAPI): DeathInfo[] => {
     if (classicHeaderCell.length > 0) {
       allTables = classicHeaderCell.closest("table");
     }
+  }
+
+  if (allTables.length === 0) {
+    allTables = findTableAfterDeathHeading($);
   }
 
   if (allTables.length === 0) return [];

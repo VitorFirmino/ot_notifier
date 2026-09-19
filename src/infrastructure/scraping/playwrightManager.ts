@@ -141,8 +141,8 @@ class PlaywrightManager {
           }
 
           await page.waitForTimeout(2000);
-          await page.waitForLoadState("domcontentloaded").catch((loadStateErr: unknown) => {
-            console.warn(`[${serverId || "default"}] Aviso ao esperar domcontentloaded:`, loadStateErr);
+          await page.waitForLoadState("networkidle", { timeout: 8000 }).catch((networkIdleErr: unknown) => {
+            console.warn(`[${serverId || "default"}] Aviso ao esperar networkidle:`, networkIdleErr);
           });
 
           const cookies = await context.cookies();
