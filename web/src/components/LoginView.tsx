@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
+import { PasswordInput } from "@components/ui/password-input";
 import { Label } from "@components/ui/label";
 import { authClient } from "@lib/authClient";
 import logo from "@assets/logo.png";
@@ -38,11 +39,30 @@ const forgotPasswordSchema = z.object({
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
+const KNOWN_AUTH_ERROR_MESSAGES: Record<string, string> = {
+  invalid_email: "Esse endereço de email não é aceito. Use um email pessoal ou corporativo válido.",
+};
+
+const RESEND_VERIFICATION_COOLDOWN_SECONDS = 30;
+
 export const LoginView: React.FC = () => {
   const [view, setView] = useState<"credentials" | "forgot">("credentials");
   const [apiError, setApiError] = useState<string | null>(null);
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
-  const [verificationSent, setVerificationSent] = useState<string | null>(null);
+  const [verification, setVerification] = useState<{ email: string | null; cooldownSeconds: number }>({
+    email: null,
+    cooldownSeconds: 0,
+  });
+
+  const isResendCoolingDown = verification.cooldownSeconds > 0;
+
+  useEffect(() => {
+    if (!isResendCoolingDown) return;
+    const timer = setInterval(() => {
+      setVerification((prev) => ({ ...prev, cooldownSeconds: Math.max(0, prev.cooldownSeconds - 1) }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isResendCoolingDown]);
 
   const {
     register,
@@ -70,7 +90,7 @@ export const LoginView: React.FC = () => {
 
   const onSubmit = async (values: LoginFormValues) => {
     setApiError(null);
-    setVerificationSent(null);
+    setVerification({ email: null, cooldownSeconds: 0 });
     try {
       const result =
         values.mode === "login"
@@ -84,15 +104,16 @@ export const LoginView: React.FC = () => {
 
       if (result.error) {
         if (result.error.code === "EMAIL_NOT_VERIFIED") {
-          setVerificationSent(values.email);
+          setVerification({ email: values.email, cooldownSeconds: RESEND_VERIFICATION_COOLDOWN_SECONDS });
         } else {
-          setApiError("Não foi possível autenticar. Verifique seus dados e tente novamente.");
+          const friendlyMessage = result.error.code ? KNOWN_AUTH_ERROR_MESSAGES[result.error.code] : undefined;
+          setApiError(friendlyMessage ?? "Não foi possível autenticar. Verifique seus dados e tente novamente.");
         }
         return;
       }
 
       if (values.mode === "signup" && !result.data?.token) {
-        setVerificationSent(values.email);
+        setVerification({ email: values.email, cooldownSeconds: RESEND_VERIFICATION_COOLDOWN_SECONDS });
       }
     } catch {
       setApiError("Não foi possível conectar à API. Verifique se o backend está rodando.");
@@ -117,7 +138,15 @@ export const LoginView: React.FC = () => {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
+      <a
+        href="/"
+        className="absolute left-6 top-6 z-20 flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Voltar ao site
+      </a>
+
       <div className="absolute right-6 top-6 z-20">
         <ThemeToggle />
       </div>
@@ -188,11 +217,11 @@ export const LoginView: React.FC = () => {
                   Voltar para o login
                 </button>
               </>
-            ) : verificationSent ? (
+            ) : verification.email ? (
               <>
                 <h1 className="font-heading text-3xl font-semibold text-foreground">Confirme seu email</h1>
                 <p className="text-sm text-muted-foreground">
-                  Enviamos um link de confirmação para <span className="font-medium text-foreground">{verificationSent}</span>.
+                  Enviamos um link de confirmação para <span className="font-medium text-foreground">{verification.email}</span>.
                   Verifique sua caixa de entrada (e o spam) e clique no link para ativar sua conta.
                 </p>
 
@@ -200,19 +229,25 @@ export const LoginView: React.FC = () => {
                   type="button"
                   variant="outline"
                   className="h-12 w-full text-base"
+                  disabled={isResendCoolingDown}
                   onClick={async () => {
                     setApiError(null);
+                    const email = verification.email;
+                    if (!email) return;
                     try {
                       await authClient.sendVerificationEmail({
-                        email: verificationSent,
+                        email,
                         callbackURL: `${window.location.origin}/app`,
                       });
+                      setVerification({ email, cooldownSeconds: RESEND_VERIFICATION_COOLDOWN_SECONDS });
                     } catch {
                       setApiError("Não foi possível conectar à API. Verifique se o backend está rodando.");
                     }
                   }}
                 >
-                  Reenviar email de confirmação
+                  {isResendCoolingDown
+                    ? `Reenviar em ${verification.cooldownSeconds}s`
+                    : "Reenviar email de confirmação"}
                 </Button>
 
                 {apiError && <p className="text-sm text-destructive">{apiError}</p>}
@@ -221,7 +256,7 @@ export const LoginView: React.FC = () => {
                   type="button"
                   className="cursor-pointer text-sm text-primary hover:underline"
                   onClick={() => {
-                    setVerificationSent(null);
+                    setVerification({ email: null, cooldownSeconds: 0 });
                     setValue("mode", "login");
                   }}
                 >
@@ -273,9 +308,8 @@ export const LoginView: React.FC = () => {
                         </button>
                       )}
                     </div>
-                    <Input
+                    <PasswordInput
                       id="password"
-                      type="password"
                       placeholder="Mínimo de 8 caracteres"
                       aria-invalid={!!errors.password}
                       className="h-12 px-4 py-3 text-base transition-colors duration-200 hover:border-primary/40 md:text-base"
@@ -287,9 +321,8 @@ export const LoginView: React.FC = () => {
                   {mode === "signup" && (
                     <div className="space-y-2">
                       <Label htmlFor="confirmPassword" className="text-base">Repetir senha:</Label>
-                      <Input
+                      <PasswordInput
                         id="confirmPassword"
-                        type="password"
                         placeholder="Digite a senha novamente"
                         aria-invalid={!!errors.confirmPassword}
                         className="h-12 px-4 py-3 text-base transition-colors duration-200 hover:border-primary/40 md:text-base"
@@ -341,6 +374,6 @@ export const LoginView: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 };

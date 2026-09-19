@@ -3,10 +3,10 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@components/ui/card";
 import { Button } from "@components/ui/button";
-import { Input } from "@components/ui/input";
+import { PasswordInput } from "@components/ui/password-input";
 import { Label } from "@components/ui/label";
 import { authClient } from "@lib/authClient";
 import logo from "@assets/logo.png";
@@ -62,7 +62,15 @@ export const ResetPasswordView: React.FC = () => {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
+      <a
+        href="/"
+        className="absolute left-6 top-6 z-20 flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Voltar ao site
+      </a>
+
       <div className="absolute right-6 top-6 z-20">
         <ThemeToggle />
       </div>
@@ -108,9 +116,8 @@ export const ResetPasswordView: React.FC = () => {
                   <Label htmlFor="newPassword" className="text-base">
                     Nova senha:
                   </Label>
-                  <Input
+                  <PasswordInput
                     id="newPassword"
-                    type="password"
                     placeholder="Mínimo de 8 caracteres"
                     aria-invalid={!!errors.newPassword}
                     className="h-12 px-4 py-3 text-base transition-colors duration-200 hover:border-primary/40 md:text-base"
@@ -124,9 +131,8 @@ export const ResetPasswordView: React.FC = () => {
                   <Label htmlFor="confirmPassword" className="text-base">
                     Repetir senha:
                   </Label>
-                  <Input
+                  <PasswordInput
                     id="confirmPassword"
-                    type="password"
                     placeholder="Digite a senha novamente"
                     aria-invalid={!!errors.confirmPassword}
                     className="h-12 px-4 py-3 text-base transition-colors duration-200 hover:border-primary/40 md:text-base"
@@ -152,6 +158,6 @@ export const ResetPasswordView: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 };

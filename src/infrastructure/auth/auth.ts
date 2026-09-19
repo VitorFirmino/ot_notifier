@@ -25,6 +25,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
       try {
         await sendPasswordResetEmail({ to: user.email, resetUrl: url });
@@ -55,7 +56,10 @@ export const auth = betterAuth({
     validateUserInfo: async ({ user, source }) => {
       if (source.action !== "create-user") return;
       if (!user.email || !isNotDisposableEmail(user.email)) {
-        return { error: "invalid_email", errorDescription: "Não foi possível criar a conta." };
+        return {
+          error: "invalid_email",
+          errorDescription: "Esse endereço de email não é aceito. Use um email pessoal ou corporativo válido.",
+        };
       }
     },
   },
