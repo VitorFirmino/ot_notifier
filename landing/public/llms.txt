@@ -1,0 +1,10 @@
+# OT Notifier
+
+> OT Notifier monitora guildas e personagens de servidores privados de Open Tibia e avisa no Discord quando alguém sobe ou desce de nível, ou morre.
+
+## Páginas
+
+- [Como funciona](/#como-funciona): passo a passo de como cadastrar uma guilda e receber notificações.
+- [Recursos](/#recursos): lista de recursos do produto (múltiplos servidores, detecção de Cloudflare, webhook customizável, histórico de eventos, múltiplas guildas, intervalo configurável).
+- [Política de Privacidade](/privacidade)
+- [Termos de Serviço](/termos)
