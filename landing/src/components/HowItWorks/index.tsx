@@ -9,20 +9,43 @@ const STEP_ICON: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
   notificacao: BellIcon,
 };
 
+const ALIGN_CLASS: Record<number, string> = {
+  0: "sm:self-start",
+  1: "sm:self-end",
+  2: "sm:self-start",
+};
+
 export const HowItWorks: React.FC = () => {
-  const { sectionRef, steps } = useHowItWorks();
+  const { sectionRef, trackRef, steps } = useHowItWorks();
 
   return (
     <section ref={sectionRef} id="como-funciona" className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
-      <h2 className="mb-8 text-4xl">Como funciona</h2>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+      <h2 className="mb-16 text-4xl">Como funciona</h2>
+      <div ref={trackRef} className="relative flex flex-col gap-14 overflow-x-hidden sm:gap-20">
+        <svg
+          aria-hidden="true"
+          data-step-connector-svg
+          className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full sm:block"
+        >
+          {steps.slice(0, -1).map((step) => (
+            <path
+              key={step.id}
+              data-step-connector-segment
+              fill="none"
+              stroke="var(--color-accent)"
+              strokeOpacity="0.5"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          ))}
+        </svg>
         {steps.map((step, index) => {
           const Icon = STEP_ICON[step.id];
           return (
             <article
               key={step.id}
               data-step-card
-              className="glass-liquid relative overflow-hidden rounded-2xl border border-white/10 p-7"
+              className={`glass-liquid relative z-10 w-full overflow-hidden rounded-2xl border border-white/10 p-7 sm:w-[62%] ${ALIGN_CLASS[index]}`}
             >
               <span
                 aria-hidden="true"

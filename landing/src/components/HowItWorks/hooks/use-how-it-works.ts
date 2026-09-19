@@ -75,42 +75,86 @@ const ICON_ANIMATIONS: Record<string, (glyph: Element) => void> = {
 
 interface UseHowItWorksResult {
   sectionRef: RefObject<HTMLDivElement | null>;
+  trackRef: RefObject<HTMLDivElement | null>;
   steps: HowItWorksStep[];
 }
 
 export const useHowItWorks = (): UseHowItWorksResult => {
   const sectionRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
     () => {
-      const cards = sectionRef.current?.querySelectorAll("[data-step-card]");
-      const glyphs = sectionRef.current?.querySelectorAll("[data-step-icon-glyph]");
-      if (!cards || cards.length === 0) return;
+      const track = trackRef.current;
+      const cards = Array.from(track?.querySelectorAll("[data-step-card]") ?? []) as HTMLElement[];
+      const glyphs = track?.querySelectorAll("[data-step-icon-glyph]");
+      const svg = track?.querySelector("[data-step-connector-svg]") as SVGSVGElement | null;
+      const segments = Array.from(track?.querySelectorAll("[data-step-connector-segment]") ?? []) as SVGPathElement[];
+      if (!track || cards.length === 0) return;
+
+      const layoutConnectors = () => {
+        if (!svg) return;
+        const trackRect = track.getBoundingClientRect();
+        svg.setAttribute("viewBox", `0 0 ${trackRect.width} ${trackRect.height}`);
+
+        cards.forEach((card, index) => {
+          const segment = segments[index];
+          const nextCard = cards[index + 1];
+          if (!segment || !nextCard) return;
+
+          const isLeftCard = index % 2 === 0;
+          const cardRect = card.getBoundingClientRect();
+          const nextRect = nextCard.getBoundingClientRect();
+          const inset = 14;
+          const fromX = (isLeftCard ? cardRect.right - inset : cardRect.left + inset) - trackRect.left;
+          const fromY = cardRect.bottom - inset - trackRect.top;
+          const toX = (isLeftCard ? nextRect.left + inset : nextRect.right - inset) - trackRect.left;
+          const toY = nextRect.top + inset - trackRect.top;
+
+          segment.setAttribute("d", `M ${fromX} ${fromY} L ${toX} ${toY}`);
+        });
+      };
+
+      layoutConnectors();
+      window.addEventListener("resize", layoutConnectors);
 
       gsap.matchMedia().add(
-        { motionOk: "(prefers-reduced-motion: no-preference)" },
+        {
+          motionOk: "(prefers-reduced-motion: no-preference)",
+          isTablet: "(min-width: 640px)",
+          isDesktop: "(min-width: 1024px)",
+        },
         (context) => {
-          const { motionOk } = context.conditions as { motionOk: boolean };
+          const { motionOk, isTablet, isDesktop } = context.conditions as {
+            motionOk: boolean;
+            isTablet: boolean;
+            isDesktop: boolean;
+          };
           if (!motionOk) {
-            gsap.set(cards, { autoAlpha: 1, y: 0, rotationX: 0, scale: 1 });
+            gsap.set(cards, { autoAlpha: 1, x: 0, y: 0, rotationX: 0, scale: 1 });
+            gsap.set(segments, { strokeDashoffset: 0 });
             return;
           }
 
           gsap.set(cards, { transformPerspective: 900 });
-          gsap.set(cards, { autoAlpha: 0, y: 40, rotationX: 25, scale: 0.92 });
+          const offsetMagnitude = isDesktop ? 80 : isTablet ? 48 : 24;
 
-          ScrollTrigger.batch(cards, {
-            start: "top 88%",
-            onEnter: (batch) =>
-              gsap.to(batch, {
-                autoAlpha: 1,
-                y: 0,
-                rotationX: 0,
-                scale: 1,
-                duration: 0.6,
-                stagger: 0.15,
-                ease: "power3.out",
-              }),
+          cards.forEach((card, index) => {
+            const fromX = index % 2 === 0 ? -offsetMagnitude : offsetMagnitude;
+            const scrollTrigger = { trigger: card, start: "top 92%", end: "top 45%", scrub: true };
+
+            gsap.fromTo(
+              card,
+              { autoAlpha: 0, x: fromX, rotationX: 20, scale: 0.94 },
+              { autoAlpha: 1, x: 0, rotationX: 0, scale: 1, ease: "none", scrollTrigger }
+            );
+
+            const segment = segments[index - 1];
+            if (segment) {
+              const length = segment.getTotalLength();
+              gsap.set(segment, { strokeDasharray: length, strokeDashoffset: length });
+              gsap.to(segment, { strokeDashoffset: 0, ease: "none", scrollTrigger });
+            }
           });
 
           glyphs?.forEach((glyph) => {
@@ -120,9 +164,11 @@ export const useHowItWorks = (): UseHowItWorksResult => {
           });
         }
       );
+
+      return () => window.removeEventListener("resize", layoutConnectors);
     },
     { scope: sectionRef }
   );
 
-  return { sectionRef, steps: HOW_IT_WORKS_STEPS };
+  return { sectionRef, trackRef, steps: HOW_IT_WORKS_STEPS };
 };
