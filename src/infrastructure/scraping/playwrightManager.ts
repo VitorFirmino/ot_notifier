@@ -2,6 +2,8 @@ import { chromium, type Browser, type BrowserContext, type Page } from "playwrig
 import pLimit from "p-limit";
 import { getRandomUserAgent } from "./utils/userAgentGenerator";
 import { saveBrowserCookiesToJar } from "./http/axiosClient";
+import { getProxyConfig } from "./utils/proxyConfig";
+import { solveCloudflareChallenge } from "./utils/capsolverClient";
 
 type Session = {
   browser: Browser;
@@ -29,12 +31,15 @@ class PlaywrightManager {
     let browser: Browser;
     let context: BrowserContext;
 
+    const proxy = getProxyConfig() ?? undefined;
+
     const contextOptions = {
       userAgent,
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {
         "Accept-Language": customHeaders?.["Accept-Language"] || "pt-BR,pt;q=0.9,en-US;q=0.8",
       },
+      proxy,
     };
     const launchArgs = ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"];
 
@@ -45,7 +50,7 @@ class PlaywrightManager {
         throw new Error("patchright module present but chromium.launch is missing");
       }
       browser = (await patchrightChromium.launch({ headless: false, args: launchArgs })) as unknown as Browser;
-      context = await browser.newContext({ ignoreHTTPSErrors: true });
+      context = await browser.newContext({ ignoreHTTPSErrors: true, proxy });
       return { browser, context };
     } catch (patchrightErr: unknown) {
       console.debug(`[${serverId}] Patchright não disponível:`, patchrightErr);
@@ -136,12 +141,25 @@ class PlaywrightManager {
         console.warn(`[${serverId || "default"}] Aviso em page.goto(${url}):`, gotoErr);
       });
 
+      let stillChallenged = false;
       for (let attempt = 0; attempt < 15; attempt++) {
         const title = await page.title();
-        if (!title.includes("Just a moment") && !title.includes("Um momento")) {
-          break;
-        }
+        stillChallenged = title.includes("Just a moment") || title.includes("Um momento");
+        if (!stillChallenged) break;
         await page.waitForTimeout(1000);
+      }
+
+      if (stillChallenged) {
+        const solved = await solveCloudflareChallenge(url);
+        if (solved) {
+          await page.context().addCookies([
+            { name: "cf_clearance", value: solved.cfClearance, domain: new URL(url).hostname, path: "/" },
+          ]);
+          await page.setExtraHTTPHeaders({ "User-Agent": solved.userAgent });
+          await page.goto(url, { waitUntil: "domcontentloaded", timeout: gotoTimeoutMs }).catch((gotoErr: unknown) => {
+            console.warn(`[${serverId || "default"}] Aviso ao renavegar após resolver desafio:`, gotoErr);
+          });
+        }
       }
 
       await page.waitForTimeout(2000);

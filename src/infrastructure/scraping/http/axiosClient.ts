@@ -9,6 +9,7 @@ import {
   detectCloudflareFromHtml,
   markServerAsCloudflare,
 } from "../utils/cloudflareDetector";
+import { getAxiosProxyConfig } from "../utils/proxyConfig";
 
 export const REQUEST_TIMEOUT = 15000;
 
@@ -219,6 +220,7 @@ export const fetchWithAxiosResult = async (
         decompress: true,
         validateStatus: (status) => status < 500,
         withCredentials: false,
+        proxy: getAxiosProxyConfig() ?? undefined,
         "axios-retry": {
           retries: 2,
           retryDelay: axiosRetry.exponentialDelay,

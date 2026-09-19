@@ -55,6 +55,8 @@ RUN corepack enable
 
 COPY --from=deps /app/node_modules ./node_modules
 
+RUN npx patchright install chromium
+
 COPY . .
 
 VOLUME ["/app/src/infrastructure/storage/data", "/app/data"]
