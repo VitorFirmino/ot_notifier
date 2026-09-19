@@ -23,6 +23,7 @@ interface SidebarProps {
   onTabChange: (tab: NavTab) => void;
   serverCount?: number;
   isLoadingServers?: boolean;
+  isMobileOpen?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -30,8 +31,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTabChange,
   serverCount = 0,
   isLoadingServers = false,
+  isMobileOpen = false,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const collapsed = isCollapsed && !isMobileOpen;
   const { data: session } = authClient.useSession();
 
   const handleSignOut = async () => {
@@ -49,9 +52,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`relative z-10 flex h-full shrink-0 flex-col border-r border-border p-4 transition-all duration-300 ${
-        isCollapsed ? "w-20" : "w-64"
-      }`}
+      className={`fixed inset-y-0 left-0 z-40 flex h-full flex-col border-r border-border p-4 transition-transform duration-300 lg:relative lg:z-10 lg:translate-x-0 lg:shrink-0 lg:transition-all ${
+        isMobileOpen ? "translate-x-0" : "-translate-x-full"
+      } ${collapsed ? "w-64 lg:w-20" : "w-64"}`}
       style={{
         background:
           "linear-gradient(180deg, color-mix(in oklab, var(--sidebar) 82%, var(--primary) 18%) 0%, var(--sidebar) 45%)",
@@ -63,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg">
               <img src={logo} alt="OT Notifier" className="h-full w-full object-cover" />
             </div>
-            {!isCollapsed && (
+            {!collapsed && (
               <div>
                 <h1 className="font-heading text-base font-semibold leading-none text-foreground">
                   OT <span className="text-primary">Notifier</span>
@@ -78,6 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             size="icon-sm"
             onClick={() => setIsCollapsed(!isCollapsed)}
             aria-label={isCollapsed ? "Expandir menu" : "Recolher menu"}
+            className="hidden lg:inline-flex"
           >
             {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
@@ -92,9 +96,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                title={isCollapsed ? item.label : undefined}
+                title={collapsed ? item.label : undefined}
                 className={`flex cursor-pointer items-center rounded-lg border-l-2 px-3 py-2.5 text-sm font-medium transition-colors ${
-                  isCollapsed ? "justify-center" : "justify-between"
+                  collapsed ? "justify-center" : "justify-between"
                 } ${
                   isActive
                     ? "border-primary bg-secondary text-foreground"
@@ -103,9 +107,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 <div className="flex items-center gap-3">
                   <Icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
-                  {!isCollapsed && <span>{item.label}</span>}
+                  {!collapsed && <span>{item.label}</span>}
                 </div>
-                {!isCollapsed && item.badge && (
+                {!collapsed && item.badge && (
                   <Badge variant="secondary" className="text-muted-foreground">
                     {item.badge}
                   </Badge>
@@ -119,10 +123,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="mt-auto border-t border-border pt-3">
         <div
           className={`flex items-center gap-3 rounded-lg px-3 py-2 ${
-            isCollapsed ? "justify-center" : "justify-between"
+            collapsed ? "justify-center" : "justify-between"
           }`}
         >
-          {!isCollapsed && session?.user && (
+          {!collapsed && session?.user && (
             <span className="truncate text-xs text-muted-foreground" title={session.user.email}>
               {session.user.email}
             </span>

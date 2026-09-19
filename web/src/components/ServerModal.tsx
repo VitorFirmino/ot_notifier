@@ -3,16 +3,18 @@ import { useForm, type UseFormRegister, type FieldErrors } from "react-hook-form
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
-import { Server, Save, Compass, Loader2, Image as ImageIcon, Search, Lock } from "lucide-react";
+import { Server, Save, Compass, Loader2, Image as ImageIcon, Search, Lock, Bell, Settings2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@components/ui/tabs";
 import { Input } from "@components/ui/input";
+import { PasswordInput } from "@components/ui/password-input";
 import { Label } from "@components/ui/label";
 import { Button } from "@components/ui/button";
 import { Skeleton } from "@components/ui/skeleton";
@@ -238,9 +240,16 @@ export const ServerModal: React.FC<ServerModalProps> = ({
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Server className="h-4 w-4 text-primary" />
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Server className="h-4 w-4" />
+            </span>
             {initialServer ? "Editar servidor OT" : "Adicionar servidor OT"}
           </DialogTitle>
+          <DialogDescription>
+            {initialServer
+              ? "Ajuste a URL monitorada, o webhook e os parâmetros de scraping desta guilda."
+              : "Descubra guildas automaticamente ou cadastre manualmente a URL de uma guilda para monitorar."}
+          </DialogDescription>
         </DialogHeader>
 
         {loginPrompt ? (
@@ -267,9 +276,8 @@ export const ServerModal: React.FC<ServerModalProps> = ({
             </div>
             <div className="space-y-2">
               <Label htmlFor="site-login-password">Senha</Label>
-              <Input
+              <PasswordInput
                 id="site-login-password"
-                type="password"
                 value={siteLoginPassword}
                 onChange={(event) => setSiteLoginPassword(event.target.value)}
                 required
@@ -370,7 +378,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                 <>
                   <form onSubmit={handleSubmitDiscovery(handleDiscover)} className="space-y-2">
                     <Label htmlFor="discoveryUrl">URL do servidor</Label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       <Input
                         id="discoveryUrl"
                         type="text"
@@ -379,7 +387,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                         className="flex-1 font-mono text-xs"
                         {...registerDiscovery("discoveryUrl")}
                       />
-                      <Button type="submit" disabled={isDiscovering}>
+                      <Button type="submit" disabled={isDiscovering} className="w-full sm:w-auto">
                         {isDiscovering ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin" /> Escaneando...
@@ -402,8 +410,20 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                     </div>
                   )}
 
+                  {discoverMutation.isIdle && (
+                    <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border p-6 text-center">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Compass className="h-6 w-6" />
+                      </span>
+                      <p className="max-w-xs text-xs text-muted-foreground">
+                        Informe a URL do site do servidor acima. Vamos escanear a página de guildas e listar tudo
+                        que encontrarmos automaticamente.
+                      </p>
+                    </div>
+                  )}
+
                   {isDiscovering && (
-                    <div className="grid max-h-60 grid-cols-2 gap-3 overflow-y-auto pr-1">
+                    <div className="grid max-h-60 grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
                       {Array.from({ length: 4 }).map((_, skeletonIndex) => (
                         <DiscoveredGuildSkeleton key={skeletonIndex} />
                       ))}
@@ -440,7 +460,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                           Nenhuma guilda encontrada com esse nome.
                         </p>
                       ) : (
-                      <div className="grid max-h-60 grid-cols-2 gap-3 overflow-y-auto pr-1">
+                      <div className="grid max-h-60 grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
                         {filteredDiscoveredGuilds.map((discoveredGuild, guildIndex) => (
                           <button
                             key={guildIndex}
@@ -521,101 +541,119 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
   onCancel,
 }) => (
   <form onSubmit={onSubmit} className="space-y-4">
-    <div className="space-y-1.5">
-      <Label htmlFor="serverName">Nome do servidor / guilda *</Label>
-      <Input
-        id="serverName"
-        type="text"
-        placeholder="Ex: Meu Servidor OT"
-        aria-invalid={!!errors.serverName}
-        {...register("serverName")}
-      />
-      {errors.serverName && <p className="text-xs text-destructive">{errors.serverName.message}</p>}
-    </div>
+    <div className="space-y-3 rounded-lg border border-border bg-secondary/40 p-3 sm:p-4">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Server className="h-3.5 w-3.5" /> Identificação
+      </div>
 
-    <div className="space-y-1.5">
-      <Label htmlFor="guildUrl">URL da guilda (alvo do scraping) *</Label>
-      <Input
-        id="guildUrl"
-        type="url"
-        placeholder="https://www.exemplo.com/?subtopic=guilds&action=view&GuildName=..."
-        className="font-mono text-xs"
-        aria-invalid={!!errors.guildUrl}
-        {...register("guildUrl")}
-      />
-      {errors.guildUrl && <p className="text-xs text-destructive">{errors.guildUrl.message}</p>}
-    </div>
-
-    <div className="space-y-1.5">
-      <Label htmlFor="logoUrl">URL da imagem / emblema da guilda (opcional)</Label>
-      <div className="flex items-center gap-2">
+      <div className="space-y-1.5">
+        <Label htmlFor="serverName">Nome do servidor / guilda *</Label>
         <Input
-          id="logoUrl"
+          id="serverName"
+          type="text"
+          placeholder="Ex: Meu Servidor OT"
+          aria-invalid={!!errors.serverName}
+          {...register("serverName")}
+        />
+        {errors.serverName && <p className="text-xs text-destructive">{errors.serverName.message}</p>}
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="guildUrl">URL da guilda (alvo do scraping) *</Label>
+        <Input
+          id="guildUrl"
           type="url"
-          placeholder="https://www.exemplo.com/guild_image.php?id=18"
-          className="flex-1 font-mono text-xs"
-          aria-invalid={!!errors.logoUrl}
-          {...register("logoUrl")}
+          placeholder="https://www.exemplo.com/?subtopic=guilds&action=view&GuildName=..."
+          className="font-mono text-xs"
+          aria-invalid={!!errors.guildUrl}
+          {...register("guildUrl")}
         />
-        {logoUrl && (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-card">
-            <img src={getProxiedImageUrl(logoUrl)} alt="Logo" className="h-full w-full object-cover" />
-          </div>
-        )}
+        {errors.guildUrl && <p className="text-xs text-destructive">{errors.guildUrl.message}</p>}
       </div>
-      {errors.logoUrl && <p className="text-xs text-destructive">{errors.logoUrl.message}</p>}
+
+      <div className="space-y-1.5">
+        <Label htmlFor="logoUrl">URL da imagem / emblema da guilda (opcional)</Label>
+        <div className="flex items-center gap-2">
+          <Input
+            id="logoUrl"
+            type="url"
+            placeholder="https://www.exemplo.com/guild_image.php?id=18"
+            className="flex-1 font-mono text-xs"
+            aria-invalid={!!errors.logoUrl}
+            {...register("logoUrl")}
+          />
+          {logoUrl && (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-card">
+              <img src={getProxiedImageUrl(logoUrl)} alt="Logo" className="h-full w-full object-cover" />
+            </div>
+          )}
+        </div>
+        {errors.logoUrl && <p className="text-xs text-destructive">{errors.logoUrl.message}</p>}
+      </div>
     </div>
 
-    <div className="space-y-1.5">
-      <Label htmlFor="webhookUrl">Discord webhook URL (notificações ao vivo)</Label>
-      <Input
-        id="webhookUrl"
-        type="url"
-        placeholder="https://discord.com/api/webhooks/ID/TOKEN"
-        className="font-mono text-xs"
-        aria-invalid={!!errors.webhookUrl}
-        {...register("webhookUrl")}
-      />
-      {errors.webhookUrl && <p className="text-xs text-destructive">{errors.webhookUrl.message}</p>}
+    <div className="space-y-3 rounded-lg border border-border bg-secondary/40 p-3 sm:p-4">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Bell className="h-3.5 w-3.5" /> Notificações
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="webhookUrl">Discord webhook URL (notificações ao vivo)</Label>
+        <Input
+          id="webhookUrl"
+          type="url"
+          placeholder="https://discord.com/api/webhooks/ID/TOKEN"
+          className="font-mono text-xs"
+          aria-invalid={!!errors.webhookUrl}
+          {...register("webhookUrl")}
+        />
+        {errors.webhookUrl && <p className="text-xs text-destructive">{errors.webhookUrl.message}</p>}
+      </div>
     </div>
 
-    <div className="grid grid-cols-3 gap-3">
-      <div className="space-y-1.5">
-        <Label htmlFor="checkInterval" className="text-xs">Intervalo (s)</Label>
-        <Input
-          id="checkInterval"
-          type="number"
-          min="30"
-          aria-invalid={!!errors.checkInterval}
-          {...register("checkInterval", { valueAsNumber: true })}
-        />
-        {errors.checkInterval && <p className="text-xs text-destructive">{errors.checkInterval.message}</p>}
+    <div className="space-y-3 rounded-lg border border-border bg-secondary/40 p-3 sm:p-4">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Settings2 className="h-3.5 w-3.5" /> Configurações avançadas de scraping
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="concurrency" className="text-xs">Concorrência</Label>
-        <Input
-          id="concurrency"
-          type="number"
-          min="1"
-          max="10"
-          aria-invalid={!!errors.concurrency}
-          {...register("concurrency", { valueAsNumber: true })}
-        />
-        {errors.concurrency && <p className="text-xs text-destructive">{errors.concurrency.message}</p>}
-      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="checkInterval" className="text-xs">Intervalo (s)</Label>
+          <Input
+            id="checkInterval"
+            type="number"
+            min="30"
+            aria-invalid={!!errors.checkInterval}
+            {...register("checkInterval", { valueAsNumber: true })}
+          />
+          {errors.checkInterval && <p className="text-xs text-destructive">{errors.checkInterval.message}</p>}
+        </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="requestDelay" className="text-xs">Delay (ms)</Label>
-        <Input
-          id="requestDelay"
-          type="number"
-          min="100"
-          step="100"
-          aria-invalid={!!errors.requestDelay}
-          {...register("requestDelay", { valueAsNumber: true })}
-        />
-        {errors.requestDelay && <p className="text-xs text-destructive">{errors.requestDelay.message}</p>}
+        <div className="space-y-1.5">
+          <Label htmlFor="concurrency" className="text-xs">Concorrência</Label>
+          <Input
+            id="concurrency"
+            type="number"
+            min="1"
+            max="10"
+            aria-invalid={!!errors.concurrency}
+            {...register("concurrency", { valueAsNumber: true })}
+          />
+          {errors.concurrency && <p className="text-xs text-destructive">{errors.concurrency.message}</p>}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="requestDelay" className="text-xs">Delay (ms)</Label>
+          <Input
+            id="requestDelay"
+            type="number"
+            min="100"
+            step="100"
+            aria-invalid={!!errors.requestDelay}
+            {...register("requestDelay", { valueAsNumber: true })}
+          />
+          {errors.requestDelay && <p className="text-xs text-destructive">{errors.requestDelay.message}</p>}
+        </div>
       </div>
     </div>
 
