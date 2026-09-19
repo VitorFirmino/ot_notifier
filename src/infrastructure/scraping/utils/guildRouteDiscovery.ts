@@ -1,14 +1,12 @@
 import { createRequestHeaders, fetchWithAxiosResult, type AxiosFetchResult } from "../http/axiosClient";
-import { discoverGuildsFromList, isGuildNotExistHtml } from "../parsers/guildParser";
+import { discoverGuildsFromList, detectWorldSelector, isGuildNotExistHtml } from "../parsers/guildParser";
 import { extractServerIdFromUrl } from "@shared/utils/serverIdentity";
 import { playwrightManager } from "../playwrightManager";
 import { detectLoginRequiredPage, LoginRequiredError } from "./loginRequiredDetector";
 import { getSiteCredential } from "@infrastructure/storage/siteCredentials";
-import type { GuildDiscovered } from "../../../shared/types/index";
+import type { GuildDiscovered, WorldOption } from "../../../shared/types/index";
 
 const CANDIDATE_TIMEOUT_MS = 8000;
-
-const BROWSER_CANDIDATE_LIMIT = 3;
 
 const fetchCandidate = async (
   url: string,
@@ -38,6 +36,7 @@ export type GuildRouteDiscoveryResult = {
   guilds: GuildDiscovered[];
   html: string;
   resolvedUrl: string;
+  worldOptions?: WorldOption[];
 };
 
 type CandidateOutcome =
@@ -82,6 +81,7 @@ export const discoverGuildRoute = async (rawUrl: string, userId?: string): Promi
     lastErrorCode: string | null;
     sawForbidden: boolean;
     loginRequired: { domain: string; loginUrl: string } | null;
+    worldOptions: WorldOption[] | null;
   };
 
   const runPass = async (
@@ -95,6 +95,7 @@ export const discoverGuildRoute = async (rawUrl: string, userId?: string): Promi
       lastErrorCode: null,
       sawForbidden: false,
       loginRequired: null,
+      worldOptions: null,
     };
 
     for (const candidateUrl of candidateUrls) {
@@ -142,6 +143,9 @@ export const discoverGuildRoute = async (rawUrl: string, userId?: string): Promi
       }
       if (outcome.kind === "fetched-empty") {
         summary.lastFetched = { html: outcome.html, url: outcome.url };
+        if (!summary.worldOptions) {
+          summary.worldOptions = detectWorldSelector(outcome.html);
+        }
       }
     }
     return summary;
@@ -157,14 +161,14 @@ export const discoverGuildRoute = async (rawUrl: string, userId?: string): Promi
   let lastFetched = axiosPass.lastFetched;
   let lastErrorCode = axiosPass.lastErrorCode;
   let loginRequired = axiosPass.loginRequired;
+  let worldOptions = axiosPass.worldOptions;
 
   if (axiosPass.sawForbidden) {
-    const browserCandidates = uniqueCandidates.slice(0, BROWSER_CANDIDATE_LIMIT);
     const browserPass = await runPass(
       async (candidateUrl) => ({
         html: await playwrightManager.fetchPageContent(candidateUrl, serverId, createRequestHeaders(origin)),
       }),
-      browserCandidates
+      uniqueCandidates
     );
     if (browserPass.confident) return browserPass.confident;
 
@@ -172,6 +176,7 @@ export const discoverGuildRoute = async (rawUrl: string, userId?: string): Promi
     lastFetched = browserPass.lastFetched || lastFetched;
     lastErrorCode = browserPass.lastErrorCode || lastErrorCode;
     loginRequired = loginRequired || browserPass.loginRequired;
+    worldOptions = worldOptions || browserPass.worldOptions;
   }
 
   if (weakMatch) {
@@ -179,7 +184,12 @@ export const discoverGuildRoute = async (rawUrl: string, userId?: string): Promi
   }
 
   if (lastFetched) {
-    return { guilds: [], html: lastFetched.html, resolvedUrl: lastFetched.url };
+    return {
+      guilds: [],
+      html: lastFetched.html,
+      resolvedUrl: lastFetched.url,
+      worldOptions: worldOptions || undefined,
+    };
   }
 
   if (loginRequired) {
@@ -191,4 +201,47 @@ export const discoverGuildRoute = async (rawUrl: string, userId?: string): Promi
       ? `Não foi possível acessar o servidor (${lastErrorCode})`
       : "Não foi possível acessar o servidor"
   );
+};
+
+export const discoverGuildsForWorld = async (
+  rawUrl: string,
+  worldValue: string
+): Promise<GuildRouteDiscoveryResult> => {
+  const normalized = normalizeBaseUrl(rawUrl);
+  const origin = new URL(normalized).origin;
+  const serverId = extractServerIdFromUrl(normalized);
+
+  const candidates = [normalized, ...CANDIDATE_PATHS.map((path) => buildCandidateUrl(origin, path))];
+  const seen = new Set<string>();
+  const uniqueCandidates = candidates.filter((url) => {
+    if (seen.has(url)) return false;
+    seen.add(url);
+    return true;
+  });
+
+  let weakMatch: { guilds: GuildDiscovered[]; html: string; url: string } | null = null;
+
+  for (const candidateUrl of uniqueCandidates) {
+    const html = await playwrightManager.selectWorldAndFetch(
+      candidateUrl,
+      worldValue,
+      serverId,
+      createRequestHeaders(origin)
+    );
+    if (!html) continue;
+
+    const outcome = evaluateCandidateHtml(html, candidateUrl);
+    if (outcome.kind === "success") {
+      return { guilds: outcome.guilds, html: outcome.html, resolvedUrl: outcome.url };
+    }
+    if (outcome.kind === "weak" && !weakMatch) {
+      weakMatch = { guilds: outcome.guilds, html: outcome.html, url: outcome.url };
+    }
+  }
+
+  if (weakMatch) {
+    return { guilds: weakMatch.guilds, html: weakMatch.html, resolvedUrl: weakMatch.url };
+  }
+
+  throw new Error("Nenhuma guilda encontrada para o mundo selecionado.");
 };

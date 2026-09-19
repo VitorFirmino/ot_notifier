@@ -173,11 +173,18 @@ export type InspectCharacterParams = {
 
 export type DiscoverGuildsPayload = {
   url: string;
+  world?: string;
+};
+
+export type WorldOption = {
+  value: string;
+  label: string;
 };
 
 export type DiscoverGuildsResponse = {
   guilds: GuildDiscovered[];
   htmlLength?: number;
+  worldOptions?: WorldOption[];
 };
 
 export type SystemStatsResponse = {

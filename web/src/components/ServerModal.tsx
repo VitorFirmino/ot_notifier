@@ -18,6 +18,7 @@ import { PasswordInput } from "@components/ui/password-input";
 import { Label } from "@components/ui/label";
 import { Button } from "@components/ui/button";
 import { Skeleton } from "@components/ui/skeleton";
+import { NativeSelect } from "@components/ui/native-select";
 import type { ServerConfig, GuildDiscovered } from "@types";
 import { api, getProxiedImageUrl, LoginRequiredApiError } from "@services/api";
 
@@ -59,6 +60,8 @@ export const ServerModal: React.FC<ServerModalProps> = ({
   const [selectedDiscoveredGuild, setSelectedDiscoveredGuild] = useState<GuildDiscovered | null>(null);
   const [guildSearchQuery, setGuildSearchQuery] = useState("");
   const [loginPrompt, setLoginPrompt] = useState<{ domain: string; loginUrl: string } | null>(null);
+  const [worldSelectionUrl, setWorldSelectionUrl] = useState<string | null>(null);
+  const [selectedWorldValue, setSelectedWorldValue] = useState("");
   const [pendingSaveValues, setPendingSaveValues] = useState<ServerFormValues | null>(null);
   const [pendingDiscoveryUrl, setPendingDiscoveryUrl] = useState<string | null>(null);
   const [siteLoginUsername, setSiteLoginUsername] = useState("");
@@ -98,13 +101,15 @@ export const ServerModal: React.FC<ServerModalProps> = ({
   });
 
   const discoverMutation = useMutation({
-    mutationFn: (url: string) => api.discoverGuilds(url),
+    mutationFn: ({ url, world }: { url: string; world?: string }) => api.discoverGuilds(url, world),
   });
   const isDiscovering = discoverMutation.isPending;
   const discoveredGuilds = discoverMutation.data?.guilds ?? [];
+  const worldOptions = discoverMutation.data?.worldOptions ?? [];
+  const needsWorldSelection = worldOptions.length > 0 && discoveredGuilds.length === 0;
   const discoveryError = discoverMutation.isError
     ? "Erro ao buscar guildas neste servidor."
-    : discoverMutation.isSuccess && discoveredGuilds.length === 0
+    : discoverMutation.isSuccess && discoveredGuilds.length === 0 && !needsWorldSelection
       ? "Nenhuma guilda encontrada nesta URL. Verifique se o endereço está correto."
       : null;
   const showGuildSearch = discoveredGuilds.length > 4;
@@ -121,6 +126,8 @@ export const ServerModal: React.FC<ServerModalProps> = ({
     setSiteLoginUsername("");
     setSiteLoginPassword("");
     setSiteLoginError(null);
+    setWorldSelectionUrl(null);
+    setSelectedWorldValue("");
 
     if (initialServer) {
       setActiveTab("manual");
@@ -156,14 +163,24 @@ export const ServerModal: React.FC<ServerModalProps> = ({
 
   const handleDiscover = async (values: DiscoveryFormValues) => {
     setGuildSearchQuery("");
+    setWorldSelectionUrl(values.discoveryUrl);
+    setSelectedWorldValue("");
     try {
-      await discoverMutation.mutateAsync(values.discoveryUrl);
+      await discoverMutation.mutateAsync({ url: values.discoveryUrl });
     } catch (err: unknown) {
       if (err instanceof LoginRequiredApiError) {
         setPendingDiscoveryUrl(values.discoveryUrl);
         setLoginPrompt({ domain: err.domain, loginUrl: err.loginUrl });
       }
     }
+  };
+
+  const handleWorldSelect = async (worldValue: string) => {
+    setSelectedWorldValue(worldValue);
+    if (!worldSelectionUrl || !worldValue) return;
+    try {
+      await discoverMutation.mutateAsync({ url: worldSelectionUrl, world: worldValue });
+    } catch {}
   };
 
   const handleSelectDiscoveredGuild = (guild: GuildDiscovered) => {
@@ -407,6 +424,20 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                   {discoveryError && (
                     <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
                       {discoveryError}
+                    </div>
+                  )}
+
+                  {needsWorldSelection && (
+                    <div className="glass-surface space-y-2 rounded-lg border border-border p-3">
+                      <p className="text-xs text-muted-foreground">
+                        Este servidor possui múltiplos mundos. Selecione um mundo para listar as guildas dele.
+                      </p>
+                      <NativeSelect
+                        value={selectedWorldValue}
+                        onChange={handleWorldSelect}
+                        options={[{ value: "", label: "Selecione um mundo..." }, ...worldOptions]}
+                        className="w-full"
+                      />
                     </div>
                   )}
 

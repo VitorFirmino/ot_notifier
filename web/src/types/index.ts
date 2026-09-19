@@ -143,11 +143,18 @@ export interface InspectCharacterParams {
 
 export interface DiscoverGuildsPayload {
   url: string;
+  world?: string;
+}
+
+export interface WorldOption {
+  value: string;
+  label: string;
 }
 
 export interface DiscoverGuildsResponse {
   guilds: GuildDiscovered[];
   htmlLength?: number;
+  worldOptions?: WorldOption[];
 }
 
 export interface SystemStatsResponse {

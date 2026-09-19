@@ -1,4 +1,4 @@
-import { chromium, type Browser, type BrowserContext } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import pLimit from "p-limit";
 import { getRandomUserAgent } from "./utils/userAgentGenerator";
 import { saveBrowserCookiesToJar } from "./http/axiosClient";
@@ -114,6 +114,32 @@ class PlaywrightManager {
       );
     }
 
+    private async navigateAndWaitForContent(
+      page: Page,
+      url: string,
+      serverId?: string
+    ): Promise<void> {
+      await page.goto(url, {
+        waitUntil: "domcontentloaded",
+        timeout: 45000,
+      }).catch((gotoErr: unknown) => {
+        console.warn(`[${serverId || "default"}] Aviso em page.goto(${url}):`, gotoErr);
+      });
+
+      for (let attempt = 0; attempt < 15; attempt++) {
+        const title = await page.title();
+        if (!title.includes("Just a moment") && !title.includes("Um momento")) {
+          break;
+        }
+        await page.waitForTimeout(1000);
+      }
+
+      await page.waitForTimeout(2000);
+      await page.waitForLoadState("networkidle", { timeout: 8000 }).catch((networkIdleErr: unknown) => {
+        console.warn(`[${serverId || "default"}] Aviso ao esperar networkidle:`, networkIdleErr);
+      });
+    }
+
     private async fetchPageContentInternal(
       url: string,
       serverId?: string,
@@ -125,25 +151,7 @@ class PlaywrightManager {
         const page = await context.newPage();
 
         try {
-          await page.goto(url, {
-            waitUntil: "domcontentloaded",
-            timeout: 45000,
-          }).catch((gotoErr: unknown) => {
-            console.warn(`[${serverId || "default"}] Aviso em page.goto(${url}):`, gotoErr);
-          });
-
-          for (let attempt = 0; attempt < 15; attempt++) {
-            const title = await page.title();
-            if (!title.includes("Just a moment") && !title.includes("Um momento")) {
-              break;
-            }
-            await page.waitForTimeout(1000);
-          }
-
-          await page.waitForTimeout(2000);
-          await page.waitForLoadState("networkidle", { timeout: 8000 }).catch((networkIdleErr: unknown) => {
-            console.warn(`[${serverId || "default"}] Aviso ao esperar networkidle:`, networkIdleErr);
-          });
+          await this.navigateAndWaitForContent(page, url, serverId);
 
           const cookies = await context.cookies();
           if (cookies && cookies.length > 0) {
@@ -166,6 +174,73 @@ class PlaywrightManager {
         }
       } catch (fetchErr: unknown) {
         console.warn(`[${serverId || "default"}] Erro no PlaywrightManager ao acessar ${url}:`, fetchErr);
+        if (!pageClosed) {
+          await this.closeBrowser(url).catch((closeBrowserErr: unknown) => {
+            console.warn(`[${serverId || "default"}] Erro ao fechar navegador:`, closeBrowserErr);
+          });
+        }
+        return null;
+      }
+    }
+
+    async selectWorldAndFetch(
+      url: string,
+      worldValue: string,
+      serverId?: string,
+      customHeaders?: Record<string, string>
+    ): Promise<string | null> {
+      return this.navigationLimiter(() =>
+        this.selectWorldAndFetchInternal(url, worldValue, serverId, customHeaders)
+      );
+    }
+
+    private async selectWorldAndFetchInternal(
+      url: string,
+      worldValue: string,
+      serverId?: string,
+      customHeaders?: Record<string, string>
+    ): Promise<string | null> {
+      let pageClosed = false;
+      try {
+        const { context } = await this.getSession(url, customHeaders);
+        const page = await context.newPage();
+
+        try {
+          await this.navigateAndWaitForContent(page, url, serverId);
+
+          const select = page.locator("select").first();
+          if ((await select.count()) === 0) return null;
+
+          await select.selectOption(worldValue).catch((selectErr: unknown) => {
+            console.warn(`[${serverId || "default"}] Aviso ao selecionar mundo (${worldValue}):`, selectErr);
+          });
+
+          await page.waitForTimeout(2000);
+          await page.waitForLoadState("networkidle", { timeout: 8000 }).catch((networkIdleErr: unknown) => {
+            console.warn(`[${serverId || "default"}] Aviso ao esperar networkidle pós-seleção:`, networkIdleErr);
+          });
+
+          const cookies = await context.cookies();
+          if (cookies && cookies.length > 0) {
+            await saveBrowserCookiesToJar(cookies, url);
+          }
+
+          for (let attempt = 0; ; attempt++) {
+            try {
+              return await page.content();
+            } catch (contentErr: unknown) {
+              if (attempt === 2) throw contentErr;
+              await page.waitForTimeout(1500);
+            }
+          }
+        } finally {
+          pageClosed = true;
+          await page.close().catch((closeErr: unknown) => {
+            console.warn(`[${serverId || "default"}] Aviso ao fechar aba:`, closeErr);
+          });
+        }
+      } catch (fetchErr: unknown) {
+        console.warn(`[${serverId || "default"}] Erro no PlaywrightManager ao selecionar mundo em ${url}:`, fetchErr);
         if (!pageClosed) {
           await this.closeBrowser(url).catch((closeBrowserErr: unknown) => {
             console.warn(`[${serverId || "default"}] Erro ao fechar navegador:`, closeBrowserErr);

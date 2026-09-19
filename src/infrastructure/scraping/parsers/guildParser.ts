@@ -233,6 +233,37 @@ export const discoverGuildsFromList = (html: string, baseUrl: string): GuildDisc
   return guilds;
 };
 
+export type WorldSelectorOption = { value: string; label: string };
+
+const WORLD_LABEL_PATTERN = /mundo|world|server/i;
+const WORLD_PLACEHOLDER_PATTERN = /all\s*worlds?|todos(\s+os)?\s*mundos?/i;
+
+export const detectWorldSelector = (html: string): WorldSelectorOption[] | null => {
+  const $ = cheerio.load(html);
+  let found: WorldSelectorOption[] | null = null;
+
+  $("select").each((_, selectEl) => {
+    if (found) return;
+
+    const $select = $(selectEl);
+    const labelText = $select.closest("div").find("label").first().text().trim();
+    if (!WORLD_LABEL_PATTERN.test(labelText)) return;
+
+    const options: WorldSelectorOption[] = $select
+      .find("option")
+      .map((__, optEl) => {
+        const $option = $(optEl);
+        return { value: $option.attr("value") || "", label: $option.text().trim() };
+      })
+      .get()
+      .filter((option) => option.value && !WORLD_PLACEHOLDER_PATTERN.test(option.label));
+
+    if (options.length >= 2) found = options;
+  });
+
+  return found;
+};
+
 export const isGuildNotExistHtml = (html: string): boolean => {
   if (!html) return false;
   const lower = html.toLowerCase();

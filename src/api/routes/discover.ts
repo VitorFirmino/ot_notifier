@@ -1,5 +1,9 @@
 import type { FastifyInstance } from "fastify";
-import { discoverGuildRoute, normalizeBaseUrl } from "@infrastructure/scraping/utils/guildRouteDiscovery";
+import {
+  discoverGuildRoute,
+  discoverGuildsForWorld,
+  normalizeBaseUrl,
+} from "@infrastructure/scraping/utils/guildRouteDiscovery";
 import { LoginRequiredError } from "@infrastructure/scraping/utils/loginRequiredDetector";
 import type { DiscoverGuildsPayload } from "@shared/types/index";
 import { assertPublicUrlOrReply, parseOrReply } from "../validation";
@@ -16,8 +20,10 @@ export const registerDiscoverRoutes = (app: FastifyInstance): void => {
     if (!(await assertPublicUrlOrReply(targetUrl, reply))) return;
 
     try {
-      const { guilds, html } = await discoverGuildRoute(targetUrl, request.userId);
-      return sendSuccess(reply, { guilds, htmlLength: html.length });
+      const { guilds, html, worldOptions } = body.world
+        ? await discoverGuildsForWorld(targetUrl, body.world)
+        : await discoverGuildRoute(targetUrl, request.userId);
+      return sendSuccess(reply, { guilds, htmlLength: html.length, worldOptions });
     } catch (err: unknown) {
       if (err instanceof LoginRequiredError) {
         return sendError(reply, 401, err.message, {

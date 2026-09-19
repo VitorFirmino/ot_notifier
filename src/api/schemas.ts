@@ -39,6 +39,7 @@ export const testWebhookBodySchema = z.object({
 
 export const discoverGuildsBodySchema = z.object({
   url: requiredString("URL é obrigatória."),
+  world: optionalString,
 });
 
 export const proxyImageQuerySchema = z.object({

@@ -60,12 +60,12 @@ export const api = {
     return await unwrapData(res);
   },
 
-  async discoverGuilds(url: string): Promise<DiscoverGuildsResponse> {
+  async discoverGuilds(url: string, world?: string): Promise<DiscoverGuildsResponse> {
     const res = await fetch(`${API_BASE}/discover`, {
       ...FETCH_DEFAULTS,
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify(world ? { url, world } : { url }),
     });
     if (!res.ok) {
       const data = await safeParseJson(res);
