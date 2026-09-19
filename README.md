@@ -11,7 +11,7 @@
   <img alt="Discord" src="https://img.shields.io/badge/Discord-Webhooks-5865F2?style=flat-square&logo=discord&logoColor=white" />
   <img alt="Playwright" src="https://img.shields.io/badge/Playwright-E2E-2EAD33?style=flat-square&logo=playwright&logoColor=white" />
   <img alt="Docker" src="https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white" />
-  <img alt="License" src="https://img.shields.io/badge/License-ISC-blue?style=flat-square" />
+  <img alt="License" src="https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-blue?style=flat-square" />
 </p>
 
 <p align="center">
@@ -360,7 +360,7 @@ O pipeline (`.github/workflows/ci.yml`) roda a cada push/PR: type-check + lint +
 
 ## 📝 Licença
 
-Este projeto está sob a licença ISC.
+Este projeto está sob a [PolyForm Noncommercial License 1.0.0](LICENSE) — o código é aberto para leitura, estudo e uso não-comercial (pessoal, educacional, pesquisa), mas **uso comercial não é permitido** sem uma licença separada com o autor.
 
 ---
 

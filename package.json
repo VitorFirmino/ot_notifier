@@ -28,8 +28,8 @@
     "loadtest:wrk:write": "bash loadtest/run-wrk-write.sh"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Vitor Firmino",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "description": "",
   "dependencies": {
     "@bull-board/api": "^9.8.0",
