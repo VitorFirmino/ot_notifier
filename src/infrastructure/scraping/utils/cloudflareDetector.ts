@@ -41,6 +41,21 @@ export const detectCloudflareFromResponse = (error: AxiosError | null): boolean 
   return false;
 };
 
+const BLOCK_PAGE_INDICATORS = [
+  "attention required! | cloudflare",
+  "error 1020",
+  "access denied | cloudflare",
+  "you have been blocked",
+  "sorry, you have been blocked",
+];
+
+export const isCloudflareBlockPage = (html: string): boolean => {
+  if (!html) return false;
+
+  const htmlLower = html.toLowerCase();
+  return BLOCK_PAGE_INDICATORS.some((indicator) => htmlLower.includes(indicator));
+};
+
 export const detectCloudflareFromHtml = (html: string): boolean => {
   if (!html) return false;
 

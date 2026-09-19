@@ -6,6 +6,7 @@ import { getProxyConfig, getProxyConfigForSession } from "./utils/proxyConfig";
 import { solveCloudflareChallenge } from "./utils/capsolverClient";
 import { acquireProxyForDomain, releasePinnedProxy } from "./utils/proxySessionManager";
 import { getCachedClearance, saveClearance, invalidateClearance } from "./utils/clearanceCache";
+import { isCloudflareBlockPage } from "./utils/cloudflareDetector";
 
 type Session = {
   browser: Browser;
@@ -241,7 +242,15 @@ class PlaywrightManager {
         }
       }
 
-      await this.harvestClearanceCookie(page, url, proxySessionId);
+      const blocked = isCloudflareBlockPage(await page.content().catch(() => ""));
+      if (blocked) {
+        const domain = new URL(url).hostname;
+        console.warn(`[${serverId || "default"}] IP bloqueado por ${domain}, rotacionando sessão de proxy.`);
+        await releasePinnedProxy(domain);
+        await invalidateClearance(domain);
+      } else {
+        await this.harvestClearanceCookie(page, url, proxySessionId);
+      }
 
       await page.waitForTimeout(2000);
       await page.waitForLoadState("networkidle", { timeout: networkIdleTimeoutMs }).catch((networkIdleErr: unknown) => {
