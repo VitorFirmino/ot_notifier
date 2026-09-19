@@ -165,6 +165,35 @@ class PlaywrightManager {
       );
     }
 
+    private async harvestClearanceCookie(
+      page: Page,
+      url: string,
+      proxyEndpoint?: string | null
+    ): Promise<void> {
+      const domain = new URL(url).hostname;
+
+      try {
+        const cookies = await page.context().cookies(url);
+        const clearance = cookies.find((cookie) => cookie.name === "cf_clearance");
+        if (!clearance?.value) return;
+
+        const cached = await getCachedClearance(domain);
+        if (cached?.cfClearance === clearance.value) return;
+
+        const userAgent = await page.evaluate(() => navigator.userAgent);
+
+        await saveClearance(domain, {
+          cfClearance: clearance.value,
+          userAgent,
+          proxyEndpoint: proxyEndpoint ?? null,
+          exitIp: null,
+          solvedAt: Date.now(),
+        });
+      } catch (harvestErr: unknown) {
+        console.warn(`[${domain}] Falha ao guardar cf_clearance do navegador:`, harvestErr);
+      }
+    }
+
     private async navigateAndWaitForContent(
       page: Page,
       url: string,
@@ -214,6 +243,8 @@ class PlaywrightManager {
           await releasePinnedProxy(domain);
         }
       }
+
+      await this.harvestClearanceCookie(page, url, proxyEndpoint);
 
       await page.waitForTimeout(2000);
       await page.waitForLoadState("networkidle", { timeout: networkIdleTimeoutMs }).catch((networkIdleErr: unknown) => {
