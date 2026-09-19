@@ -1,0 +1,437 @@
+import { lazy, Suspense, useState } from "react";
+import { useLocation, useNavigate, matchPath } from "react-router-dom";
+import { Sidebar } from "@components/Sidebar";
+import { TopBar } from "@components/TopBar";
+import { StatCards } from "@components/StatCards";
+import { ServerCard, ServerCardSkeleton } from "@components/ServerCard";
+import type { ServerConfig, ActivityEvent, SystemStats } from "@types";
+import { CheckCircle2, AlertCircle } from "lucide-react";
+import { useServers } from "@hooks/useServers";
+import { useEvents, EVENTS_QUERY_KEY } from "@hooks/useEvents";
+import {
+  useToggleServerStatus,
+  useSyncServer,
+  useTestWebhook,
+  useDeleteServer,
+  useAddServer,
+  useUpdateServer,
+} from "@hooks/useServerMutations";
+import { useQueryClient } from "@tanstack/react-query";
+import { LoginRequiredApiError } from "@services/api";
+
+const ServerConfigPanel = lazy(() =>
+  import("@components/ServerConfigPanel").then((mod) => ({ default: mod.ServerConfigPanel }))
+);
+const ServerDetailView = lazy(() =>
+  import("@components/ServerDetailView").then((mod) => ({ default: mod.ServerDetailView }))
+);
+const LiveFeed = lazy(() => import("@components/LiveFeed").then((mod) => ({ default: mod.LiveFeed })));
+const CharacterSearch = lazy(() =>
+  import("@components/CharacterSearch").then((mod) => ({ default: mod.CharacterSearch }))
+);
+const GlobalSettingsView = lazy(() =>
+  import("@components/GlobalSettingsView").then((mod) => ({ default: mod.GlobalSettingsView }))
+);
+const ServerModal = lazy(() => import("@components/ServerModal").then((mod) => ({ default: mod.ServerModal })));
+const ConfirmDeleteServerDialog = lazy(() =>
+  import("@components/ConfirmDeleteServerDialog").then((mod) => ({ default: mod.ConfirmDeleteServerDialog }))
+);
+
+type TabId = "dashboard" | "servers" | "characters" | "feed" | "settings";
+
+const TAB_PATHS: Record<TabId, string> = {
+  dashboard: "/app",
+  servers: "/app/servers",
+  characters: "/app/characters",
+  feed: "/app/feed",
+  settings: "/app/settings",
+};
+
+const getTabFromPath = (pathname: string): TabId => {
+  const match = (Object.entries(TAB_PATHS) as [TabId, string][]).find(([, path]) => path === pathname);
+  if (match) return match[0];
+  if (pathname.startsWith("/app/servers/")) return "servers";
+  return "dashboard";
+};
+
+const computeStats = (servers: ServerConfig[], events: ActivityEvent[]): SystemStats => {
+  const active = servers.filter((server) => server.guild.enabled !== false && server.isWorking !== false);
+  const totalCharacters = active.reduce((sum, server) => sum + Object.keys(server.characters || {}).length, 0);
+  const onlineCharacters = active.reduce(
+    (sum, server) => sum + Object.values(server.characters || {}).filter((character) => character.isOnline === true).length,
+    0
+  );
+
+  const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+  const notifications24h = events.filter(
+    (evt) => evt.webhookSent && new Date(evt.timestamp).getTime() >= oneDayAgo
+  ).length;
+
+  return {
+    activeWorkers: active.length,
+    monitoredGuilds: servers.length,
+    totalCharacters,
+    onlineCharacters,
+    notifications24h,
+    cloudflareBypasses: servers.filter((server) => server.hasCloudflare).length,
+  };
+};
+
+const SectionFallback: React.FC = () => (
+  <div className="h-40 w-full animate-pulse rounded-xl border border-border bg-secondary/40" />
+);
+
+export default function AuthenticatedApp() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = getTabFromPath(location.pathname);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const handleTabChange = (tab: TabId) => {
+    navigate(TAB_PATHS[tab]);
+    setIsMobileNavOpen(false);
+  };
+  const detailServerId = matchPath("/app/servers/:serverId", location.pathname)?.params.serverId;
+
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const queryClient = useQueryClient();
+  const serversQuery = useServers();
+  const eventsQuery = useEvents();
+
+  const servers = serversQuery.data ?? [];
+  const events = eventsQuery.data ?? [];
+  const stats = computeStats(servers, events);
+  const isApiOffline = serversQuery.isError;
+  const isLoadingServers = serversQuery.isLoading;
+  const isLoadingEvents = eventsQuery.isLoading;
+
+  const toggleStatusMutation = useToggleServerStatus();
+  const syncMutation = useSyncServer();
+  const testWebhookMutation = useTestWebhook();
+  const deleteMutation = useDeleteServer();
+  const addServerMutation = useAddServer();
+  const updateServerMutation = useUpdateServer();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingServer, setEditingServer] = useState<ServerConfig | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+  const showToast = (text: string, type: 'success' | 'info' | 'error' = 'success') => {
+    setToastMessage({ text, type });
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const handleToggleStatus = (serverId: string) => {
+    const target = servers.find((server) => server.serverId === serverId);
+    if (!target) return;
+
+    const newStatus = !(target.guild.enabled !== false);
+    toggleStatusMutation.mutate(
+      { serverId, enabled: newStatus },
+      {
+        onSuccess: () =>
+          showToast(`Servidor ${target.serverName} foi ${newStatus ? "ativado" : "pausado"}.`, "info"),
+        onError: () =>
+          showToast(`Falha ao atualizar ${target.serverName} no backend. Nada foi alterado.`, "error"),
+      }
+    );
+  };
+
+  const handleTestScrape = (serverId: string) => {
+    const targetServer = servers.find((server) => server.serverId === serverId);
+    if (!targetServer) return;
+
+    syncMutation.mutate(serverId, {
+      onSuccess: (updatedConfig) => {
+        showToast(`✅ Scraping concluído em ${targetServer.serverName}! Membros e estáticas atualizadas com sucesso.`, "success");
+
+        const newEvent: ActivityEvent = {
+          id: `evt-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          serverId: targetServer.serverId,
+          serverName: targetServer.serverName,
+          type: "guild_sync",
+          details: `Varredura manual executada (${Object.keys(updatedConfig.characters || {}).length} membros)`,
+          webhookSent: false,
+        };
+        queryClient.setQueryData<ActivityEvent[]>(EVENTS_QUERY_KEY, (old) => [newEvent, ...(old ?? [])]);
+      },
+      onError: (err: unknown) => {
+        const message = err instanceof Error ? err.message : "Erro desconhecido ao sincronizar";
+        showToast(`❌ Falha ao testar ${targetServer.serverName}: ${message}`, "error");
+      },
+    });
+  };
+  const testingScrapeId = syncMutation.isPending ? (syncMutation.variables ?? null) : null;
+
+  const handleTestWebhook = (serverId: string) => {
+    const targetServer = servers.find((server) => server.serverId === serverId);
+    if (!targetServer) return;
+
+    testWebhookMutation.mutate(serverId, {
+      onSuccess: () => showToast(`✅ Mensagem de teste enviada! Confira o canal Discord de ${targetServer.serverName}.`, "success"),
+      onError: (err: unknown) => {
+        const message = err instanceof Error ? err.message : "Erro desconhecido ao testar webhook";
+        showToast(`❌ Falha ao testar webhook de ${targetServer.serverName}: ${message}`, "error");
+      },
+    });
+  };
+  const testingWebhookId = testWebhookMutation.isPending ? (testWebhookMutation.variables ?? null) : null;
+
+  const handleRefreshAll = async () => {
+    setIsRefreshing(true);
+    const [serversResult, eventsResult] = await Promise.allSettled([serversQuery.refetch(), eventsQuery.refetch()]);
+    setIsRefreshing(false);
+    const success = serversResult.status === "fulfilled" && eventsResult.status === "fulfilled";
+    if (success) {
+      showToast("Dados atualizados a partir do backend.", "success");
+    } else {
+      showToast("Falha ao atualizar: API indisponível.", "error");
+    }
+  };
+
+  const handleOpenAddModal = () => {
+    setEditingServer(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (server: ServerConfig) => {
+    setEditingServer(server);
+    setIsModalOpen(true);
+  };
+
+  const handleRequestDeleteServer = (serverId: string) => {
+    setDeleteTargetId(serverId);
+  };
+
+  const handleConfirmDeleteServer = (serverId: string) => {
+    setDeleteTargetId(null);
+    deleteMutation.mutate(serverId, {
+      onSuccess: () => {
+        showToast("Servidor removido do backend com sucesso.", "info");
+        if (detailServerId === serverId) navigate("/app/servers");
+      },
+      onError: () => showToast("Falha ao remover o servidor no backend. Ele continua cadastrado.", "error"),
+    });
+  };
+
+  const handleSaveServer = async (serverData: Partial<ServerConfig>): Promise<void> => {
+    if (editingServer) {
+      try {
+        await updateServerMutation.mutateAsync({ serverId: editingServer.serverId, payload: serverData });
+        showToast(`Configurações de ${serverData.serverName} salvas no backend.`, "success");
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Erro desconhecido ao salvar";
+        showToast(`❌ Falha ao salvar ${serverData.serverName}: ${message}`, "error");
+        throw err;
+      }
+    } else {
+      try {
+        const newServer = await addServerMutation.mutateAsync({
+          url: serverData.guild?.url || "",
+          name: serverData.serverName,
+          logoUrl: serverData.guild?.logoUrl,
+          webhookUrl: serverData.guild?.webhookUrl,
+          kills: serverData.guild?.kills,
+          world: serverData.guild?.world,
+        });
+        showToast(`Novo servidor ${newServer.serverName} cadastrado no backend!`, "success");
+      } catch (err: unknown) {
+        if (!(err instanceof LoginRequiredApiError)) {
+          const message = err instanceof Error ? err.message : "Erro ao adicionar servidor";
+          showToast(message, "error");
+        }
+        throw err;
+      }
+    }
+  };
+
+  const filteredServers = servers.filter((server) =>
+    !searchTerm ||
+    server.serverName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    server.serverId.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="dashboard-layout">
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <div className="animate-drift absolute -top-24 left-72 h-[36rem] w-[36rem] rounded-full bg-primary/20 blur-3xl" />
+        <div className="animate-drift absolute top-1/4 -right-40 h-[32rem] w-[32rem] rounded-full bg-warning/15 blur-3xl [animation-delay:-8s]" />
+        <div className="animate-drift absolute -bottom-32 left-1/3 h-[32rem] w-[32rem] rounded-full bg-success/15 blur-3xl [animation-delay:-16s]" />
+      </div>
+
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 animate-fade-in bg-slate-900 border border-white/15 backdrop-blur-xl px-4 py-3 rounded-lg text-white font-medium text-xs shadow-2xl flex items-center gap-2">
+          {toastMessage.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+          {toastMessage.type === 'info' && <AlertCircle className="w-4 h-4 text-blue-400" />}
+          {toastMessage.type === 'error' && <AlertCircle className="w-4 h-4 text-rose-400" />}
+          <span>{toastMessage.text}</span>
+        </div>
+      )}
+
+      {isApiOffline && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-fade-in bg-rose-950/90 border border-rose-500/40 backdrop-blur-xl px-4 py-2.5 rounded-lg text-rose-200 font-medium text-xs shadow-2xl flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-rose-400" />
+          <span>Não foi possível conectar à API. Os dados exibidos podem estar desatualizados.</span>
+        </div>
+      )}
+
+      {isMobileNavOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/60 lg:hidden"
+          onClick={() => setIsMobileNavOpen(false)}
+        />
+      )}
+
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        serverCount={servers.length}
+        isLoadingServers={isLoadingServers}
+        isMobileOpen={isMobileNavOpen}
+      />
+
+      <div className="main-content">
+        <TopBar
+          activeTab={activeTab}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          onAddServer={handleOpenAddModal}
+          onRefreshAll={handleRefreshAll}
+          isRefreshing={isRefreshing}
+          hasServers={servers.length > 0}
+          onOpenMobileNav={() => setIsMobileNavOpen(true)}
+        />
+
+        <main className="p-6 flex-1 space-y-6">
+          {detailServerId ? (
+            <Suspense fallback={<SectionFallback />}>
+              <ServerDetailView
+                server={servers.find((server) => server.serverId === detailServerId)}
+                events={events.filter((event) => event.serverId === detailServerId)}
+                isLoadingEvents={isLoadingEvents}
+                onToggleStatus={handleToggleStatus}
+                onTestScrape={handleTestScrape}
+                onTestWebhook={handleTestWebhook}
+                onEdit={handleOpenEditModal}
+                onDelete={handleRequestDeleteServer}
+                isTestingScrape={testingScrapeId === detailServerId}
+                isTestingWebhook={testingWebhookId === detailServerId}
+              />
+            </Suspense>
+          ) : (
+          <>
+          {activeTab === "dashboard" && (
+            <div className="space-y-6 animate-fade-in">
+              <StatCards stats={stats} isLoading={isLoadingServers} />
+
+              <section className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-white tracking-tight">
+                      Servidores Open Tibia Monitored{isLoadingServers ? "" : ` (${filteredServers.length})`}
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Gerenciamento individual de guildas e parâmetros de scraping
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {isLoadingServers
+                    ? Array.from({ length: 3 }).map((_, skeletonIndex) => (
+                        <ServerCardSkeleton key={skeletonIndex} />
+                      ))
+                    : filteredServers.map((server) => (
+                        <ServerCard
+                          key={server.serverId}
+                          server={server}
+                          onToggleStatus={handleToggleStatus}
+                          onTestScrape={handleTestScrape}
+                          onTestWebhook={handleTestWebhook}
+                          onEdit={handleOpenEditModal}
+                          onDelete={handleRequestDeleteServer}
+                          isTestingScrape={testingScrapeId === server.serverId}
+                          isTestingWebhook={testingWebhookId === server.serverId}
+                        />
+                      ))}
+                </div>
+              </section>
+
+              <Suspense fallback={<SectionFallback />}>
+                <CharacterSearch servers={servers} isLoading={isLoadingServers} initialSearch={searchTerm} />
+              </Suspense>
+
+              <Suspense fallback={<SectionFallback />}>
+                <LiveFeed events={events} servers={servers} isLoading={isLoadingEvents} initialSearch={searchTerm} />
+              </Suspense>
+            </div>
+          )}
+
+          {activeTab === "servers" && (
+            <div className="space-y-6 animate-fade-in">
+              <Suspense fallback={<SectionFallback />}>
+                <ServerConfigPanel
+                  servers={filteredServers}
+                  isLoading={isLoadingServers}
+                  onToggleStatus={handleToggleStatus}
+                  onTestScrape={handleTestScrape}
+                  onTestWebhook={handleTestWebhook}
+                  onEditServer={handleOpenEditModal}
+                  onDeleteServer={handleRequestDeleteServer}
+                  onAddServer={handleOpenAddModal}
+                  testingServerId={testingScrapeId}
+                  testingWebhookId={testingWebhookId}
+                />
+              </Suspense>
+            </div>
+          )}
+
+          {activeTab === "characters" && (
+            <div className="space-y-6 animate-fade-in">
+              <Suspense fallback={<SectionFallback />}>
+                <CharacterSearch servers={servers} isLoading={isLoadingServers} initialSearch={searchTerm} />
+              </Suspense>
+            </div>
+          )}
+
+          {activeTab === "feed" && (
+            <div className="space-y-6 animate-fade-in">
+              <Suspense fallback={<SectionFallback />}>
+                <LiveFeed events={events} servers={servers} isLoading={isLoadingEvents} initialSearch={searchTerm} />
+              </Suspense>
+            </div>
+          )}
+
+          {activeTab === "settings" && (
+            <Suspense fallback={<SectionFallback />}>
+              <GlobalSettingsView />
+            </Suspense>
+          )}
+          </>
+          )}
+        </main>
+      </div>
+
+      <Suspense fallback={null}>
+        <ServerModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSaveServer}
+          initialServer={editingServer}
+        />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <ConfirmDeleteServerDialog
+          server={servers.find((server) => server.serverId === deleteTargetId) ?? null}
+          onCancel={() => setDeleteTargetId(null)}
+          onConfirm={handleConfirmDeleteServer}
+        />
+      </Suspense>
+    </div>
+  );
+}
