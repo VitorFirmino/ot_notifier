@@ -94,6 +94,29 @@ describe("deathHandler", () => {
         expect.objectContaining({ type: "death", webhookSent: false })
       );
     });
+
+    it("resolves without waiting for a slow webhook, so a Discord rate-limit burst can never block saving character state", async () => {
+      let releaseWebhook: (value: boolean) => void = () => {};
+      mockedSendDeathWebhook.mockImplementationOnce(
+        () => new Promise<boolean>((resolve) => { releaseWebhook = resolve; })
+      );
+
+      const result = await Promise.race([
+        handleDeath({
+          webhookUrl: mockWebhookUrl,
+          serverId: SERVER_ID,
+          serverName: SERVER_NAME,
+          name: "AAAzin",
+          death,
+        }),
+        new Promise<"timed-out">((resolve) => setTimeout(() => resolve("timed-out"), 50)),
+      ]);
+
+      expect(result).not.toBe("timed-out");
+      expect(result).toMatchObject({ last_death: death });
+
+      releaseWebhook(true);
+    });
   });
 
   describe("isNewDeath", () => {

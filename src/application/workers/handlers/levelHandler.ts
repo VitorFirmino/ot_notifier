@@ -45,13 +45,10 @@ const createLevelUpUpdate = (
   };
 };
 
-export const handleLevelUp = async (params: LevelUpParams): Promise<CharacterInfo> => {
-  const { webhookUrl, serverId, serverName, name, currentLevel, lastLevel, info } = params;
-  const { newStreak, nextMilestone, ...updates } = createLevelUpUpdate(
-    currentLevel,
-    lastLevel,
-    info
-  );
+const notifyLevelUp = async (
+  params: LevelUpParams & { newStreak: number; nextMilestone: number | undefined }
+): Promise<void> => {
+  const { webhookUrl, serverId, serverName, name, currentLevel, lastLevel, newStreak, nextMilestone } = params;
 
   let webhookSent = false;
   try {
@@ -78,6 +75,19 @@ export const handleLevelUp = async (params: LevelUpParams): Promise<CharacterInf
     milestone: nextMilestone,
     webhookSent,
   });
+};
+
+export const handleLevelUp = async (params: LevelUpParams): Promise<CharacterInfo> => {
+  const { info } = params;
+  const { newStreak, nextMilestone, ...updates } = createLevelUpUpdate(
+    params.currentLevel,
+    params.lastLevel,
+    info
+  );
+
+  notifyLevelUp({ ...params, newStreak, nextMilestone }).catch((error: unknown) => {
+    console.error(`Erro ao notificar level up de ${params.name}:`, error);
+  });
 
   return {
     ...info,
@@ -85,7 +95,7 @@ export const handleLevelUp = async (params: LevelUpParams): Promise<CharacterInf
   };
 };
 
-export const handleLevelDown = async (params: LevelDownParams): Promise<Partial<CharacterInfo>> => {
+const notifyLevelDown = async (params: LevelDownParams): Promise<void> => {
   const { webhookUrl, serverId, serverName, name, currentLevel } = params;
 
   let webhookSent = false;
@@ -109,6 +119,14 @@ export const handleLevelDown = async (params: LevelDownParams): Promise<Partial<
     characterName: name,
     level: currentLevel,
     webhookSent,
+  });
+};
+
+export const handleLevelDown = async (params: LevelDownParams): Promise<Partial<CharacterInfo>> => {
+  const { currentLevel } = params;
+
+  notifyLevelDown(params).catch((error: unknown) => {
+    console.error(`Erro ao notificar level down de ${params.name}:`, error);
   });
 
   return {

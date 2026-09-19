@@ -10,7 +10,7 @@ interface DeathParams {
   death: DeathInfo;
 }
 
-export const handleDeath = async (params: DeathParams): Promise<Partial<CharacterInfo>> => {
+const notifyDeath = async (params: DeathParams): Promise<void> => {
   const { webhookUrl, serverId, serverName, name, death } = params;
 
   let webhookSent = false;
@@ -36,6 +36,14 @@ export const handleDeath = async (params: DeathParams): Promise<Partial<Characte
     killers: death.killers,
     details: death.deathText,
     webhookSent,
+  });
+};
+
+export const handleDeath = async (params: DeathParams): Promise<Partial<CharacterInfo>> => {
+  const { death } = params;
+
+  notifyDeath(params).catch((error: unknown) => {
+    console.error(`Erro ao notificar morte de ${params.name}:`, error);
   });
 
   return { last_death: death };

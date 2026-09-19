@@ -139,6 +139,31 @@ describe("LevelHandler", () => {
       expect(result.up_streak).toBe(6);
     });
 
+    it("resolves without waiting for a slow webhook, so a Discord rate-limit burst can never block saving character state", async () => {
+      let releaseWebhook: (value: boolean) => void = () => {};
+      mockedSendWebhook.mockImplementationOnce(
+        () => new Promise<boolean>((resolve) => { releaseWebhook = resolve; })
+      );
+
+      const result = await Promise.race([
+        handleLevelUp({
+          webhookUrl: mockWebhookUrl,
+          serverId: SERVER_ID,
+          serverName: SERVER_NAME,
+          name: "SrGUSTAVO",
+          currentLevel: 151,
+          lastLevel: 150,
+          info: mockCharacter,
+        }),
+        new Promise<"timed-out">((resolve) => setTimeout(() => resolve("timed-out"), 50)),
+      ]);
+
+      expect(result).not.toBe("timed-out");
+      expect(result).toMatchObject({ last_level: 151, up_streak: 6 });
+
+      releaseWebhook(true);
+    });
+
     it("should record a level_up event with webhookSent true on success", async () => {
       mockedSendWebhook.mockResolvedValueOnce(true);
 
@@ -254,6 +279,29 @@ describe("LevelHandler", () => {
 
       expect(result.last_level).toBe(99);
       expect(result.up_streak).toBe(0);
+    });
+
+    it("resolves without waiting for a slow webhook, so a Discord rate-limit burst can never block saving character state", async () => {
+      let releaseWebhook: (value: boolean) => void = () => {};
+      mockedSendWebhook.mockImplementationOnce(
+        () => new Promise<boolean>((resolve) => { releaseWebhook = resolve; })
+      );
+
+      const result = await Promise.race([
+        handleLevelDown({
+          webhookUrl: mockWebhookUrl,
+          serverId: SERVER_ID,
+          serverName: SERVER_NAME,
+          name: "TestChar",
+          currentLevel: 99,
+        }),
+        new Promise<"timed-out">((resolve) => setTimeout(() => resolve("timed-out"), 50)),
+      ]);
+
+      expect(result).not.toBe("timed-out");
+      expect(result).toMatchObject({ last_level: 99, up_streak: 0 });
+
+      releaseWebhook(true);
     });
 
     it("should record a level_down event with webhookSent reflecting the send result", async () => {
