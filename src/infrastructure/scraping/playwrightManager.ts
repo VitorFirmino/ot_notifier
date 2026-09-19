@@ -8,6 +8,11 @@ type Session = {
   context: BrowserContext;
 };
 
+export type NavigationTimeouts = {
+  gotoTimeoutMs?: number;
+  networkIdleTimeoutMs?: number;
+};
+
 const MAX_CONCURRENT_ANTIBOT_NAVIGATIONS = 4;
 
 class PlaywrightManager {
@@ -107,21 +112,26 @@ class PlaywrightManager {
     async fetchPageContent(
       url: string,
       serverId?: string,
-      customHeaders?: Record<string, string>
+      customHeaders?: Record<string, string>,
+      navigationOptions?: NavigationTimeouts
     ): Promise<string | null> {
       return this.navigationLimiter(() =>
-        this.fetchPageContentInternal(url, serverId, customHeaders)
+        this.fetchPageContentInternal(url, serverId, customHeaders, navigationOptions)
       );
     }
 
     private async navigateAndWaitForContent(
       page: Page,
       url: string,
-      serverId?: string
+      serverId?: string,
+      navigationOptions?: NavigationTimeouts
     ): Promise<void> {
+      const gotoTimeoutMs = navigationOptions?.gotoTimeoutMs ?? 45000;
+      const networkIdleTimeoutMs = navigationOptions?.networkIdleTimeoutMs ?? 8000;
+
       await page.goto(url, {
         waitUntil: "domcontentloaded",
-        timeout: 45000,
+        timeout: gotoTimeoutMs,
       }).catch((gotoErr: unknown) => {
         console.warn(`[${serverId || "default"}] Aviso em page.goto(${url}):`, gotoErr);
       });
@@ -135,7 +145,7 @@ class PlaywrightManager {
       }
 
       await page.waitForTimeout(2000);
-      await page.waitForLoadState("networkidle", { timeout: 8000 }).catch((networkIdleErr: unknown) => {
+      await page.waitForLoadState("networkidle", { timeout: networkIdleTimeoutMs }).catch((networkIdleErr: unknown) => {
         console.warn(`[${serverId || "default"}] Aviso ao esperar networkidle:`, networkIdleErr);
       });
     }
@@ -143,7 +153,8 @@ class PlaywrightManager {
     private async fetchPageContentInternal(
       url: string,
       serverId?: string,
-      customHeaders?: Record<string, string>
+      customHeaders?: Record<string, string>,
+      navigationOptions?: NavigationTimeouts
     ): Promise<string | null> {
       let pageClosed = false;
       try {
@@ -151,7 +162,7 @@ class PlaywrightManager {
         const page = await context.newPage();
 
         try {
-          await this.navigateAndWaitForContent(page, url, serverId);
+          await this.navigateAndWaitForContent(page, url, serverId, navigationOptions);
 
           const cookies = await context.cookies();
           if (cookies && cookies.length > 0) {
@@ -187,10 +198,11 @@ class PlaywrightManager {
       url: string,
       worldValue: string,
       serverId?: string,
-      customHeaders?: Record<string, string>
+      customHeaders?: Record<string, string>,
+      navigationOptions?: NavigationTimeouts
     ): Promise<string | null> {
       return this.navigationLimiter(() =>
-        this.selectWorldAndFetchInternal(url, worldValue, serverId, customHeaders)
+        this.selectWorldAndFetchInternal(url, worldValue, serverId, customHeaders, navigationOptions)
       );
     }
 
@@ -198,7 +210,8 @@ class PlaywrightManager {
       url: string,
       worldValue: string,
       serverId?: string,
-      customHeaders?: Record<string, string>
+      customHeaders?: Record<string, string>,
+      navigationOptions?: NavigationTimeouts
     ): Promise<string | null> {
       let pageClosed = false;
       try {
@@ -206,7 +219,7 @@ class PlaywrightManager {
         const page = await context.newPage();
 
         try {
-          await this.navigateAndWaitForContent(page, url, serverId);
+          await this.navigateAndWaitForContent(page, url, serverId, navigationOptions);
 
           const select = page.locator("select").first();
           if ((await select.count()) === 0) return null;
@@ -216,7 +229,8 @@ class PlaywrightManager {
           });
 
           await page.waitForTimeout(2000);
-          await page.waitForLoadState("networkidle", { timeout: 8000 }).catch((networkIdleErr: unknown) => {
+          const networkIdleTimeoutMs = navigationOptions?.networkIdleTimeoutMs ?? 8000;
+          await page.waitForLoadState("networkidle", { timeout: networkIdleTimeoutMs }).catch((networkIdleErr: unknown) => {
             console.warn(`[${serverId || "default"}] Aviso ao esperar networkidle pós-seleção:`, networkIdleErr);
           });
 

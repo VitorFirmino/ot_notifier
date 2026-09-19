@@ -7,6 +7,8 @@ import { getSiteCredential } from "@infrastructure/storage/siteCredentials";
 import type { GuildDiscovered, WorldOption } from "../../../shared/types/index";
 
 const CANDIDATE_TIMEOUT_MS = 8000;
+const DISCOVERY_BUDGET_MS = 50000;
+const BROWSER_PROBE_TIMEOUTS = { gotoTimeoutMs: 15000, networkIdleTimeoutMs: 5000 };
 
 const fetchCandidate = async (
   url: string,
@@ -85,6 +87,8 @@ export const discoverGuildRoute = async (rawUrl: string, userId?: string): Promi
     worldOptions: WorldOption[] | null;
   };
 
+  const deadline = Date.now() + DISCOVERY_BUDGET_MS;
+
   const runPass = async (
     fetchOne: (candidateUrl: string) => Promise<{ html: string | null; statusCode?: number | null; errorCode?: string }>,
     candidateUrls: string[]
@@ -100,6 +104,8 @@ export const discoverGuildRoute = async (rawUrl: string, userId?: string): Promi
     };
 
     for (const candidateUrl of candidateUrls) {
+      if (Date.now() >= deadline) break;
+
       const result = await fetchOne(candidateUrl);
 
       if (!result.html) {
@@ -167,7 +173,12 @@ export const discoverGuildRoute = async (rawUrl: string, userId?: string): Promi
   if (axiosPass.sawForbidden) {
     const browserPass = await runPass(
       async (candidateUrl) => ({
-        html: await playwrightManager.fetchPageContent(candidateUrl, serverId, createRequestHeaders(origin)),
+        html: await playwrightManager.fetchPageContent(
+          candidateUrl,
+          serverId,
+          createRequestHeaders(origin),
+          BROWSER_PROBE_TIMEOUTS
+        ),
       }),
       uniqueCandidates
     );
@@ -221,13 +232,17 @@ export const discoverGuildsForWorld = async (
   });
 
   let weakMatch: { guilds: GuildDiscovered[]; html: string; url: string } | null = null;
+  const deadline = Date.now() + DISCOVERY_BUDGET_MS;
 
   for (const candidateUrl of uniqueCandidates) {
+    if (Date.now() >= deadline) break;
+
     const html = await playwrightManager.selectWorldAndFetch(
       candidateUrl,
       worldValue,
       serverId,
-      createRequestHeaders(origin)
+      createRequestHeaders(origin),
+      BROWSER_PROBE_TIMEOUTS
     );
     if (!html) continue;
 
