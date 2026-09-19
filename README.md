@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img alt="OT Notifier preview" src=".github/image.png" width="900" />
+  <img alt="Landing page do OT Notifier" src=".github/landing.png" width="900" />
 </p>
 
 ---
@@ -40,6 +40,20 @@ OT Notifier acompanha membros de guilds em múltiplos servidores de Open Tibia, 
 | **Rate limiting** | Controle de requisições por servidor (Bottleneck) |
 | **CLI interativa** | Gerenciamento completo de servidores via terminal |
 | **Docker** | Stack completa (orchestrator, API, painel, Postgres, Redis) com volumes persistentes |
+
+---
+
+## 📸 Capturas de tela
+
+<p align="center">
+  <img alt="Painel web do OT Notifier" src="landing/public/dashboard-preview.png" width="900" /><br />
+  <sub>Painel web (<code>web/</code>) — visão geral dos servidores monitorados</sub>
+</p>
+
+<p align="center">
+  <img alt="CLI do OT Notifier rodando no terminal" src=".github/image.png" width="700" /><br />
+  <sub>Monitoramento ao vivo no terminal (<code>pnpm dev</code>)</sub>
+</p>
 
 ---
 
