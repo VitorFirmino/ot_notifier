@@ -95,6 +95,56 @@ describe("deathParser", () => {
     });
   });
 
+  describe("TableContainer whose real table sits inside decorative shadow-border wrapper tables", () => {
+    const html = `
+      <div class="TableContainer">
+        <div class="CaptionContainer">
+          <div class="CaptionInnerContainer">
+            <div class="Text">Deaths</div>
+          </div>
+        </div>
+        <table class="Table5" cellpadding="0" cellspacing="0">
+          <tbody>
+            <tr>
+              <td>
+                <div class="InnerTableContainer">
+                  <table style="width:100%;">
+                    <tbody>
+                      <tr>
+                        <td>
+                          <table border="0" cellspacing="1" cellpadding="4" width="100%">
+                            <tr bgcolor="#F1E0C6">
+                              <td width="20%" align="center">19 Sep 2026, 13:22</td>
+                              <td>Killed at level <b>238</b> by <a href="?subtopic=characters&name=Rip+Mateo">Rip Mateo</a> and by grim reaper.</td>
+                            </tr>
+                            <tr bgcolor="#D4C0A1">
+                              <td width="20%" align="center">18 Sep 2026, 21:02</td>
+                              <td>Killed at level <b>235</b> by <a href="?subtopic=characters&name=Nocauso">Nocauso</a> and by grim reaper.</td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    it("extracts each death once, without merging rows from the wrapper tables", () => {
+      const $ = cheerio.load(html);
+      const deaths = extractAllDeaths($);
+
+      expect(deaths).toHaveLength(2);
+      expect(deaths[0]).toMatchObject({ level: 238, killers: ["Rip Mateo"] });
+      expect(deaths[0].time).toBe("19 Sep 2026, 13:22");
+      expect(deaths[1]).toMatchObject({ level: 235, killers: ["Nocauso"] });
+    });
+  });
+
   it("returns an empty array when there is no death table at all", () => {
     const $ = cheerio.load("<html><body><p>No deaths here.</p></body></html>");
     expect(extractAllDeaths($)).toEqual([]);

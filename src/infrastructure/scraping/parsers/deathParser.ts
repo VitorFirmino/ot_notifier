@@ -50,11 +50,11 @@ const findTableAfterDeathHeading = ($: cheerio.CheerioAPI): cheerio.Cheerio<AnyN
 };
 
 const parseDeathFromRow = ($: cheerio.CheerioAPI, row: ReturnType<typeof $>): DeathInfo | null => {
-  const cells = row.find("td");
+  const cells = row.children("td");
   if (cells.length < 2) return null;
 
-  const timeText = row.find("td").first().text().trim();
-  const deathCell = row.find("td").eq(1);
+  const timeText = cells.first().text().trim();
+  const deathCell = cells.eq(1);
   const deathText = deathCell.text().trim();
 
   if (!deathText) return null;
@@ -111,6 +111,10 @@ export const extractAllDeaths = ($: cheerio.CheerioAPI): DeathInfo[] => {
   if (allTables.length === 0) {
     allTables = findTableAfterDeathHeading($);
   }
+
+  if (allTables.length === 0) return [];
+
+  allTables = allTables.filter((_, el) => $(el).find("table").length === 0);
 
   if (allTables.length === 0) return [];
 
