@@ -1,44 +1,58 @@
-import { Layers, ShieldCheck, Webhook, Clock, Users, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { useFeatures } from "./hooks/use-features";
+import { ServersIcon } from "./icons/ServersIcon";
+import { RadarShieldIcon } from "./icons/RadarShieldIcon";
+import { WebhookIcon } from "./icons/WebhookIcon";
+import { HistoryIcon } from "./icons/HistoryIcon";
+import { GuildsIcon } from "./icons/GuildsIcon";
+import { IntervalIcon } from "./icons/IntervalIcon";
 
-const SIZE_CLASS: Record<string, string> = {
-  large: "sm:col-span-2",
-  small: "sm:col-span-1",
-};
-
-const ICONS: Record<string, LucideIcon> = {
-  "multi-servidor": Layers,
-  cloudflare: ShieldCheck,
-  webhook: Webhook,
-  historico: Clock,
-  "multi-guilda": Users,
-  intervalo: SlidersHorizontal,
+const FEATURE_ICON: Record<string, React.FC<React.SVGProps<SVGSVGElement>>> = {
+  "multi-servidor": ServersIcon,
+  cloudflare: RadarShieldIcon,
+  webhook: WebhookIcon,
+  historico: HistoryIcon,
+  "multi-guilda": GuildsIcon,
+  intervalo: IntervalIcon,
 };
 
 export const Features: React.FC = () => {
-  const { gridRef, features } = useFeatures();
+  const { sectionRef, stageRef, captionTitleRef, captionDescriptionRef, features } = useFeatures();
 
   return (
-    <section id="recursos" className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
-      <h2 className="mb-8 text-4xl">Recursos</h2>
-      <div ref={gridRef} className="grid grid-cols-1 gap-5 sm:grid-cols-4">
+    <section
+      ref={sectionRef}
+      id="recursos"
+      className="mx-auto flex max-w-6xl flex-col items-center px-5 py-24 sm:px-8"
+    >
+      <h2 className="mb-16 text-5xl">Recursos</h2>
+
+      <div
+        ref={stageRef}
+        className="relative flex w-full flex-wrap items-start justify-center gap-x-6 gap-y-10 overflow-x-hidden"
+      >
         {features.map((feature) => {
-          const Icon = ICONS[feature.id];
+          const Icon = FEATURE_ICON[feature.id];
           return (
             <article
               key={feature.id}
-              data-feature-card
-              className={`group glass-liquid relative overflow-hidden rounded-2xl border border-white/10 p-7 ${SIZE_CLASS[feature.size]}`}
+              data-feature-cover
+              className="flex w-36 flex-col items-center gap-3 text-center"
             >
-              <span aria-hidden="true" data-spotlight className="pointer-events-none absolute inset-0" />
-              <span className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-accent/25 to-accent/5 text-accent">
-                <Icon className="h-5 w-5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:rotate-6" />
+              <span className="glass-liquid flex h-28 w-28 items-center justify-center rounded-2xl border border-white/10">
+                <Icon data-feature-icon-glyph data-feature-id={feature.id} className="h-10 w-10" />
               </span>
-              <h3 className="relative mb-2">{feature.title}</h3>
-              <p className="relative leading-relaxed text-text-muted">{feature.description}</p>
+              <div data-feature-inline-text>
+                <h3 className="text-sm">{feature.title}</h3>
+                <p className="mt-1 text-xs leading-relaxed text-text-muted">{feature.description}</p>
+              </div>
             </article>
           );
         })}
+      </div>
+
+      <div className="mt-10 max-w-md text-center opacity-0">
+        <h3 ref={captionTitleRef} className="text-2xl text-accent" />
+        <p ref={captionDescriptionRef} className="mt-2 leading-relaxed text-text-muted" />
       </div>
     </section>
   );
