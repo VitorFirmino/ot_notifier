@@ -64,7 +64,7 @@ test.describe("Adding a server on a site that requires login", () => {
       .fill("https://example.com/?subtopic=guilds&action=view&GuildName=Needs+Login");
     await page.getByRole("button", { name: "Salvar" }).click();
 
-    await expect(page.getByText("example.com", { exact: false })).toBeVisible();
+    await expect(page.getByRole("dialog").getByText("example.com", { exact: false })).toBeVisible();
     await expect(page.getByLabel("Usuário / email")).toBeVisible();
     await expect(page.getByLabel("Senha", { exact: true })).toBeVisible();
 
@@ -154,7 +154,7 @@ test.describe("Auto-discovery on a site that requires login", () => {
     await page.getByLabel("URL do servidor").fill("example.com");
     await page.getByRole("button", { name: "Buscar guildas" }).click();
 
-    await expect(page.getByText("example.com", { exact: false })).toBeVisible();
+    await expect(page.getByRole("dialog").getByText("example.com", { exact: false })).toBeVisible();
     await expect(page.getByLabel("Usuário / email")).toBeVisible();
     await expect(page.getByLabel("Senha", { exact: true })).toBeVisible();
 
