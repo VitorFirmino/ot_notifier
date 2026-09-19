@@ -76,6 +76,18 @@ export const extractAllDeaths = ($: cheerio.CheerioAPI): DeathInfo[] => {
     }
   }
 
+  if (allTables.length === 0) {
+    const classicHeaderCell = $("td")
+      .filter((_, el) => {
+        const title = normalizeText($(el).text()).toLowerCase();
+        return title === "character deaths" || title === "deaths" || title === "últimas mortes";
+      })
+      .first();
+    if (classicHeaderCell.length > 0) {
+      allTables = classicHeaderCell.closest("table");
+    }
+  }
+
   if (allTables.length === 0) return [];
 
   const deaths: DeathInfo[] = [];
