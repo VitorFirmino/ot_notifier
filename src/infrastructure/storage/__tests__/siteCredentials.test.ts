@@ -8,7 +8,7 @@ describe("siteCredentials", () => {
   const domain = "ntoultimate-test.com.br";
 
   beforeAll(() => {
-    process.env.CREDENTIALS_ENCRYPTION_KEY ??= "***REMOVED-LEAKED-KEY***";
+    process.env.CREDENTIALS_ENCRYPTION_KEY ??= "VmGlih2NDl1GQZ9W40PwUfncTWKne3Iyqaiymzw6aVo=";
     verifyPool = new Pool({ connectionString: process.env.DATABASE_URL });
   });
 

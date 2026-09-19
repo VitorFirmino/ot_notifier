@@ -4,7 +4,7 @@ describe("credentialEncryption", () => {
   const originalKey = process.env.CREDENTIALS_ENCRYPTION_KEY;
 
   beforeEach(() => {
-    process.env.CREDENTIALS_ENCRYPTION_KEY = "***REMOVED-LEAKED-KEY***";
+    process.env.CREDENTIALS_ENCRYPTION_KEY = "VmGlih2NDl1GQZ9W40PwUfncTWKne3Iyqaiymzw6aVo=";
   });
 
   afterEach(() => {
