@@ -229,12 +229,11 @@ jobs:
 
   deploy-api:
     name: Deploy API + orchestrator
-    needs: [backend, web, e2e, audit, docker, changes]
+    needs: [backend, web, e2e, audit, docker]
     if: >
       always() &&
       github.ref == 'refs/heads/main' && github.event_name == 'push' &&
-      needs.changes.outputs.api == 'true' &&
-      needs.backend.result == 'success' &&
+      (needs.backend.result == 'success' || needs.backend.result == 'skipped') &&
       (needs.web.result == 'success' || needs.web.result == 'skipped') &&
       needs.e2e.result == 'success' &&
       needs.audit.result == 'success' &&
@@ -255,13 +254,12 @@ jobs:
 
   deploy-web:
     name: Deploy web dashboard
-    needs: [backend, web, e2e, audit, docker, changes, deploy-api]
+    needs: [backend, web, e2e, audit, docker, deploy-api]
     if: >
       always() &&
       github.ref == 'refs/heads/main' && github.event_name == 'push' &&
-      needs.changes.outputs.web == 'true' &&
       (needs.backend.result == 'success' || needs.backend.result == 'skipped') &&
-      needs.web.result == 'success' &&
+      (needs.web.result == 'success' || needs.web.result == 'skipped') &&
       needs.e2e.result == 'success' &&
       needs.audit.result == 'success' &&
       needs.docker.result == 'success' &&
