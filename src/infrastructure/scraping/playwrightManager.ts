@@ -60,7 +60,11 @@ class PlaywrightManager {
         throw new Error("patchright module present but chromium.launch is missing");
       }
       browser = (await patchrightChromium.launch({ headless: false, args: launchArgs })) as unknown as Browser;
-      context = await browser.newContext({ ignoreHTTPSErrors: true, proxy });
+      context = await browser.newContext({
+        ignoreHTTPSErrors: true,
+        proxy,
+        ...(forcedUserAgent ? { userAgent: forcedUserAgent } : {}),
+      });
       return { browser, context, proxySessionId: proxySessionId ?? null };
     } catch (patchrightErr: unknown) {
       console.debug(`[${serverId}] Patchright não disponível:`, patchrightErr);
