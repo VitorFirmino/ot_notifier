@@ -4,7 +4,12 @@ import { getRandomUserAgent } from "./utils/userAgentGenerator";
 import { saveBrowserCookiesToJar } from "./http/axiosClient";
 import { getProxyConfig, getProxyConfigForSession } from "./utils/proxyConfig";
 import { solveCloudflareChallenge } from "./utils/capsolverClient";
-import { acquireProxyForDomain, releasePinnedProxy, markDomainNeedsProxy } from "./utils/proxySessionManager";
+import {
+  acquireProxyForDomain,
+  releasePinnedProxy,
+  markDomainNeedsProxy,
+  domainNeedsProxy,
+} from "./utils/proxySessionManager";
 import { getCachedClearance, saveClearance, invalidateClearance } from "./utils/clearanceCache";
 import { isCloudflareBlockPage } from "./utils/cloudflareDetector";
 
@@ -120,7 +125,12 @@ class PlaywrightManager {
       const key = this.getSessionKey(url);
       const existing = this.sessions.get(key);
       if (existing) {
-        return existing;
+        const session = await existing.catch(() => null);
+        const staleWithoutProxy = Boolean(session) && !session?.proxySessionId && (await domainNeedsProxy(key));
+
+        if (!staleWithoutProxy) return existing;
+
+        await this.closeBrowser(key);
       }
 
       const created = this.createSessionWithClearance(key, customHeaders);
