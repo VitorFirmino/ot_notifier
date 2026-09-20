@@ -255,9 +255,14 @@ class PlaywrightManager {
       const blocked = isCloudflareBlockPage(await page.content().catch(() => ""));
       if (blocked) {
         const domain = new URL(url).hostname;
-        console.warn(`[${serverId || "default"}] IP bloqueado por ${domain}, rotacionando sessão de proxy.`);
-        await releasePinnedProxy(domain);
+        console.warn(`[${serverId || "default"}] IP bloqueado por ${domain}, trocando de endereço de saída.`);
         await invalidateClearance(domain);
+
+        if (proxySessionId) {
+          await releasePinnedProxy(domain);
+        } else if (getProxyConfig()) {
+          await markDomainNeedsProxy(domain);
+        }
       } else {
         await this.harvestClearanceCookie(page, url, proxySessionId);
       }
