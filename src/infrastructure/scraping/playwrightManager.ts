@@ -131,8 +131,8 @@ class PlaywrightManager {
       const pooled = await acquireProxyForDomain(domain);
       const proxySessionId = pooled?.sessionId ?? null;
 
-      const cached = proxySessionId || getProxyConfig() ? await getCachedClearance(domain) : null;
-      const reusableClearance = cached && (!proxySessionId || cached.proxySessionId === proxySessionId) ? cached : null;
+      const cached = await getCachedClearance(domain);
+      const reusableClearance = cached?.proxySessionId === proxySessionId ? cached : null;
 
       const session = await this.createSession(
         domain,
