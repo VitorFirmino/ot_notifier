@@ -9,9 +9,7 @@ export const normalizeUrl = (url: string): string => {
   }
 };
 
+const SENSITIVE_SERVER_IDS = ["server1", "server2"];
+
 export const isSensitiveServer = (serverId?: string): boolean =>
-  !!serverId &&
-  (serverId === "server1" ||
-    serverId === "server2" ||
-    serverId.startsWith("server1_") ||
-    serverId.startsWith("server2_"));
+  !!serverId && SENSITIVE_SERVER_IDS.includes(serverId);
