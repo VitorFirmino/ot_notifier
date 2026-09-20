@@ -47,7 +47,7 @@ export const getServerCheckQueue = (): Queue => {
 
 export const addOrUpdateServerSchedule = async (
   serverId: string,
-  intervalMs: number = 120000
+  intervalMs: number = resolveCheckInterval()
 ): Promise<void> => {
   const queue = getServerCheckQueue();
   const schedulerId = `check-server:${serverId}`;
