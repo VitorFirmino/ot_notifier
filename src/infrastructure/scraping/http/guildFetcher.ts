@@ -96,7 +96,7 @@ export const fetchGuildPageWithHeaders = async (
       const message = error instanceof Error ? error.message : "Erro desconhecido";
       throw new Error(`Erro ao acessar ${guildUrl}: ${message}`);
     }
-  }, serverId);
+  }, domain);
 };
 
 export const fetchGuildPage = async (guildUrl: string): Promise<string> => {
@@ -199,7 +199,7 @@ export const fetchGuildPage = async (guildUrl: string): Promise<string> => {
         networkErrorMessage = error instanceof Error ? error.message : String(error);
         return null;
       }
-    }, serverId);
+    }, urlObj.hostname);
   };
 
   for (const [index, headers] of headerStrategies.entries()) {

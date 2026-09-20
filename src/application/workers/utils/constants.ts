@@ -6,3 +6,6 @@ export const parsePositiveInt = (value: string | undefined, fallback: number): n
   const parsed = Number.parseInt(value ?? "", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
+
+export const resolveCheckInterval = (settings?: { checkInterval?: number }): number =>
+  settings?.checkInterval ?? parsePositiveInt(process.env.CHECK_INTERVAL, DEFAULT_CHECK_INTERVAL);

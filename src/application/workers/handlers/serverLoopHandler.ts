@@ -8,16 +8,10 @@ import {
 } from "@shared/utils/serverStateManager";
 import { processServerCheck } from "./serverCheckHandler";
 import { loadPlaywrightManager } from "../utils/playwrightLoader";
-import { DEFAULT_CHECK_INTERVAL, parsePositiveInt } from "../utils/constants";
+import { parsePositiveInt, resolveCheckInterval } from "../utils/constants";
 import { sleep } from "../utils/sleep";
 
 let shouldStopLoop = false;
-
-const getBaseCheckInterval = (
-  settings?: { checkInterval?: number }
-): number =>
-  settings?.checkInterval ??
-  parsePositiveInt(process.env.CHECK_INTERVAL, DEFAULT_CHECK_INTERVAL);
 
 const getIdleCheckInterval = (
   settings?: { idleCheckInterval?: number }
@@ -46,7 +40,7 @@ const getEffectiveCheckInterval = (
     protectedCheckInterval?: number;
   }
 ): number => {
-  const baseInterval = getBaseCheckInterval(settings);
+  const baseInterval = resolveCheckInterval(settings);
   const states = getAllServerStates();
   const online = states[serverId]?.finished?.online;
   const warnMessage = states[serverId]?.warn?.message?.toLowerCase() || "";

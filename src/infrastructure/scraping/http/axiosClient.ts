@@ -297,7 +297,7 @@ export const fetchWithAxiosResult = async (
         errorCode: error instanceof Error ? error.message : String(error),
       };
     }
-  }, serverId);
+  }, new URL(url).hostname);
 };
 
 export const logAxiosError = (serverId: string, name: string, error: AxiosError): void => {

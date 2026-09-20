@@ -1,25 +1,25 @@
 import Bottleneck from "bottleneck";
-import { isSensitiveServer } from "../utils/urlUtils";
+
+const MAX_CONCURRENT = 2;
+const MIN_TIME_MS = 200;
+const RESERVOIR_PER_MINUTE = 200;
 
 const limiters = new Map<string, Bottleneck>();
 
-const createBottleneckLimiter = (serverId?: string): Bottleneck => {
-  const sensitive = isSensitiveServer(serverId);
-
-  return new Bottleneck({
-    maxConcurrent: sensitive ? 1 : 2,
-    minTime: sensitive ? 500 : 200,
-    reservoir: sensitive ? 100 : 200,
-    reservoirRefreshAmount: sensitive ? 100 : 200,
+const createBottleneckLimiter = (): Bottleneck =>
+  new Bottleneck({
+    maxConcurrent: MAX_CONCURRENT,
+    minTime: MIN_TIME_MS,
+    reservoir: RESERVOIR_PER_MINUTE,
+    reservoirRefreshAmount: RESERVOIR_PER_MINUTE,
     reservoirRefreshInterval: 60 * 1000,
   });
-};
 
-export const getBottleneckLimiter = (serverId?: string): Bottleneck => {
-  const key = serverId || "default";
+export const getBottleneckLimiter = (domain?: string): Bottleneck => {
+  const key = domain || "default";
 
   if (!limiters.has(key)) {
-    limiters.set(key, createBottleneckLimiter(serverId));
+    limiters.set(key, createBottleneckLimiter());
   }
 
   const limiter = limiters.get(key);
@@ -32,8 +32,8 @@ export const getBottleneckLimiter = (serverId?: string): Bottleneck => {
 
 export const scheduleWithBottleneck = async <T>(
   fn: () => Promise<T>,
-  serverId?: string
+  domain?: string
 ): Promise<T> => {
-  const limiter = getBottleneckLimiter(serverId);
+  const limiter = getBottleneckLimiter(domain);
   return limiter.schedule(fn);
 };

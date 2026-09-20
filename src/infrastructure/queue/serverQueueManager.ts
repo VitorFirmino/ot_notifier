@@ -1,5 +1,6 @@
 import { Queue, type ConnectionOptions } from "bullmq";
 import { getRedisOptions } from "./redisConnection";
+import { resolveCheckInterval } from "@application/workers/utils/constants";
 import type { ServerConfig } from "@shared/types/index";
 
 export const QUEUE_NAME = "serverCheckQueue";
@@ -102,8 +103,7 @@ export const syncAllActiveServersToQueue = async (configs: ServerConfig[]): Prom
   try {
     for (const config of configs) {
       if (config.guild.enabled !== false && config.isWorking !== false) {
-        const interval = config.settings?.checkInterval || 120000;
-        await addOrUpdateServerSchedule(config.serverId, interval);
+        await addOrUpdateServerSchedule(config.serverId, resolveCheckInterval(config.settings));
       } else {
         await removeServerSchedule(config.serverId);
       }

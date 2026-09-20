@@ -12,6 +12,7 @@ import {
 import { getGuildMembers } from "@infrastructure/scraping/parsers/guildParser";
 import { LoginRequiredError } from "@infrastructure/scraping/utils/loginRequiredDetector";
 import { getWebhookUrl } from "@application/workers/utils/webhookUtils";
+import { resolveCheckInterval } from "@application/workers/utils/constants";
 import { getAllServerStates } from "@shared/utils/serverStateManager";
 import {
   addOrUpdateServerSchedule,
@@ -153,7 +154,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
     }
 
     if (newConfig.guild.enabled !== false && newConfig.isWorking !== false) {
-      void addOrUpdateServerSchedule(serverId, newConfig.settings?.checkInterval || 120000);
+      void addOrUpdateServerSchedule(serverId, resolveCheckInterval(newConfig.settings));
       void triggerServerCheckNow(serverId);
     }
 
@@ -283,7 +284,7 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
       } else if (updated.isWorking === false) {
         void scheduleServerRetry(serverId);
       } else {
-        void addOrUpdateServerSchedule(serverId, updated.settings?.checkInterval || 120000);
+        void addOrUpdateServerSchedule(serverId, resolveCheckInterval(updated.settings));
       }
 
       return sendSuccess(reply, updated);

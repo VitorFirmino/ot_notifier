@@ -15,17 +15,14 @@ import {
 import { getWebhookUrl } from "../utils/webhookUtils";
 import { recordEvent } from "@infrastructure/events/eventLog";
 import {
-  DEFAULT_CHECK_INTERVAL,
   DEFAULT_CONCURRENCY,
   DEFAULT_REQUEST_DELAY,
   parsePositiveInt,
+  resolveCheckInterval,
 } from "../utils/constants";
 import { serverHasCloudflare } from "@infrastructure/scraping/utils/cloudflareDetector";
 import { fetchOnlineCharacterNames } from "@infrastructure/scraping/utils/onlinePlayersDiscovery";
 import type { CharacterInfo, ProcessCharacterResult } from "@shared/types/index";
-
-const getNormalCheckInterval = (settings?: { checkInterval?: number }): number =>
-  settings?.checkInterval ?? parsePositiveInt(process.env.CHECK_INTERVAL, DEFAULT_CHECK_INTERVAL);
 
 const serversInProgress = new Set<string>();
 
@@ -39,7 +36,7 @@ const syncScheduleForWorkingStatus = async (
       "@infrastructure/queue/serverQueueManager"
     );
     if (isWorking) {
-      await addOrUpdateServerSchedule(serverId, getNormalCheckInterval(settings));
+      await addOrUpdateServerSchedule(serverId, resolveCheckInterval(settings));
     } else {
       await scheduleServerRetry(serverId);
     }
