@@ -1,5 +1,7 @@
 import axios from "axios";
-import { createRequestHeaders } from "../http/axiosClient";
+import { createRequestHeaders, getCookieJar } from "../http/axiosClient";
+import { getAxiosProxyConfig } from "./proxyConfig";
+import { getProxySessionIdForDomain } from "./proxySessionManager";
 import { extractServerIdFromUrl } from "@shared/utils/serverIdentity";
 import { playwrightManager } from "../playwrightManager";
 import { assertPublicHttpUrl } from "@shared/utils/urlSafety";
@@ -19,12 +21,17 @@ const fetchWithValidatedRedirects = async (
   origin: string,
   hopsLeft: number
 ): Promise<RawResponse | null> => {
+  const domain = new URL(url).hostname;
+  const sessionId = await getProxySessionIdForDomain(domain);
+
   const response = await axios.get<ArrayBuffer>(url, {
     headers: createRequestHeaders(origin),
     timeout: IMAGE_FETCH_TIMEOUT_MS,
     responseType: "arraybuffer",
     maxRedirects: 0,
     validateStatus: (status) => status < 400,
+    jar: getCookieJar(domain),
+    proxy: (sessionId ? getAxiosProxyConfig(sessionId) : null) ?? undefined,
   });
 
   if (response.status >= 300 && response.status < 400) {
