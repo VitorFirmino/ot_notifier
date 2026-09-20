@@ -7,7 +7,7 @@ import { getSiteCredential } from "@infrastructure/storage/siteCredentials";
 import type { GuildDiscovered, WorldOption } from "../../../shared/types/index";
 
 const CANDIDATE_TIMEOUT_MS = 8000;
-const DISCOVERY_BUDGET_MS = 50000;
+const DISCOVERY_BUDGET_MS = 75000;
 const BROWSER_PROBE_TIMEOUTS = { gotoTimeoutMs: 15000, networkIdleTimeoutMs: 5000 };
 
 const fetchCandidate = async (
@@ -24,6 +24,7 @@ const fetchCandidate = async (
 const CANDIDATE_PATHS = [
   "?subtopic=guilds",
   "/index.php?subtopic=guilds",
+  "/index.php/guilds",
   "?view=guilds",
   "/community/guilds",
   "/guilds.php",

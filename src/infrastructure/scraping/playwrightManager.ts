@@ -223,8 +223,11 @@ class PlaywrightManager {
         console.warn(`[${serverId || "default"}] Aviso em page.goto(${url}):`, gotoErr);
       });
 
+      const willRetryThroughProxy = !proxySessionId && Boolean(getProxyConfig());
+      const maxChallengeWaits = willRetryThroughProxy ? 4 : 15;
+
       let stillChallenged = false;
-      for (let attempt = 0; attempt < 15; attempt++) {
+      for (let attempt = 0; attempt < maxChallengeWaits; attempt++) {
         const title = await page.title();
         stillChallenged = title.includes("Just a moment") || title.includes("Um momento");
         if (!stillChallenged) break;
