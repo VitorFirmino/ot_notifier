@@ -26,18 +26,30 @@ export type CloudflareChallengeSolution = {
   userAgent: string;
 };
 
+const formatProxy = (server: string, username?: string, password?: string): string => {
+  const parsed = new URL(server);
+  const protocol = parsed.protocol.replace(":", "") || "http";
+  const port = parsed.port || "80";
+
+  return username && password
+    ? `${protocol}:${parsed.hostname}:${port}:${username}:${password}`
+    : `${protocol}:${parsed.hostname}:${port}`;
+};
+
 const buildProxyString = (sessionId?: string | null): string | null => {
+  const ownServer = process.env.CAPSOLVER_PROXY_SERVER;
+  if (ownServer) {
+    return formatProxy(
+      ownServer,
+      process.env.CAPSOLVER_PROXY_USERNAME,
+      process.env.CAPSOLVER_PROXY_PASSWORD
+    );
+  }
+
   const proxy = sessionId ? getProxyConfigForSession(sessionId) : getProxyConfig();
   if (!proxy) return null;
 
-  const parsed = new URL(proxy.server);
-  const protocol = parsed.protocol.replace(":", "") || "http";
-  const host = parsed.hostname;
-  const port = parsed.port || "80";
-
-  return proxy.username && proxy.password
-    ? `${protocol}:${host}:${port}:${proxy.username}:${proxy.password}`
-    : `${protocol}:${host}:${port}`;
+  return formatProxy(proxy.server, proxy.username, proxy.password);
 };
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
