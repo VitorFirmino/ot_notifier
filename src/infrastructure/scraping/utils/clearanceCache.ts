@@ -1,5 +1,5 @@
 import type { Redis } from "ioredis";
-import { createRedisConnection } from "@infrastructure/queue/redisConnection";
+import { createCacheRedisConnection } from "@infrastructure/queue/redisConnection";
 
 const CLEARANCE_KEY_PREFIX = "cf_clearance:";
 const METRICS_KEY_PREFIX = "cf_clearance_metrics:";
@@ -28,7 +28,7 @@ const getClient = (): Redis | null => {
   if (client) return client;
 
   try {
-    client = createRedisConnection();
+    client = createCacheRedisConnection();
     return client;
   } catch (err: unknown) {
     console.warn("[clearance-cache] Redis indisponível, cache desativado:", err);

@@ -34,3 +34,25 @@ export const createRedisConnection = (): Redis => {
 
   return redis;
 };
+
+export const createCacheRedisConnection = (): Redis => {
+  const redis = new Redis({
+    ...getRedisOptions(),
+    maxRetriesPerRequest: 1,
+    enableOfflineQueue: false,
+  });
+
+  let alreadyWarned = false;
+
+  redis.on("error", (err: unknown) => {
+    if (alreadyWarned) return;
+    alreadyWarned = true;
+    console.warn("⚠️ Redis de cache indisponível, seguindo sem cache:", err);
+  });
+
+  redis.on("connect", () => {
+    alreadyWarned = false;
+  });
+
+  return redis;
+};

@@ -1,7 +1,7 @@
 import axios from "axios";
 import { createHash } from "crypto";
 import type { Redis } from "ioredis";
-import { createRedisConnection } from "@infrastructure/queue/redisConnection";
+import { createCacheRedisConnection } from "@infrastructure/queue/redisConnection";
 import { getAxiosProxyConfig, getProxyConfig } from "./proxyConfig";
 
 const GENERATION_KEY_PREFIX = "proxy_session_gen:";
@@ -25,7 +25,7 @@ const getClient = (): Redis | null => {
   if (client) return client;
 
   try {
-    client = createRedisConnection();
+    client = createCacheRedisConnection();
     return client;
   } catch {
     clientUnavailable = true;
