@@ -11,6 +11,7 @@ import {
 } from "../utils/cloudflareDetector";
 import { getAxiosProxyConfig } from "../utils/proxyConfig";
 import { getProxySessionIdForDomain } from "../utils/proxySessionManager";
+import { getCachedClearance } from "../utils/clearanceCache";
 
 export const REQUEST_TIMEOUT = 15000;
 
@@ -207,6 +208,14 @@ export const fetchWithAxiosResult = async (
       const finalHeaders = { ...headers };
       if (headers.cookie && headers["user-agent"]) {
         finalHeaders["User-Agent"] = headers["user-agent"];
+      }
+
+      const clearance = await getCachedClearance(domain);
+      if (clearance) {
+        finalHeaders.cookie = finalHeaders.cookie
+          ? `${finalHeaders.cookie}; cf_clearance=${clearance.cfClearance}`
+          : `cf_clearance=${clearance.cfClearance}`;
+        finalHeaders["User-Agent"] = clearance.userAgent;
       }
 
       const sessionId = await getProxySessionIdForDomain(domain);
