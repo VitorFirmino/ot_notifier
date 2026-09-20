@@ -9,7 +9,7 @@ import {
 import { parseCharacterFromHtml } from "../parsers/characterParser";
 import { extractServerIdFromUrl } from "@shared/utils/serverIdentity";
 import { detectServerFatalPage } from "../utils/pageHealthDetector";
-import { markServerAsCloudflare } from "../utils/cloudflareDetector";
+import { detectCloudflareFromHtml, markServerAsCloudflare } from "../utils/cloudflareDetector";
 import { playwrightManager } from "../playwrightManager";
 
 export const getCharacterStatus = async (
@@ -90,9 +90,13 @@ export const getCharacterStatus = async (
       );
       if (fallbackHtml) {
         const detectedFatalReason = detectServerFatalPage(fallbackHtml);
+        const stillChallenged = detectCloudflareFromHtml(fallbackHtml);
+
         if (detectedFatalReason) {
           fatalPageReason = detectedFatalReason;
-        } else {
+        }
+
+        if (!detectedFatalReason && !stillChallenged) {
           await markServerAsCloudflare(finalServerId);
           return parseCharacterFromHtml(fallbackHtml, name, url);
         }

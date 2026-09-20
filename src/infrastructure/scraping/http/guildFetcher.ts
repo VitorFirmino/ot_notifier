@@ -219,9 +219,19 @@ export const fetchGuildPage = async (guildUrl: string): Promise<string> => {
 
       if (fallbackHtml) {
         const detectedFatalReason = detectServerFatalPage(fallbackHtml);
+        const stillChallenged = detectCloudflareFromHtml(fallbackHtml);
+
         if (detectedFatalReason) {
           fatalPageReason = detectedFatalReason;
-        } else {
+        }
+
+        if (stillChallenged) {
+          console.warn(
+            `⚠️ [${serverId}] Playwright devolveu o desafio da Cloudflare em vez da página da guild`
+          );
+        }
+
+        if (!detectedFatalReason && !stillChallenged) {
           console.log(`✅ [${serverId}] Guild carregada via Playwright após bloqueio 403`);
           await markServerAsCloudflare(serverId);
           return fallbackHtml;
