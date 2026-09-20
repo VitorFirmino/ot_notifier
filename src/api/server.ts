@@ -66,8 +66,20 @@ export const buildFastifyServer = async () => {
       .filter(Boolean)
   );
 
+  app.addHook("onRequest", async (_request, reply) => {
+    reply.header("X-Robots-Tag", "noindex, nofollow, noarchive");
+  });
+
+  app.get("/robots.txt", async (_request, reply) => {
+    return reply.type("text/plain").send("User-agent: *\nDisallow: /\n");
+  });
+
   app.addHook("onRequest", async (request, reply) => {
-    if (request.method === "OPTIONS" || request.url.startsWith("/api/auth/")) {
+    if (
+      request.method === "OPTIONS" ||
+      request.url.startsWith("/api/auth/") ||
+      request.url === "/robots.txt"
+    ) {
       return;
     }
 
