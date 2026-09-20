@@ -10,6 +10,7 @@ import {
   markServerAsCloudflare,
 } from "../utils/cloudflareDetector";
 import { getAxiosProxyConfig } from "../utils/proxyConfig";
+import { getProxySessionIdForDomain } from "../utils/proxySessionManager";
 
 export const REQUEST_TIMEOUT = 15000;
 
@@ -208,6 +209,8 @@ export const fetchWithAxiosResult = async (
         finalHeaders["User-Agent"] = headers["user-agent"];
       }
 
+      const sessionId = await getProxySessionIdForDomain(domain);
+
       const response = await axios.get(url, {
         jar,
         timeout: REQUEST_TIMEOUT,
@@ -220,7 +223,7 @@ export const fetchWithAxiosResult = async (
         decompress: true,
         validateStatus: (status) => status < 500,
         withCredentials: false,
-        proxy: getAxiosProxyConfig() ?? undefined,
+        proxy: (sessionId ? getAxiosProxyConfig(sessionId) : null) ?? undefined,
         "axios-retry": {
           retries: 2,
           retryDelay: axiosRetry.exponentialDelay,

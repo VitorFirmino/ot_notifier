@@ -89,6 +89,13 @@ export const checkSessionAlive = async (sessionId: string): Promise<string | nul
   }
 };
 
+export const getProxySessionIdForDomain = async (domain: string): Promise<string | null> => {
+  if (!getProxyConfig()) return null;
+  if (!(await domainNeedsProxy(domain))) return null;
+
+  return buildSessionId(domain, await readGeneration(domain));
+};
+
 export const acquireProxyForDomain = async (domain: string): Promise<ProxySession | null> => {
   if (!getProxyConfig()) return null;
   if (!(await domainNeedsProxy(domain))) return null;
