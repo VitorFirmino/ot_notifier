@@ -1,7 +1,6 @@
 import axios from "axios";
 import { createHash } from "crypto";
-import type { Redis } from "ioredis";
-import { createCacheRedisConnection } from "@infrastructure/queue/redisConnection";
+import { getCacheRedisClient, closeCacheRedisClient } from "@infrastructure/queue/redisConnection";
 import { getAxiosProxyConfig, getProxyConfig } from "./proxyConfig";
 
 const GENERATION_KEY_PREFIX = "proxy_session_gen:";
@@ -15,26 +14,11 @@ export type ProxySession = {
   exitIp: string;
 };
 
-let client: Redis | null = null;
-let clientUnavailable = false;
 const localGenerations = new Map<string, number>();
 const localNeedsProxy = new Set<string>();
 
-const getClient = (): Redis | null => {
-  if (clientUnavailable) return null;
-  if (client) return client;
-
-  try {
-    client = createCacheRedisConnection();
-    return client;
-  } catch {
-    clientUnavailable = true;
-    return null;
-  }
-};
-
 const readGeneration = async (domain: string): Promise<number> => {
-  const redis = getClient();
+  const redis = await getCacheRedisClient();
   if (!redis) return localGenerations.get(domain) ?? 0;
 
   const raw = await redis.get(`${GENERATION_KEY_PREFIX}${domain}`).catch(() => null);
@@ -45,7 +29,7 @@ export const buildSessionId = (domain: string, generation: number): string =>
   createHash("sha1").update(`${domain}:${generation}`).digest("hex").slice(0, 10);
 
 export const markDomainNeedsProxy = async (domain: string): Promise<void> => {
-  const redis = getClient();
+  const redis = await getCacheRedisClient();
 
   if (!redis) {
     localNeedsProxy.add(domain);
@@ -56,7 +40,7 @@ export const markDomainNeedsProxy = async (domain: string): Promise<void> => {
 };
 
 export const domainNeedsProxy = async (domain: string): Promise<boolean> => {
-  const redis = getClient();
+  const redis = await getCacheRedisClient();
   if (!redis) return localNeedsProxy.has(domain);
 
   const raw = await redis.get(`${NEEDS_PROXY_KEY_PREFIX}${domain}`).catch(() => null);
@@ -64,7 +48,7 @@ export const domainNeedsProxy = async (domain: string): Promise<boolean> => {
 };
 
 export const releasePinnedProxy = async (domain: string): Promise<void> => {
-  const redis = getClient();
+  const redis = await getCacheRedisClient();
 
   if (!redis) {
     localGenerations.set(domain, (localGenerations.get(domain) ?? 0) + 1);
@@ -115,7 +99,5 @@ export const acquireProxyForDomain = async (domain: string): Promise<ProxySessio
 };
 
 export const closeProxySessions = async (): Promise<void> => {
-  if (!client) return;
-  await client.quit().catch(() => undefined);
-  client = null;
+  await closeCacheRedisClient();
 };

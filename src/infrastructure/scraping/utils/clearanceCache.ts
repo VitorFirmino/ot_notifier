@@ -1,5 +1,4 @@
-import type { Redis } from "ioredis";
-import { createCacheRedisConnection } from "@infrastructure/queue/redisConnection";
+import { getCacheRedisClient, closeCacheRedisClient } from "@infrastructure/queue/redisConnection";
 
 const CLEARANCE_KEY_PREFIX = "cf_clearance:";
 const METRICS_KEY_PREFIX = "cf_clearance_metrics:";
@@ -20,35 +19,18 @@ export type ClearanceMetrics = {
   invalidations: number;
 };
 
-let client: Redis | null = null;
-let clientUnavailable = false;
-
-const getClient = (): Redis | null => {
-  if (clientUnavailable) return null;
-  if (client) return client;
-
-  try {
-    client = createCacheRedisConnection();
-    return client;
-  } catch (err: unknown) {
-    console.warn("[clearance-cache] Redis indisponível, cache desativado:", err);
-    clientUnavailable = true;
-    return null;
-  }
-};
-
 const getTtlSeconds = (): number =>
   parseInt(process.env.CF_CLEARANCE_TTL_SECONDS || String(DEFAULT_TTL_SECONDS), 10);
 
 const bumpMetric = async (metric: keyof ClearanceMetrics): Promise<void> => {
-  const redis = getClient();
+  const redis = await getCacheRedisClient();
   if (!redis) return;
 
   await redis.incr(`${METRICS_KEY_PREFIX}${metric}`).catch(() => undefined);
 };
 
 export const getCachedClearance = async (domain: string): Promise<CachedClearance | null> => {
-  const redis = getClient();
+  const redis = await getCacheRedisClient();
   if (!redis) return null;
 
   try {
@@ -67,7 +49,7 @@ export const getCachedClearance = async (domain: string): Promise<CachedClearanc
 };
 
 export const saveClearance = async (domain: string, clearance: CachedClearance): Promise<void> => {
-  const redis = getClient();
+  const redis = await getCacheRedisClient();
   if (!redis) return;
 
   try {
@@ -84,7 +66,7 @@ export const saveClearance = async (domain: string, clearance: CachedClearance):
 };
 
 export const invalidateClearance = async (domain: string): Promise<void> => {
-  const redis = getClient();
+  const redis = await getCacheRedisClient();
   if (!redis) return;
 
   try {
@@ -96,7 +78,7 @@ export const invalidateClearance = async (domain: string): Promise<void> => {
 };
 
 export const getClearanceMetrics = async (): Promise<ClearanceMetrics> => {
-  const redis = getClient();
+  const redis = await getCacheRedisClient();
   const empty: ClearanceMetrics = { hits: 0, misses: 0, solves: 0, invalidations: 0 };
   if (!redis) return empty;
 
@@ -120,7 +102,5 @@ export const getClearanceMetrics = async (): Promise<ClearanceMetrics> => {
 };
 
 export const closeClearanceCache = async (): Promise<void> => {
-  if (!client) return;
-  await client.quit().catch(() => undefined);
-  client = null;
+  await closeCacheRedisClient();
 };
