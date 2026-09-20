@@ -5,6 +5,7 @@ import { createRedisConnection } from "@infrastructure/queue/redisConnection";
 import { getAxiosProxyConfig, getProxyConfig } from "./proxyConfig";
 
 const GENERATION_KEY_PREFIX = "proxy_session_gen:";
+const NEEDS_PROXY_KEY_PREFIX = "proxy_needed:";
 const HEALTH_CHECK_URL = "https://api.ipify.org?format=json";
 const HEALTH_CHECK_TIMEOUT_MS = 12000;
 const MAX_SESSION_ATTEMPTS = 3;
@@ -17,6 +18,7 @@ export type ProxySession = {
 let client: Redis | null = null;
 let clientUnavailable = false;
 const localGenerations = new Map<string, number>();
+const localNeedsProxy = new Set<string>();
 
 const getClient = (): Redis | null => {
   if (clientUnavailable) return null;
@@ -41,6 +43,25 @@ const readGeneration = async (domain: string): Promise<number> => {
 
 export const buildSessionId = (domain: string, generation: number): string =>
   createHash("sha1").update(`${domain}:${generation}`).digest("hex").slice(0, 10);
+
+export const markDomainNeedsProxy = async (domain: string): Promise<void> => {
+  const redis = getClient();
+
+  if (!redis) {
+    localNeedsProxy.add(domain);
+    return;
+  }
+
+  await redis.set(`${NEEDS_PROXY_KEY_PREFIX}${domain}`, "1").catch(() => undefined);
+};
+
+export const domainNeedsProxy = async (domain: string): Promise<boolean> => {
+  const redis = getClient();
+  if (!redis) return localNeedsProxy.has(domain);
+
+  const raw = await redis.get(`${NEEDS_PROXY_KEY_PREFIX}${domain}`).catch(() => null);
+  return raw === "1";
+};
 
 export const releasePinnedProxy = async (domain: string): Promise<void> => {
   const redis = getClient();
@@ -70,6 +91,7 @@ export const checkSessionAlive = async (sessionId: string): Promise<string | nul
 
 export const acquireProxyForDomain = async (domain: string): Promise<ProxySession | null> => {
   if (!getProxyConfig()) return null;
+  if (!(await domainNeedsProxy(domain))) return null;
 
   for (let attempt = 0; attempt < MAX_SESSION_ATTEMPTS; attempt++) {
     const generation = await readGeneration(domain);

@@ -4,7 +4,7 @@ import { getRandomUserAgent } from "./utils/userAgentGenerator";
 import { saveBrowserCookiesToJar } from "./http/axiosClient";
 import { getProxyConfig, getProxyConfigForSession } from "./utils/proxyConfig";
 import { solveCloudflareChallenge } from "./utils/capsolverClient";
-import { acquireProxyForDomain, releasePinnedProxy } from "./utils/proxySessionManager";
+import { acquireProxyForDomain, releasePinnedProxy, markDomainNeedsProxy } from "./utils/proxySessionManager";
 import { getCachedClearance, saveClearance, invalidateClearance } from "./utils/clearanceCache";
 import { isCloudflareBlockPage } from "./utils/cloudflareDetector";
 
@@ -224,6 +224,12 @@ class PlaywrightManager {
       if (stillChallenged) {
         const domain = new URL(url).hostname;
         await invalidateClearance(domain);
+
+        if (!proxySessionId && getProxyConfig()) {
+          console.warn(`[${serverId || "default"}] ${domain} exige desafio; próxima tentativa sairá por sessão fixa de proxy.`);
+          await markDomainNeedsProxy(domain);
+          return;
+        }
 
         const solved = await solveCloudflareChallenge(url, proxySessionId);
         if (solved) {
