@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import {
   getAllServerConfigs,
-  saveServerConfig,
   loadServerConfig,
   updateServerConfig,
   extractServerIdFromUrl,
@@ -41,6 +40,36 @@ const createBlankCharacter = (url: string): CharacterInfo => ({
   last_milestone: 0,
   last_death: null,
 });
+
+const INITIAL_SYNC_TIMEOUT_MS = 8000;
+
+type InitialSyncOutcome =
+  | { kind: "members"; characters: Record<string, CharacterInfo> }
+  | { kind: "login"; error: LoginRequiredError }
+  | { kind: "failed" };
+
+const syncInitialMembers = async (
+  serverId: string,
+  url: string,
+  userId?: string
+): Promise<InitialSyncOutcome> => {
+  try {
+    const members = await getGuildMembers(url, undefined, userId);
+    const characters: Record<string, CharacterInfo> = {};
+    members.forEach((member) => {
+      characters[member.name] = createBlankCharacter(member.url);
+    });
+
+    await updateServerConfig(serverId, (existing) => (existing ? { ...existing, characters } : null));
+    return { kind: "members", characters };
+  } catch (err: unknown) {
+    if (err instanceof LoginRequiredError) return { kind: "login", error: err };
+
+    console.warn(`⚠️ Não foi possível obter lista inicial de membros para ${serverId}:`, err);
+    await updateServerConfig(serverId, (existing) => (existing ? { ...existing, isWorking: false } : null));
+    return { kind: "failed" };
+  }
+};
 
 export const registerServerRoutes = (app: FastifyInstance): void => {
   app.get("/api/servers", async (request, reply) => {
@@ -129,33 +158,37 @@ export const registerServerRoutes = (app: FastifyInstance): void => {
       return sendError(reply, 500, "Erro ao criar o servidor.");
     }
 
+    let syncFinishedInTime = true;
+
     if (Object.keys(newConfig.characters).length === 0) {
-      try {
-        const members = await getGuildMembers(url, undefined, request.userId);
-        const charsObj: Record<string, CharacterInfo> = {};
-        members.forEach((member) => {
-          charsObj[member.name] = createBlankCharacter(member.url);
+      const sync = syncInitialMembers(serverId, url, request.userId);
+
+      const outcome = await Promise.race([
+        sync,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), INITIAL_SYNC_TIMEOUT_MS)),
+      ]);
+
+      syncFinishedInTime = outcome !== null;
+
+      if (outcome?.kind === "login") {
+        await deleteServerConfig(serverId);
+        return sendError(reply, 401, outcome.error.message, {
+          code: "LOGIN_REQUIRED",
+          domain: outcome.error.domain,
+          loginUrl: outcome.error.loginUrl,
         });
-        newConfig.characters = charsObj;
-        await saveServerConfig(newConfig);
-      } catch (err: unknown) {
-        if (err instanceof LoginRequiredError) {
-          await deleteServerConfig(serverId);
-          return sendError(reply, 401, err.message, {
-            code: "LOGIN_REQUIRED",
-            domain: err.domain,
-            loginUrl: err.loginUrl,
-          });
-        }
-        console.warn(`⚠️ Não foi possível obter lista inicial de membros para ${serverId}:`, err);
-        newConfig.isWorking = false;
-        await saveServerConfig(newConfig);
+      }
+
+      if (outcome?.kind === "members") {
+        newConfig.characters = outcome.characters;
       }
     }
 
     if (newConfig.guild.enabled !== false && newConfig.isWorking !== false) {
       void addOrUpdateServerSchedule(serverId, resolveCheckInterval(newConfig.settings));
-      void triggerServerCheckNow(serverId);
+      if (syncFinishedInTime) {
+        void triggerServerCheckNow(serverId);
+      }
     }
 
     return sendSuccess(reply, newConfig, 201);
