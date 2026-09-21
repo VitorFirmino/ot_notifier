@@ -294,6 +294,27 @@ export const isGuildNotExistHtml = (html: string): boolean => {
 const fetchGuildHtml = (guildUrl: string, customHeaders?: Record<string, string>): Promise<string> =>
   customHeaders ? fetchGuildPageWithHeaders(guildUrl, customHeaders) : fetchGuildPage(guildUrl);
 
+const extractMembersFromHtml = (html: string, baseUrl: string): GuildMember[] => {
+  const $ = cheerio.load(html);
+
+  const structureType = detectHtmlStructure($);
+  const scrapers = getAllScrapers();
+
+  const scraper = structureType in scrapers ? scrapers[structureType as ScraperKey] : undefined;
+  const primaryMembers = scraper ? scraper($, baseUrl) : [];
+  if (primaryMembers.length > 0) {
+    return dedupeMembers(primaryMembers);
+  }
+
+  return dedupeMembers([
+    ...scrapeNestedTableForm($, baseUrl),
+    ...scrapeQueryParams($, baseUrl),
+    ...scrapeCharactersPath($, baseUrl),
+    ...scrapePathBased($, baseUrl),
+    ...extractCharacterLinksCaseInsensitive($, baseUrl),
+  ]);
+};
+
 export const getGuildMembers = async (
   guildUrl: string,
   customHeaders?: Record<string, string>,
@@ -330,25 +351,15 @@ export const getGuildMembers = async (
     throw new Error(`Guild with name ${guildName} doesn't exist.`);
   }
 
-  const $ = cheerio.load(html);
-  const baseUrl = guildUrl;
+  const members = extractMembersFromHtml(html, guildUrl);
+  if (members.length > 0) return members;
 
-  const structureType = detectHtmlStructure($);
-  const scrapers = getAllScrapers();
-
-  const scraper = structureType in scrapers ? scrapers[structureType as ScraperKey] : undefined;
-  const primaryMembers = scraper ? scraper($, baseUrl) : [];
-  if (primaryMembers.length > 0) {
-    return dedupeMembers(primaryMembers);
+  if (!playwrightManager || typeof playwrightManager.fetchPageContent !== "function") {
+    return members;
   }
 
-  const fallbackMembers = dedupeMembers([
-    ...scrapeNestedTableForm($, baseUrl),
-    ...scrapeQueryParams($, baseUrl),
-    ...scrapeCharactersPath($, baseUrl),
-    ...scrapePathBased($, baseUrl),
-    ...extractCharacterLinksCaseInsensitive($, baseUrl),
-  ]);
+  const rendered = await playwrightManager.fetchPageContent(guildUrl, undefined, customHeaders);
+  if (!rendered || rendered === html) return members;
 
-  return fallbackMembers;
+  return extractMembersFromHtml(rendered, guildUrl);
 };

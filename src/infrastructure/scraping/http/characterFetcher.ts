@@ -60,12 +60,16 @@ export const getCharacterStatus = async (
   };
 
   let lastError: Error | null = null;
+  let incompleteResult: CharacterStatus | null = null;
 
   for (const [index, headers] of headerStrategies.entries()) {
     try {
       const result = await tryStrategy(headers, index);
-      if (result) {
+      if (result?.level !== null && result !== null) {
         return result;
+      }
+      if (result) {
+        incompleteResult = result;
       }
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -80,7 +84,7 @@ export const getCharacterStatus = async (
     }
   }
 
-  if (hadForbidden) {
+  if (hadForbidden || incompleteResult) {
     const fallbackHeaders = customHeaders || createMinimalHeaders();
     if (playwrightManager && typeof playwrightManager.fetchPageContent === "function") {
       const fallbackHtml = await playwrightManager.fetchPageContent(
@@ -104,6 +108,10 @@ export const getCharacterStatus = async (
     }
 
     lastError = new Error("Todas as estratégias falharam (403/proteção anti-bot)");
+  }
+
+  if (incompleteResult) {
+    return incompleteResult;
   }
 
   if (fatalPageReason) {

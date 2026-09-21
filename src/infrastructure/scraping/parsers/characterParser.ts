@@ -53,7 +53,7 @@ const extractLevelFromField = ($: cheerio.CheerioAPI): number | null => {
     if (foundLevel !== null) return;
 
     const label = normalizeText($(el).text());
-    if (!/^(level|nível)\s*:?$/i.test(label)) return;
+    if (!/^(level|n[ií]vel)\s*:?$/i.test(label)) return;
 
     const valueText = normalizeText($(el).next().text());
     const match = valueText.match(/\b(\d{1,5})\b/);
@@ -71,7 +71,7 @@ const extractLevelFromField = ($: cheerio.CheerioAPI): number | null => {
     if (foundLevel !== null) return;
 
     const text = normalizeText($(el).text());
-    const match = text.match(/(?:Level|Nível)\s*:\s*(\d{1,5})\b/i);
+    const match = text.match(/(?:Level|N[ií]vel)\s*:\s*(\d{1,5})\b/i);
     if (!match || !match[1]) return;
 
     const level = parseInt(match[1], 10);

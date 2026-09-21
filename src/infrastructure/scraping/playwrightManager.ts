@@ -24,6 +24,9 @@ export type NavigationTimeouts = {
 };
 
 const MAX_CONCURRENT_ANTIBOT_NAVIGATIONS = 4;
+const MAX_CONTENT_STABILITY_CHECKS = 8;
+const CONTENT_STABILITY_INTERVAL_MS = 1000;
+const REQUIRED_STABLE_READINGS = 3;
 
 class PlaywrightManager {
   private sessions = new Map<string, Promise<Session>>();
@@ -271,10 +274,26 @@ class PlaywrightManager {
         await this.harvestClearanceCookie(page, url, proxySessionId);
       }
 
-      await page.waitForTimeout(2000);
       await page.waitForLoadState("networkidle", { timeout: networkIdleTimeoutMs }).catch((networkIdleErr: unknown) => {
         console.warn(`[${serverId || "default"}] Aviso ao esperar networkidle:`, networkIdleErr);
       });
+      await this.waitForStableContent(page);
+    }
+
+    private async waitForStableContent(page: Page): Promise<void> {
+      let previousSize = -1;
+
+      let stableReadings = 0;
+
+      for (let attempt = 0; attempt < MAX_CONTENT_STABILITY_CHECKS; attempt++) {
+        await page.waitForTimeout(CONTENT_STABILITY_INTERVAL_MS);
+
+        const size = (await page.content().catch(() => "")).length;
+        stableReadings = size > 0 && size === previousSize ? stableReadings + 1 : 0;
+        previousSize = size;
+
+        if (stableReadings >= REQUIRED_STABLE_READINGS) return;
+      }
     }
 
     private async fetchPageContentInternal(

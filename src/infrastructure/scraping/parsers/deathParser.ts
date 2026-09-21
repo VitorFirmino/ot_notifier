@@ -13,7 +13,7 @@ const hasValidDeathFields = ({
   hasLinks: boolean;
 }): boolean => {
   const hasDeathVerb =
-    /(eliminado|morreu|morto|faleceu|matou|matado|assassinado|died|killed|slain|frag(ged)?|murio|muri[oó]|asesinado)/i.test(
+    /(eliminado|morreu|morto|faleceu|matou|matado|assassinado|died|killed|slain|frag(ged)?|murio|muri[oó]|muerto|asesinado)/i.test(
       deathText
     );
   const hasLevel = /(n[ií]vel|level|lvl)[:\s]+\d+/i.test(deathText);
@@ -29,7 +29,14 @@ const extractKillers = ($: cheerio.CheerioAPI, deathCell: cheerio.Cheerio<AnyNod
     .get()
     .filter(Boolean);
 
-const DEATH_HEADING_LABELS = ["character deaths", "deaths", "últimas mortes", "mortes do personagem"];
+const DEATH_HEADING_LABELS = [
+  "character deaths",
+  "deaths",
+  "últimas mortes",
+  "mortes do personagem",
+  "muertes del personaje",
+  "muertes",
+];
 
 const findTableAfterDeathHeading = ($: cheerio.CheerioAPI): cheerio.Cheerio<AnyNode> => {
   const heading = $("h1, h2, h3, h4, h5, h6")
@@ -62,7 +69,7 @@ const parseDeathFromRow = ($: cheerio.CheerioAPI, row: ReturnType<typeof $>): De
   const hasLinks = deathCell.find("a").length > 0;
   if (!hasValidDeathFields({ deathText, hasLinks })) return null;
 
-  const levelMatch = deathText.match(/(?:nível|level)\s+(\d+)/i);
+  const levelMatch = deathText.match(/(?:n[ií]vel|level)\s+(\d+)/i);
   if (!levelMatch) return null;
 
   const level = parseInt(levelMatch[1], 10);
@@ -84,7 +91,7 @@ export const extractAllDeaths = ($: cheerio.CheerioAPI): DeathInfo[] => {
   const deathContainer = $(".TableContainer").filter((_, el) => {
     const title = normalizeText($(el).find(".CaptionInnerContainer .Text").first().text());
     const lowerTitle = title.toLowerCase();
-    return lowerTitle === "deaths" || lowerTitle.includes("últimas mortes");
+    return DEATH_HEADING_LABELS.some((label) => lowerTitle === label || lowerTitle.includes(label));
   });
 
   if (deathContainer.length > 0) {

@@ -149,4 +149,31 @@ describe("deathParser", () => {
     const $ = cheerio.load("<html><body><p>No deaths here.</p></body></html>");
     expect(extractAllDeaths($)).toEqual([]);
   });
+
+  describe("layout em espanhol (RubinOT)", () => {
+    const html = `
+      <h2>Muertes del Personaje</h2>
+      <table>
+        <thead><tr><th>Fecha</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>18 sept 2026, 17:09</td>
+            <td>Muerto en el nivel <span>772</span> por <span>grimeleech</span> (mayor daño por <span>hellflayer</span>)</td>
+          </tr>
+          <tr>
+            <td>14 sept 2026, 19:40</td>
+            <td>Muerto en el nivel <span>767</span> por <span>gorger inferniarch</span></td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    it("encontra a tabela pelo título em espanhol e lê os níveis", () => {
+      const mortes = extractAllDeaths(cheerio.load(html));
+
+      expect(mortes).toHaveLength(2);
+      expect(mortes[0]).toMatchObject({ level: 772, time: "18 sept 2026, 17:09" });
+      expect(mortes[1]).toMatchObject({ level: 767 });
+    });
+  });
 });
