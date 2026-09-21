@@ -12,6 +12,8 @@ import { detectServerFatalPage } from "../utils/pageHealthDetector";
 import { detectCloudflareFromHtml, markServerAsCloudflare } from "../utils/cloudflareDetector";
 import { playwrightManager } from "../playwrightManager";
 
+const CLIENT_RENDERED_MARKERS = ["/_next/", "__next_f", "__nuxt", "data-reactroot", "ng-version"];
+
 export const getCharacterStatus = async (
   name: string,
   url: string,
@@ -51,6 +53,9 @@ export const getCharacterStatus = async (
       return null;
     }
 
+    const lowerHtml = response.html.toLowerCase();
+    lastHtmlLooksClientRendered = CLIENT_RENDERED_MARKERS.some((marker) => lowerHtml.includes(marker));
+
     try {
       return parseCharacterFromHtml(response.html, name, url);
     } catch (err: unknown) {
@@ -61,6 +66,7 @@ export const getCharacterStatus = async (
 
   let lastError: Error | null = null;
   let incompleteResult: CharacterStatus | null = null;
+  let lastHtmlLooksClientRendered = false;
 
   for (const [index, headers] of headerStrategies.entries()) {
     try {
@@ -84,7 +90,9 @@ export const getCharacterStatus = async (
     }
   }
 
-  if (hadForbidden || incompleteResult) {
+  const shouldRenderInBrowser = Boolean(incompleteResult) && lastHtmlLooksClientRendered;
+
+  if (hadForbidden || shouldRenderInBrowser) {
     const fallbackHeaders = customHeaders || createMinimalHeaders();
     if (playwrightManager && typeof playwrightManager.fetchPageContent === "function") {
       const fallbackHtml = await playwrightManager.fetchPageContent(

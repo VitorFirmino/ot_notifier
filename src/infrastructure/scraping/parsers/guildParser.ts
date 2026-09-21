@@ -294,6 +294,13 @@ export const isGuildNotExistHtml = (html: string): boolean => {
 const fetchGuildHtml = (guildUrl: string, customHeaders?: Record<string, string>): Promise<string> =>
   customHeaders ? fetchGuildPageWithHeaders(guildUrl, customHeaders) : fetchGuildPage(guildUrl);
 
+const CLIENT_RENDERED_MARKERS = ["/_next/", "__next_f", "__nuxt", "data-reactroot", "ng-version"];
+
+const looksClientRendered = (html: string): boolean => {
+  const lower = html.toLowerCase();
+  return CLIENT_RENDERED_MARKERS.some((marker) => lower.includes(marker));
+};
+
 const extractMembersFromHtml = (html: string, baseUrl: string): GuildMember[] => {
   const $ = cheerio.load(html);
 
@@ -353,6 +360,8 @@ export const getGuildMembers = async (
 
   const members = extractMembersFromHtml(html, guildUrl);
   if (members.length > 0) return members;
+
+  if (!looksClientRendered(html)) return members;
 
   if (!playwrightManager || typeof playwrightManager.fetchPageContent !== "function") {
     return members;
