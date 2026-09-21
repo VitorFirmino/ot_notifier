@@ -58,4 +58,33 @@ describe("serverQueueManager", () => {
 
     vi.useRealTimers();
   });
+
+  it("não agenda servidor sem dono e remove o agendamento dele", async () => {
+    upsertJobScheduler.mockResolvedValue(undefined);
+    removeJobScheduler.mockResolvedValue(undefined);
+
+    const { syncAllActiveServersToQueue } = await import("../serverQueueManager");
+
+    await syncAllActiveServersToQueue([
+      {
+        serverId: "com_dono",
+        serverName: "Com dono",
+        guild: { url: "https://exemplo.com/?guilds/A", enabled: true },
+        characters: {},
+        createdByUserId: "usuario-1",
+      },
+      {
+        serverId: "orfao",
+        serverName: "Órfão",
+        guild: { url: "https://exemplo.com/?guilds/B", enabled: true },
+        characters: {},
+      },
+    ] as never);
+
+    const agendados = upsertJobScheduler.mock.calls.map((call) => call[0]);
+    const removidos = removeJobScheduler.mock.calls.map((call) => call[0]);
+
+    expect(agendados).toEqual(["check-server:com_dono"]);
+    expect(removidos).toEqual(["check-server:orfao"]);
+  });
 });
