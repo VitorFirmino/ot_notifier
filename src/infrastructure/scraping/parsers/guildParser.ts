@@ -132,7 +132,7 @@ export const discoverGuildsFromList = (html: string, baseUrl: string): GuildDisc
   $("a[href*='action=view'], a[href*='GuildName']").each((_, elem) => {
     const $link = $(elem);
     const href = $link.attr("href") || "";
-    const $img = $link.find("img[src*='guild_image'], img[src*='logo'], img[src*='emblem']");
+    const $img = $link.find("img[src*='guild'], img[src*='logo'], img[src*='emblem']");
     const logoSrc = $img.attr("src") || "";
 
     let rawName = $link.text().trim();
@@ -156,7 +156,7 @@ export const discoverGuildsFromList = (html: string, baseUrl: string): GuildDisc
 
   $("tr").each((_, trElem) => {
     const $tr = $(trElem);
-    const $img = $tr.find("img[src*='guild_image'], img[src*='logo'], img[src*='emblem']");
+    const $img = $tr.find("img[src*='guild'], img[src*='logo'], img[src*='emblem']");
     const logoSrc = $img.attr("src");
 
     const $form = $tr.find("form[action*='guilds']");
