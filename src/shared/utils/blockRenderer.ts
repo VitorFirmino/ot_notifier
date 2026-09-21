@@ -91,6 +91,10 @@ const formatCountdown = (timestamp: number): string => {
 const normalizeWarningMessage = (message: string): string => {
   const lower = message.toLowerCase();
 
+  if (lower.includes("contorno")) {
+    return "Anti-bot: serviço de contorno offline.";
+  }
+
   if (
     lower.includes("cloudflare") ||
     lower.includes("anti-bot") ||

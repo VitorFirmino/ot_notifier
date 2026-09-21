@@ -8,12 +8,14 @@ const NEEDS_PROXY_KEY_PREFIX = "proxy_needed:";
 const HEALTH_CHECK_URL = "https://api.ipify.org?format=json";
 const HEALTH_CHECK_TIMEOUT_MS = 12000;
 const MAX_SESSION_ATTEMPTS = 3;
+const PROXY_DOWN_COOLDOWN_MS = 5 * 60 * 1000;
 
 export type ProxySession = {
   sessionId: string;
   exitIp: string;
 };
 
+let proxyUnavailableUntil = 0;
 const localGenerations = new Map<string, number>();
 const localNeedsProxy = new Set<string>();
 
@@ -73,8 +75,11 @@ export const checkSessionAlive = async (sessionId: string): Promise<string | nul
   }
 };
 
+export const isProxyUnavailable = (): boolean => Date.now() < proxyUnavailableUntil;
+
 export const getProxySessionIdForDomain = async (domain: string): Promise<string | null> => {
   if (!getProxyConfig()) return null;
+  if (isProxyUnavailable()) return null;
   if (!(await domainNeedsProxy(domain))) return null;
 
   return buildSessionId(domain, await readGeneration(domain));
@@ -82,6 +87,7 @@ export const getProxySessionIdForDomain = async (domain: string): Promise<string
 
 export const acquireProxyForDomain = async (domain: string): Promise<ProxySession | null> => {
   if (!getProxyConfig()) return null;
+  if (isProxyUnavailable()) return null;
   if (!(await domainNeedsProxy(domain))) return null;
 
   for (let attempt = 0; attempt < MAX_SESSION_ATTEMPTS; attempt++) {
@@ -89,11 +95,19 @@ export const acquireProxyForDomain = async (domain: string): Promise<ProxySessio
     const sessionId = buildSessionId(domain, generation);
     const exitIp = await checkSessionAlive(sessionId);
 
-    if (exitIp) return { sessionId, exitIp };
+    if (exitIp) {
+      proxyUnavailableUntil = 0;
+      return { sessionId, exitIp };
+    }
 
     console.warn(`[proxy] Sessão de ${domain} não respondeu (tentativa ${attempt + 1}/${MAX_SESSION_ATTEMPTS}), rotacionando.`);
     await releasePinnedProxy(domain);
   }
+
+  proxyUnavailableUntil = Date.now() + PROXY_DOWN_COOLDOWN_MS;
+  console.warn(
+    `[proxy] Proxy indisponível (saldo ou credenciais?); seguindo por conexão direta pelos próximos ${PROXY_DOWN_COOLDOWN_MS / 60000} minutos.`
+  );
 
   return null;
 };

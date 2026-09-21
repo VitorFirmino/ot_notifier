@@ -1,6 +1,8 @@
 import { getProxyConfig, getProxyConfigForSession } from "./proxyConfig";
 
 const CAPSOLVER_API_BASE = "https://api.capsolver.com";
+const BREAKER_FAILURE_THRESHOLD = 3;
+const BREAKER_COOLDOWN_MS = 10 * 60 * 1000;
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 20;
 
@@ -20,6 +22,22 @@ type TaskResultResponse = {
     userAgent?: string;
   };
 };
+
+let consecutiveFailures = 0;
+let breakerOpenUntil = 0;
+
+const registerFailure = (): void => {
+  consecutiveFailures += 1;
+  if (consecutiveFailures < BREAKER_FAILURE_THRESHOLD) return;
+
+  breakerOpenUntil = Date.now() + BREAKER_COOLDOWN_MS;
+  consecutiveFailures = 0;
+  console.warn(
+    `[capsolver] ${BREAKER_FAILURE_THRESHOLD} falhas seguidas (saldo?); pausando chamadas por ${BREAKER_COOLDOWN_MS / 60000} minutos.`
+  );
+};
+
+export const isCapsolverPaused = (): boolean => Date.now() < breakerOpenUntil;
 
 export type CloudflareChallengeSolution = {
   cfClearance: string;
@@ -60,6 +78,7 @@ export const solveCloudflareChallenge = async (
 ): Promise<CloudflareChallengeSolution | null> => {
   const clientKey = process.env.CAPSOLVER_API_KEY;
   if (!clientKey) return null;
+  if (Date.now() < breakerOpenUntil) return null;
 
   const proxy = buildProxyString(proxySessionId);
   if (!proxy) {
@@ -84,6 +103,7 @@ export const solveCloudflareChallenge = async (
 
     if (createResult.errorId !== 0 || !createResult.taskId) {
       console.warn(`[capsolver] Falha ao criar task: ${createResult.errorDescription || "erro desconhecido"}`);
+      registerFailure();
       return null;
     }
 
@@ -99,10 +119,12 @@ export const solveCloudflareChallenge = async (
 
       if (result.errorId !== 0) {
         console.warn(`[capsolver] Task falhou: ${result.errorDescription || "erro desconhecido"}`);
+        registerFailure();
         return null;
       }
 
       if (result.status === "ready" && result.solution?.cookies?.cf_clearance && result.solution.userAgent) {
+        consecutiveFailures = 0;
         return {
           cfClearance: result.solution.cookies.cf_clearance,
           userAgent: result.solution.userAgent,
@@ -111,9 +133,11 @@ export const solveCloudflareChallenge = async (
     }
 
     console.warn(`[capsolver] Timeout aguardando resolução do desafio para ${targetUrl}`);
+    registerFailure();
     return null;
   } catch (err: unknown) {
     console.warn(`[capsolver] Erro ao resolver desafio Cloudflare para ${targetUrl}:`, err);
+    registerFailure();
     return null;
   }
 };

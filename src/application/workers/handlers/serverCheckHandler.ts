@@ -21,6 +21,8 @@ import {
   resolveCheckInterval,
 } from "../utils/constants";
 import { serverHasCloudflare } from "@infrastructure/scraping/utils/cloudflareDetector";
+import { isProxyUnavailable } from "@infrastructure/scraping/utils/proxySessionManager";
+import { isCapsolverPaused } from "@infrastructure/scraping/utils/capsolverClient";
 import { fetchOnlineCharacterNames } from "@infrastructure/scraping/utils/onlinePlayersDiscovery";
 import type { CharacterInfo, ProcessCharacterResult } from "@shared/types/index";
 
@@ -106,6 +108,7 @@ const WARN_MESSAGES = {
   PROTECTED: "Servidor protegido por segurança do site (Cloudflare).",
   DOWN: "Servidor indisponível no momento.",
   TEMP_ERROR: "Atualização indisponível no momento.",
+  BYPASS_OFFLINE: "Anti-bot ativo e o serviço de contorno está offline.",
 } as const;
 
 const buildWarnState = (message: string): { message: string; timestamp: number } => ({
@@ -113,8 +116,17 @@ const buildWarnState = (message: string): { message: string; timestamp: number }
   timestamp: Date.now(),
 });
 
-const classifyCheckFailure = (isAntiBot: boolean, isDown: boolean): string =>
-  isAntiBot ? WARN_MESSAGES.PROTECTED : isDown ? WARN_MESSAGES.DOWN : WARN_MESSAGES.TEMP_ERROR;
+const isAntiBotBypassOffline = (): boolean => {
+  const bypassFlags = [isProxyUnavailable(), isCapsolverPaused()];
+  return bypassFlags.some(Boolean);
+};
+
+const classifyCheckFailure = (isAntiBot: boolean, isDown: boolean): string => {
+  if (isAntiBot && isAntiBotBypassOffline()) return WARN_MESSAGES.BYPASS_OFFLINE;
+  if (isAntiBot) return WARN_MESSAGES.PROTECTED;
+  if (isDown) return WARN_MESSAGES.DOWN;
+  return WARN_MESSAGES.TEMP_ERROR;
+};
 
 const withTimeout = async <T>(
   operation: Promise<T>,
