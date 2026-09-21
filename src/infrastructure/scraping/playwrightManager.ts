@@ -3,7 +3,7 @@ import pLimit from "p-limit";
 import { getRandomUserAgent } from "./utils/userAgentGenerator";
 import { saveBrowserCookiesToJar } from "./http/axiosClient";
 import { getProxyConfig, getProxyConfigForSession } from "./utils/proxyConfig";
-import { solveCloudflareChallenge } from "./utils/capsolverClient";
+import { resolveClearance } from "./utils/clearanceResolver";
 import {
   acquireProxyForDomain,
   releasePinnedProxy,
@@ -236,27 +236,23 @@ class PlaywrightManager {
 
       if (stillChallenged) {
         const domain = new URL(url).hostname;
-        await invalidateClearance(domain);
 
         if (!proxySessionId && getProxyConfig()) {
+          await invalidateClearance(domain);
           console.warn(`[${serverId || "default"}] ${domain} exige desafio; próxima tentativa sairá por sessão fixa de proxy.`);
           await markDomainNeedsProxy(domain);
           return;
         }
 
-        const solved = await solveCloudflareChallenge(url, proxySessionId);
-        if (solved) {
+        const pageCookies = await page.context().cookies(url).catch(() => []);
+        const staleClearance = pageCookies.find((cookie) => cookie.name === "cf_clearance")?.value ?? null;
+
+        const clearance = await resolveClearance(domain, url, proxySessionId ?? null, staleClearance);
+        if (clearance) {
           await page.context().addCookies([
-            { name: "cf_clearance", value: solved.cfClearance, domain, path: "/" },
+            { name: "cf_clearance", value: clearance.cfClearance, domain, path: "/" },
           ]);
-          await page.setExtraHTTPHeaders({ "User-Agent": solved.userAgent });
-          await saveClearance(domain, {
-            cfClearance: solved.cfClearance,
-            userAgent: solved.userAgent,
-            proxySessionId: proxySessionId ?? null,
-            exitIp: null,
-            solvedAt: Date.now(),
-          });
+          await page.setExtraHTTPHeaders({ "User-Agent": clearance.userAgent });
           await page.goto(url, { waitUntil: "domcontentloaded", timeout: gotoTimeoutMs }).catch((gotoErr: unknown) => {
             console.warn(`[${serverId || "default"}] Aviso ao renavegar após resolver desafio:`, gotoErr);
           });
