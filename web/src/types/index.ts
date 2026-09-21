@@ -155,6 +155,7 @@ export interface DiscoverGuildsResponse {
   guilds: GuildDiscovered[];
   htmlLength?: number;
   worldOptions?: WorldOption[];
+  looksLikeServer?: boolean;
 }
 
 export interface SystemStatsResponse {

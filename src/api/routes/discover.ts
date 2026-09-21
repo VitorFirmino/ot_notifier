@@ -20,10 +20,10 @@ export const registerDiscoverRoutes = (app: FastifyInstance): void => {
     if (!(await assertPublicUrlOrReply(targetUrl, reply))) return;
 
     try {
-      const { guilds, html, worldOptions } = body.world
+      const { guilds, html, worldOptions, looksLikeServer } = body.world
         ? await discoverGuildsForWorld(targetUrl, body.world)
         : await discoverGuildRoute(targetUrl, request.userId);
-      return sendSuccess(reply, { guilds, htmlLength: html.length, worldOptions });
+      return sendSuccess(reply, { guilds, htmlLength: html.length, worldOptions, looksLikeServer });
     } catch (err: unknown) {
       if (err instanceof LoginRequiredError) {
         return sendError(reply, 401, err.message, {

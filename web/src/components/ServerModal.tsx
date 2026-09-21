@@ -107,10 +107,16 @@ export const ServerModal: React.FC<ServerModalProps> = ({
   const discoveredGuilds = discoverMutation.data?.guilds ?? [];
   const worldOptions = discoverMutation.data?.worldOptions ?? [];
   const needsWorldSelection = worldOptions.length > 0 && discoveredGuilds.length === 0;
+  const looksLikeServer = discoverMutation.data?.looksLikeServer !== false;
+  const foundNothing =
+    discoverMutation.isSuccess && discoveredGuilds.length === 0 && !needsWorldSelection;
+  const emptyMessage = looksLikeServer
+    ? "Nenhuma guilda encontrada nesta página do servidor. Tente a URL da lista de guildas."
+    : "Esta página não parece ser de um servidor de Open Tibia. Se for um portal com vários mundos, use o endereço do mundo.";
   const discoveryError = discoverMutation.isError
     ? "Erro ao buscar guildas neste servidor."
-    : discoverMutation.isSuccess && discoveredGuilds.length === 0 && !needsWorldSelection
-      ? "Nenhuma guilda encontrada nesta URL. Verifique se o endereço está correto."
+    : foundNothing
+      ? emptyMessage
       : null;
   const showGuildSearch = discoveredGuilds.length > 4;
   const filteredDiscoveredGuilds = showGuildSearch

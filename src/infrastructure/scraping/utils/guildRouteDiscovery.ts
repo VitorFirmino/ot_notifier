@@ -41,6 +41,7 @@ export type GuildRouteDiscoveryResult = {
   html: string;
   resolvedUrl: string;
   worldOptions?: WorldOption[];
+  looksLikeServer?: boolean;
 };
 
 type CandidateOutcome =
@@ -50,6 +51,17 @@ type CandidateOutcome =
   | { kind: "failed" };
 
 const MIN_CONFIDENT_GUILD_COUNT = 2;
+
+const SERVER_PAGE_MARKERS = ["subtopic=", "character/view", "highscores", "accountmanagement", "/guilds"];
+const MIN_SERVER_PAGE_MARKERS = 2;
+
+export const looksLikeServerPage = (html: string): boolean => {
+  if (!html) return false;
+
+  const lower = html.toLowerCase();
+  const found = SERVER_PAGE_MARKERS.filter((marker) => lower.includes(marker));
+  return found.length >= MIN_SERVER_PAGE_MARKERS;
+};
 
 export const normalizeBaseUrl = (rawUrl: string): string =>
   /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
@@ -202,6 +214,7 @@ export const discoverGuildRoute = async (rawUrl: string, userId?: string): Promi
       html: lastFetched.html,
       resolvedUrl: lastFetched.url,
       worldOptions: worldOptions || undefined,
+      looksLikeServer: looksLikeServerPage(lastFetched.html),
     };
   }
 
