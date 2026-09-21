@@ -21,7 +21,7 @@ test.describe("Auto-discovery tab", () => {
     await page.getByLabel("URL do servidor").fill("example.com");
     await page.getByRole("button", { name: "Buscar guildas" }).click();
     await expect(
-      page.getByText("Nenhuma guilda encontrada nesta URL. Verifique se o endereço está correto.")
+      page.getByText("Esta página não parece ser de um servidor de Open Tibia", { exact: false })
     ).toBeVisible();
   });
 
