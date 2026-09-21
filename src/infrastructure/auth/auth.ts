@@ -74,6 +74,7 @@ export const auth = betterAuth({
       "/sign-in/email": { window: 60, max: process.env.E2E_TEST_MODE === "true" ? 500 : 5 },
       "/sign-up/email": { window: 60, max: process.env.E2E_TEST_MODE === "true" ? 500 : 3 },
       "/request-password-reset": { window: 60, max: process.env.E2E_TEST_MODE === "true" ? 500 : 3 },
+      "/send-verification-email": { window: 60, max: process.env.E2E_TEST_MODE === "true" ? 500 : 3 },
     },
   },
 });
