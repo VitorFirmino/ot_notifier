@@ -75,7 +75,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
     reset,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<ServerFormValues>({
     resolver: zodResolver(serverFormSchema),
     defaultValues: {
@@ -535,6 +535,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                 logoUrl={logoUrl}
                 onSubmit={handleSubmit(onSaveSubmit)}
                 onCancel={onClose}
+                isSubmitting={isSubmitting}
               />
             </TabsContent>
           </Tabs>
@@ -545,6 +546,7 @@ export const ServerModal: React.FC<ServerModalProps> = ({
             logoUrl={logoUrl}
             onSubmit={handleSubmit(onSaveSubmit)}
             onCancel={onClose}
+            isSubmitting={isSubmitting}
           />
         )}
       </DialogContent>
@@ -568,6 +570,7 @@ interface ServerFormFieldsProps {
   logoUrl: string;
   onSubmit: (event: React.FormEvent) => void;
   onCancel: () => void;
+  isSubmitting: boolean;
 }
 
 const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
@@ -576,6 +579,7 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
   logoUrl,
   onSubmit,
   onCancel,
+  isSubmitting,
 }) => (
   <form onSubmit={onSubmit} className="space-y-4">
     <div className="space-y-3 rounded-lg border border-border bg-secondary/40 p-3 sm:p-4">
@@ -698,8 +702,16 @@ const ServerFormFields: React.FC<ServerFormFieldsProps> = ({
       <Button type="button" variant="outline" onClick={onCancel}>
         Cancelar
       </Button>
-      <Button type="submit">
-        <Save className="h-4 w-4" /> Salvar
+      <Button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" /> Salvando...
+          </>
+        ) : (
+          <>
+            <Save className="h-4 w-4" /> Salvar
+          </>
+        )}
       </Button>
     </DialogFooter>
   </form>
