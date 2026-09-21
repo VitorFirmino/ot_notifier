@@ -18,7 +18,6 @@ const isServerWorking = (config: ServerConfig): boolean => {
   const { guild } = config;
 
   if (guild?.enabled === false) return false;
-  if (!config.createdByUserId) return false;
 
   return true;
 };

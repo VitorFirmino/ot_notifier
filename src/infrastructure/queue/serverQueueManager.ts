@@ -99,22 +99,10 @@ export const triggerServerCheckNow = async (serverId: string): Promise<void> => 
   }
 };
 
-const isSchedulable = (config: ServerConfig): boolean => {
-  const activeFlags = [config.guild.enabled !== false, config.isWorking !== false];
-  return activeFlags.every(Boolean) && Boolean(config.createdByUserId);
-};
-
 export const syncAllActiveServersToQueue = async (configs: ServerConfig[]): Promise<void> => {
-  const unowned = configs.filter((config) => !config.createdByUserId).map((config) => config.serverId);
-  if (unowned.length > 0) {
-    console.warn(
-      `⚠️ [BullMQ] ${unowned.length} servidor(es) sem dono não serão monitorados: ${unowned.join(", ")}`
-    );
-  }
-
   try {
     for (const config of configs) {
-      if (isSchedulable(config)) {
+      if (config.guild.enabled !== false && config.isWorking !== false) {
         await addOrUpdateServerSchedule(config.serverId, resolveCheckInterval(config.settings));
       } else {
         await removeServerSchedule(config.serverId);
