@@ -1,6 +1,5 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import pLimit from "p-limit";
-import { getRandomUserAgent } from "./utils/userAgentGenerator";
 import { saveBrowserCookiesToJar } from "./http/axiosClient";
 import { getProxyConfig, getProxyConfigForSession } from "./utils/proxyConfig";
 import { resolveClearance } from "./utils/clearanceResolver";
@@ -11,7 +10,7 @@ import {
   domainNeedsProxy,
 } from "./utils/proxySessionManager";
 import { getCachedClearance, saveClearance, invalidateClearance } from "./utils/clearanceCache";
-import { isCloudflareBlockPage } from "./utils/cloudflareDetector";
+import { isCloudflareBlockPage, isChallengeInterstitialHtml } from "./utils/cloudflareDetector";
 
 type Session = {
   browser: Browser;
@@ -36,12 +35,6 @@ class PlaywrightManager {
     proxySessionId?: string | null,
     forcedUserAgent?: string
   ): Promise<Session> {
-    const userAgent =
-      forcedUserAgent ||
-      customHeaders?.["User-Agent"] ||
-      customHeaders?.["user-agent"] ||
-      getRandomUserAgent();
-
     let browser: Browser;
     let context: BrowserContext;
 
@@ -49,12 +42,12 @@ class PlaywrightManager {
       (proxySessionId ? getProxyConfigForSession(proxySessionId) : getProxyConfig()) ?? undefined;
 
     const contextOptions = {
-      userAgent,
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {
         "Accept-Language": customHeaders?.["Accept-Language"] || "pt-BR,pt;q=0.9,en-US;q=0.8",
       },
       proxy,
+      ...(forcedUserAgent ? { userAgent: forcedUserAgent } : {}),
     };
     const launchArgs = ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"];
 
@@ -228,8 +221,10 @@ class PlaywrightManager {
 
       let stillChallenged = false;
       for (let attempt = 0; attempt < maxChallengeWaits; attempt++) {
-        const title = await page.title();
-        stillChallenged = title.includes("Just a moment") || title.includes("Um momento");
+        const title = await page.title().catch(() => "");
+        const titleIsChallenge = title.includes("Just a moment") || title.includes("Um momento");
+        const content = await page.content().catch(() => "");
+        stillChallenged = titleIsChallenge || isChallengeInterstitialHtml(content);
         if (!stillChallenged) break;
         await page.waitForTimeout(1000);
       }

@@ -56,6 +56,15 @@ export const isCloudflareBlockPage = (html: string): boolean => {
   return BLOCK_PAGE_INDICATORS.some((indicator) => htmlLower.includes(indicator));
 };
 
+const CHALLENGE_INTERSTITIAL_MARKERS = ["__cf_chl", "cf-chl-widget", "challenges.cloudflare.com"];
+
+export const isChallengeInterstitialHtml = (html: string): boolean => {
+  if (!html) return false;
+
+  const htmlLower = html.toLowerCase();
+  return CHALLENGE_INTERSTITIAL_MARKERS.some((marker) => htmlLower.includes(marker));
+};
+
 export const detectCloudflareFromHtml = (html: string): boolean => {
   if (!html) return false;
 

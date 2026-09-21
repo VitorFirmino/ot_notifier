@@ -20,9 +20,12 @@ const DEFAULT_SESSION_LIFE_MINUTES = 25;
 const getSessionLifeMinutes = (): number =>
   parseInt(process.env.SCRAPING_PROXY_SESSION_LIFE_MINUTES || String(DEFAULT_SESSION_LIFE_MINUTES), 10);
 
+export const isStaticProxy = (): boolean => process.env.SCRAPING_PROXY_STATIC === "true";
+
 export const getProxyConfigForSession = (sessionId: string): ProxyConfig | null => {
   const base = getProxyConfig();
   if (!base?.username) return base;
+  if (isStaticProxy()) return base;
 
   return {
     ...base,

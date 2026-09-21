@@ -111,6 +111,19 @@ const WARN_MESSAGES = {
   BYPASS_OFFLINE: "Anti-bot ativo e o serviço de contorno está offline.",
 } as const;
 
+const summarizeCharacterErrors = (results: ProcessCharacterResult[]): string => {
+  const counts = results.reduce<Record<string, number>>((acc, result) => {
+    const message = result.error ?? "erro desconhecido";
+    return { ...acc, [message]: (acc[message] ?? 0) + 1 };
+  }, {});
+
+  return Object.entries(counts)
+    .sort(([, left], [, right]) => right - left)
+    .slice(0, 3)
+    .map(([message, count]) => `${count}x ${message}`)
+    .join(" | ");
+};
+
 const buildWarnState = (message: string): { message: string; timestamp: number } => ({
   message,
   timestamp: Date.now(),
@@ -501,6 +514,12 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
           processResult.results.length > 0 &&
           processResult.results.every((result) => !!result.error || result.level === null);
         const erroredResults = processResult.results.filter((result) => !!result.error);
+
+        if (erroredResults.length > 0) {
+          console.warn(
+            `⚠️ [${serverId}] ${erroredResults.length}/${totalToProcess} personagens falharam: ${summarizeCharacterErrors(erroredResults)}`
+          );
+        }
         const allErrorsAreAntiBot =
           erroredResults.length > 0 &&
           erroredResults.length >= totalToProcess &&
