@@ -1,9 +1,12 @@
 import "reflect-metadata";
+import dotenv from "dotenv";
 import { DataSource } from "typeorm";
 import { UserServerSubscription } from "./entities/UserServerSubscription";
 import { ServerConfigRecord } from "./entities/ServerConfigRecord";
 import { SiteCredential } from "./entities/SiteCredential";
 import { getAuthEnv } from "@shared/utils/authEnv";
+
+dotenv.config({ quiet: true });
 
 const { DATABASE_URL } = getAuthEnv();
 
