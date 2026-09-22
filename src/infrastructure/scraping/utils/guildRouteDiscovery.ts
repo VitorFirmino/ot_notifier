@@ -1,15 +1,22 @@
 import { createRequestHeaders, fetchWithAxiosResult, type AxiosFetchResult } from "../http/axiosClient";
 import { discoverGuildsFromList, detectWorldSelector, isGuildNotExistHtml } from "../parsers/guildParser";
 import { extractServerIdFromUrl } from "@shared/utils/serverIdentity";
+import { parsePositiveInt } from "@application/workers/utils/constants";
 import { playwrightManager } from "../playwrightManager";
 import { detectLoginRequiredPage, LoginRequiredError } from "./loginRequiredDetector";
 import { getSiteCredential } from "@infrastructure/storage/siteCredentials";
 import type { GuildDiscovered, WorldOption } from "../../../shared/types/index";
 
-const CANDIDATE_TIMEOUT_MS = 8000;
-const DISCOVERY_BUDGET_MS = 75000;
-const BROWSER_PROBE_TIMEOUTS = { gotoTimeoutMs: 15000, networkIdleTimeoutMs: 5000 };
-const BROWSER_CANDIDATE_TIMEOUT_MS = 25000;
+const CANDIDATE_TIMEOUT_MS = parsePositiveInt(process.env.DISCOVERY_AXIOS_TIMEOUT_MS, 8000);
+const DISCOVERY_BUDGET_MS = parsePositiveInt(process.env.DISCOVERY_BUDGET_MS, 75000);
+const BROWSER_CANDIDATE_TIMEOUT_MS = parsePositiveInt(
+  process.env.DISCOVERY_BROWSER_TIMEOUT_MS,
+  25000
+);
+const BROWSER_PROBE_TIMEOUTS = {
+  gotoTimeoutMs: parsePositiveInt(process.env.DISCOVERY_GOTO_TIMEOUT_MS, 15000),
+  networkIdleTimeoutMs: parsePositiveInt(process.env.DISCOVERY_NETWORK_IDLE_TIMEOUT_MS, 5000),
+};
 
 const withCandidateDeadline = async <T>(
   operation: Promise<T>,
