@@ -26,6 +26,7 @@ afterAll(async () => {
 describe("POST /api/discover — caching", () => {
   let app: FastifyInstance;
   let session: TestSession;
+  let redisAvailable = false;
   const targetUrl = `https://discover-cache-test-${Date.now()}.example.com`;
 
   beforeAll(async () => {
@@ -35,7 +36,10 @@ describe("POST /api/discover — caching", () => {
 
     const { getCacheRedisClient } = await import("@infrastructure/queue/redisConnection");
     const redis = await getCacheRedisClient();
-    await redis?.del(`discover-cache:${targetUrl}/`);
+    redisAvailable = await redis
+      ?.del(`discover-cache:${targetUrl}/`)
+      .then(() => true)
+      .catch(() => false) ?? false;
   });
 
   afterAll(async () => {
@@ -46,7 +50,10 @@ describe("POST /api/discover — caching", () => {
     discoverGuildRoute.mockClear();
   });
 
-  it("reuses a cached result instead of scraping again", async () => {
+  it("reuses a cached result instead of scraping again", async (context) => {
+    if (!redisAvailable) {
+      context.skip();
+    }
     discoverGuildRoute.mockResolvedValue({
       guilds: [{ name: "Cached Guild", url: `${targetUrl}/guild`, logoUrl: undefined }],
       html: "<html></html>",
