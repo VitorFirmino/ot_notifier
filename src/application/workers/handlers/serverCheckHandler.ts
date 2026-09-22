@@ -508,12 +508,12 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
           },
         });
 
-        const allFetchesFailed = totalToProcess > 0 && stats.errors >= totalToProcess;
-        const allUnknownLevels =
-          totalToProcess > 0 &&
-          processResult.results.length > 0 &&
-          processResult.results.every((result) => !!result.error || result.level === null);
         const erroredResults = processResult.results.filter((result) => !!result.error);
+        const attempted = processResult.results.length;
+        const allFetchesFailed = attempted > 0 && erroredResults.length >= attempted;
+        const allUnknownLevels =
+          attempted > 0 &&
+          processResult.results.every((result) => !!result.error || result.level === null);
 
         if (erroredResults.length > 0) {
           console.warn(
@@ -522,7 +522,7 @@ export const processServerCheck = async (serverId: string): Promise<void> => {
         }
         const allErrorsAreAntiBot =
           erroredResults.length > 0 &&
-          erroredResults.length >= totalToProcess &&
+          erroredResults.length >= attempted &&
           erroredResults.every((result) =>
             isProtectedError(result.error || "", knownCloudflareProtection)
           );

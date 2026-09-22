@@ -93,6 +93,14 @@ export const processQueueInBatches = async (
       )
     );
 
+    const everyAttemptFailed = stats.processed > 0 && stats.errors === stats.processed;
+    if (everyAttemptFailed) {
+      console.warn(
+        `⚠️ Interrompendo verificação: os ${stats.processed} primeiros personagens falharam; os ${queue.length - stats.processed} restantes foram ignorados.`
+      );
+      return;
+    }
+
     if (batchStart + batchSize < queue.length) {
       await sleep(requestDelay * 2);
     }
