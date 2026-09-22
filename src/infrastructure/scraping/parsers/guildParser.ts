@@ -157,13 +157,17 @@ export const discoverGuildsFromList = (html: string, baseUrl: string): GuildDisc
   $("tr").each((_, trElem) => {
     const $tr = $(trElem);
     const $img = $tr.find("img[src*='guild'], img[src*='logo'], img[src*='emblem']");
-    const logoSrc = $img.attr("src");
+    let logoSrc = $img.attr("src");
 
     const $form = $tr.find("form[action*='guilds']");
     const inputGuildName = $tr.find("input[name='GuildName']").attr("value") || $tr.find("input[name='guild']").attr("value");
     const formAction = $form.attr("action") || "";
 
     const guildName = inputGuildName || $tr.find("b").first().text().trim();
+
+    if (!logoSrc && formAction) {
+      logoSrc = $tr.find("img").first().attr("src");
+    }
 
     if (guildName && (logoSrc || formAction)) {
       let targetUrl = formAction;
