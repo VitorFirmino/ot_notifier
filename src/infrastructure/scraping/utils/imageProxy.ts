@@ -1,4 +1,5 @@
 import axios from "axios";
+import pLimit from "p-limit";
 import { createRequestHeaders, getCookieJar } from "../http/axiosClient";
 import { getAxiosProxyConfig } from "./proxyConfig";
 import { getProxySessionIdForDomain } from "./proxySessionManager";
@@ -46,7 +47,13 @@ const fetchWithValidatedRedirects = async (
   return { data: response.data, headers: response.headers, status: response.status };
 };
 
-export const fetchImageProxied = async (rawUrl: string): Promise<ProxiedImage | null> => {
+const IMAGE_PROXY_CONCURRENCY = parseInt(process.env.IMAGE_PROXY_CONCURRENCY || "6", 10);
+const imageProxyLimiter = pLimit(IMAGE_PROXY_CONCURRENCY);
+
+export const fetchImageProxied = (rawUrl: string): Promise<ProxiedImage | null> =>
+  imageProxyLimiter(() => fetchImageProxiedUnlimited(rawUrl));
+
+const fetchImageProxiedUnlimited = async (rawUrl: string): Promise<ProxiedImage | null> => {
   const origin = new URL(rawUrl).origin;
   const serverId = extractServerIdFromUrl(rawUrl);
 
