@@ -9,6 +9,28 @@ import type { GuildDiscovered, WorldOption } from "../../../shared/types/index";
 const CANDIDATE_TIMEOUT_MS = 8000;
 const DISCOVERY_BUDGET_MS = 75000;
 const BROWSER_PROBE_TIMEOUTS = { gotoTimeoutMs: 15000, networkIdleTimeoutMs: 5000 };
+const BROWSER_CANDIDATE_TIMEOUT_MS = 25000;
+
+const withCandidateDeadline = async <T>(
+  operation: Promise<T>,
+  deadline: number,
+  maxMs: number
+): Promise<T | null> => {
+  const remaining = Math.max(0, deadline - Date.now());
+  const budget = Math.min(maxMs, remaining);
+  if (budget === 0) return null;
+
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), budget);
+  });
+
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
 
 const fetchCandidate = async (
   url: string,
@@ -186,11 +208,15 @@ export const discoverGuildRoute = async (rawUrl: string, userId?: string): Promi
   if (axiosPass.sawForbidden) {
     const browserPass = await runPass(
       async (candidateUrl) => ({
-        html: await playwrightManager.fetchPageContent(
-          candidateUrl,
-          serverId,
-          createRequestHeaders(origin),
-          BROWSER_PROBE_TIMEOUTS
+        html: await withCandidateDeadline(
+          playwrightManager.fetchPageContent(
+            candidateUrl,
+            serverId,
+            createRequestHeaders(origin),
+            BROWSER_PROBE_TIMEOUTS
+          ),
+          deadline,
+          BROWSER_CANDIDATE_TIMEOUT_MS
         ),
       }),
       uniqueCandidates
@@ -251,12 +277,16 @@ export const discoverGuildsForWorld = async (
   for (const candidateUrl of uniqueCandidates) {
     if (Date.now() >= deadline) break;
 
-    const html = await playwrightManager.selectWorldAndFetch(
-      candidateUrl,
-      worldValue,
-      serverId,
-      createRequestHeaders(origin),
-      BROWSER_PROBE_TIMEOUTS
+    const html = await withCandidateDeadline(
+      playwrightManager.selectWorldAndFetch(
+        candidateUrl,
+        worldValue,
+        serverId,
+        createRequestHeaders(origin),
+        BROWSER_PROBE_TIMEOUTS
+      ),
+      deadline,
+      BROWSER_CANDIDATE_TIMEOUT_MS
     );
     if (!html) continue;
 
