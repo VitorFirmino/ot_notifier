@@ -389,11 +389,24 @@ export const ServerModal: React.FC<ServerModalProps> = ({
                   </div>
 
                   <DialogFooter>
-                    <Button type="button" variant="outline" onClick={handleBackToDiscoveredList}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleBackToDiscoveredList}
+                      disabled={isSubmitting}
+                    >
                       Voltar
                     </Button>
-                    <Button type="submit">
-                      <Save className="h-4 w-4" /> Salvar
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4" /> Salvar
+                        </>
+                      )}
                     </Button>
                   </DialogFooter>
                 </form>
