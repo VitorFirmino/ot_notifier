@@ -11,3 +11,5 @@ minimumReleaseAgeExclude:
 overrides:
   drizzle-orm: '>=0.45.2'
   lodash: '>=4.17.24'
+  undici: '>=7.29.1'
+  brace-expansion: '>=5.0.11'
