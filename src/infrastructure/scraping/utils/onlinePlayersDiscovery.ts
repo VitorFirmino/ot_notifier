@@ -3,6 +3,8 @@ import { createRequestHeaders, fetchWithAxiosResult, type AxiosFetchResult } fro
 import { isCharacterProfileHref, extractCharacterNameFromHref } from "../scrapers/characterLinkUtils";
 import { extractServerIdFromUrl } from "@shared/utils/serverIdentity";
 import { playwrightManager } from "../playwrightManager";
+import { loadServerConfig, saveServerConfig } from "@infrastructure/storage/serverConfigManager";
+import type { ServerConfig } from "@shared/types/index";
 
 const CANDIDATE_TIMEOUT_MS = 8000;
 
@@ -17,6 +19,20 @@ const ONLINE_LIST_CANDIDATE_PATHS = [
 
 const buildCandidateUrl = (origin: string, path: string): string =>
   path.startsWith("?") ? `${origin}/${path}` : `${origin}${path}`;
+
+const reorderPathsByLastWorking = (paths: string[], lastWorkingPath?: string): string[] => {
+  if (!lastWorkingPath || !paths.includes(lastWorkingPath)) return paths;
+  return [lastWorkingPath, ...paths.filter((path) => path !== lastWorkingPath)];
+};
+
+const rememberWorkingOnlineListPath = async (
+  serverId: string,
+  path: string,
+  currentConfig: ServerConfig | null
+): Promise<void> => {
+  if (!currentConfig || currentConfig.lastWorkingOnlineListPath === path) return;
+  await saveServerConfig({ ...currentConfig, lastWorkingOnlineListPath: path });
+};
 
 const fetchCandidate = async (
   url: string,
@@ -58,27 +74,36 @@ export const fetchOnlineCharacterNames = async (
 
   const serverId = extractServerIdFromUrl(guildUrl);
   const headers = customHeaders || createRequestHeaders(origin);
-  const candidates = ONLINE_LIST_CANDIDATE_PATHS.map((path) => buildCandidateUrl(origin, path));
+  const serverConfig = loadServerConfig(serverId);
+  const orderedPaths = reorderPathsByLastWorking(ONLINE_LIST_CANDIDATE_PATHS, serverConfig?.lastWorkingOnlineListPath);
 
   let sawForbidden = false;
 
-  for (const candidateUrl of candidates) {
+  for (const path of orderedPaths) {
+    const candidateUrl = buildCandidateUrl(origin, path);
     const result = await fetchCandidate(candidateUrl, headers, serverId);
     if (result.statusCode === 403) sawForbidden = true;
     if (!result.html) continue;
 
     const names = extractOnlineNames(result.html, candidateUrl);
-    if (names.size > 0) return names;
+    if (names.size > 0) {
+      await rememberWorkingOnlineListPath(serverId, path, serverConfig);
+      return names;
+    }
   }
 
   if (!sawForbidden) return null;
 
-  for (const candidateUrl of candidates) {
+  for (const path of orderedPaths) {
+    const candidateUrl = buildCandidateUrl(origin, path);
     const html = await playwrightManager.fetchPageContent(candidateUrl, serverId, headers);
     if (!html) continue;
 
     const names = extractOnlineNames(html, candidateUrl);
-    if (names.size > 0) return names;
+    if (names.size > 0) {
+      await rememberWorkingOnlineListPath(serverId, path, serverConfig);
+      return names;
+    }
   }
 
   return null;

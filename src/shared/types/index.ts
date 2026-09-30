@@ -129,6 +129,7 @@ export type ServerConfig = {
   lastUpdate?: string;
   hasCloudflare?: boolean;
   cloudflareDetectedAt?: string;
+  lastWorkingOnlineListPath?: string;
   isWorking?: boolean;
   lastWorkingTest?: string;
   settings?: {
